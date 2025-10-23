@@ -1,6 +1,6 @@
 # Linux Utilities
 
-![Linux Terminal](@assets/linuxterminal.png)
+![Linux Terminal](assets/linuxterminal.png)
 
 This directory contains a collection of utility scripts designed to enhance my workflow on Linux, particularly with AwesomeWM and various AI CLI tools. The primary objective is to streamline daily tasks, automate repetitive actions, and facilitate a more efficient and seamless integration of these technologies.
 
