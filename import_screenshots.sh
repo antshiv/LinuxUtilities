@@ -22,7 +22,8 @@ if [[ "$1" == "--help" || "$1" == "-h" ]]; then
     echo "  - If no new files, interactively prompts from recent screenshots."
     echo ""
     echo "Options:"
-    echo "  --photo, --pxl    Imports new phone photos (PXL_*.jpg) to ~/Pictures/Phone/."
+    echo "  --photo, --pxl [dest]  Imports new phone photos (PXL_*.jpg). Defaults to ~/Pictures/Phone/."
+    echo "                     [dest] can be a folder path or '.' for the current directory."
     echo "  --clean          Prompts to delete all .png files from the 'Screenshots/' directory."
     echo "  --history, -l    Lists the 5 most recently imported screenshots."
     echo "  --help, -h       Displays this help message."
@@ -50,6 +51,13 @@ output_prompt() {
 # Handle --photo flag
 if [[ "$1" == "--photo" || "$1" == "--pxl" ]]; then
     PHOTO_DEST_DIR="$HOME/Pictures/Phone"
+    if [ -n "$2" ]; then
+        if [ "$2" == "." ]; then
+            PHOTO_DEST_DIR=$(pwd)
+        else
+            PHOTO_DEST_DIR="$2"
+        fi
+    fi
     PHOTO_PATTERN="PXL_*.jp*g"
     echo "Mode: Importing Phone Photos"
     mkdir -p "$PHOTO_DEST_DIR"
