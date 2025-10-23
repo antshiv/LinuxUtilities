@@ -4,6 +4,17 @@
 
 This directory contains a collection of utility scripts designed to enhance my workflow on Linux, particularly with AwesomeWM and various AI CLI tools. The primary objective is to streamline daily tasks, automate repetitive actions, and facilitate a more efficient and seamless integration of these technologies.
 
+## My Setup
+
+![My awesomeWM setup](assets/awesomeWMTerminal.png)
+
+My current setup is simple and focused on efficiency:
+
+*   **OS:** Linux Mint
+*   **Window Manager:** awesomeWM
+*   **Terminal:** Terminator
+*   **Tooling:** AI CLI tools
+
 ## Scripts:
 
 - `import_screenshots.sh`: A utility to manage screenshots and phone photos, moving them to designated directories and generating prompts for AI CLI tools.
