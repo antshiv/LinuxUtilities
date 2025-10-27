@@ -385,9 +385,8 @@ Just like:
 
 ## Related Documentation
 
-- **[ANTSAND Ecosystem](../docs/README.md)** - Complete project overview
-- **[ANTSAND Vision](../docs/VISION.md)** - Conservation technology mission
-- **[Architecture](../docs/ARCHITECTURE.md)** - How all projects integrate
+- **[WHY_LINUX.md](WHY_LINUX.md)** - Why Linux is the most powerful OS for development
+- **[README.md](README.md)** - Linux utilities and scripts for AwesomeWM workflow
 
 ---
 
