@@ -2964,7 +2964,7 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     GtkWidget *btn_clear_selection = gtk_button_new_with_label("Clear Selection");
     GtkWidget *btn_import = gtk_button_new_with_label("Run Import Script");
     GtkWidget *btn_open = gtk_button_new_with_label("Open Folder");
-    GtkWidget *workspace_split = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
+    GtkWidget *workspace_stack = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
     GtkWidget *editor_shell = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
     GtkWidget *editor_header = gtk_label_new(NULL);
     GtkWidget *editor_main_paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
@@ -3188,18 +3188,18 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
 
     gtk_box_pack_start(GTK_BOX(browser_shell), browser_info, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(browser_shell), thumbs_scroller, TRUE, TRUE, 0);
-    gtk_widget_set_vexpand(browser_shell, TRUE);
+    gtk_widget_set_vexpand(browser_shell, FALSE);
+    gtk_widget_set_size_request(browser_shell, -1, 290);
 
-    gtk_widget_set_hexpand(workspace_split, TRUE);
-    gtk_widget_set_vexpand(workspace_split, TRUE);
-    gtk_paned_pack1(GTK_PANED(workspace_split), editor_shell, TRUE, FALSE);
-    gtk_paned_pack2(GTK_PANED(workspace_split), browser_shell, TRUE, FALSE);
-    gtk_paned_set_position(GTK_PANED(workspace_split), 460);
+    gtk_widget_set_hexpand(workspace_stack, TRUE);
+    gtk_widget_set_vexpand(workspace_stack, TRUE);
+    gtk_box_pack_start(GTK_BOX(workspace_stack), editor_shell, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(workspace_stack), browser_shell, FALSE, TRUE, 0);
 
     gtk_box_pack_start(GTK_BOX(root), title, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(root), folder, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(root), toolbar, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(root), workspace_split, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(root), workspace_stack, TRUE, TRUE, 0);
 
     state->shots_icon_view = icon_view;
     state->shots_status = status;
