@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+MSG_FILE="${1:-}"
+
+if [[ -z "$MSG_FILE" || ! -f "$MSG_FILE" ]]; then
+    echo "commit-msg hook: missing commit message file."
+    exit 1
+fi
+
+require_section() {
+    local section="$1"
+    if ! grep -Eq "^${section}:[[:space:]]*$" "$MSG_FILE"; then
+        echo "Commit message must include section: '${section}:'"
+        return 1
+    fi
+    return 0
+}
+
+if ! grep -Eq '^[a-z]+(\([^)]+\))?: .+' "$MSG_FILE"; then
+    echo "Commit title must follow: type(scope): summary"
+    exit 1
+fi
+
+require_section "Changed"
+require_section "Feature"
+require_section "Tests Run"
+require_section "Test Cases Added"
+
+exit 0

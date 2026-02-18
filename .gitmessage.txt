@@ -1,0 +1,20 @@
+<type>(<scope>): <summary in imperative mood>
+
+Changed:
+- <what files/modules were changed>
+
+Feature:
+- <what feature was added or behavior changed>
+
+Tests Run:
+- <exact command and short outcome>
+
+Test Cases Added:
+- <new test scripts/cases added, or "None">
+
+Notes:
+- <follow-up or risk if any>
+
+# Types: feat, fix, chore, docs, refactor, test
+# Example:
+# feat(screenshots): add dockable tool panel and SVG export
