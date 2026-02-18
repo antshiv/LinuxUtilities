@@ -407,21 +407,33 @@ static void apply_css_theme(AppState *state, gboolean dark_mode) {
         "  font-weight: 600;"
         "}"
         ".action-row button {"
-        "  margin: 0 10px 10px 0;"
-        "  min-height: 34px;"
+        "  margin: 0 6px 6px 0;"
+        "  min-height: 24px;"
         "  font-weight: 600;"
+        "}"
+        ".action-btn {"
+        "  padding: 2px 4px;"
+        "  border-radius: 2px;"
+        "  min-height: 24px;"
+        "  font-weight: 600;"
+        "}"
+        ".action-btn:hover {"
+        "  box-shadow: 0 0 0 1px rgba(110, 170, 235, 0.42), 0 0 8px rgba(64, 130, 210, 0.28);"
+        "}"
+        ".action-btn:focus {"
+        "  box-shadow: 0 0 0 1px rgba(135, 190, 255, 0.55), 0 0 10px rgba(80, 145, 220, 0.33);"
         "}"
         ".accent-btn {"
         "  background: #0e639c;"
         "  color: #ffffff;"
         "  border-color: #2f78b7;"
         "  background-image: none;"
-        "  box-shadow: none;"
+        "  box-shadow: 0 0 0 1px rgba(55, 135, 210, 0.45), 0 0 10px rgba(35, 110, 180, 0.32);"
         "}"
         ".accent-btn:hover {"
         "  background: #1177bb;"
         "  background-image: none;"
-        "  box-shadow: none;"
+        "  box-shadow: 0 0 0 1px rgba(90, 165, 235, 0.55), 0 0 12px rgba(40, 125, 205, 0.38);"
         "}"
         ".meta-info {"
         "  color: #a7b5c8;"
@@ -655,21 +667,33 @@ static void apply_css_theme(AppState *state, gboolean dark_mode) {
         "  font-weight: 600;"
         "}"
         ".action-row button {"
-        "  margin: 0 10px 10px 0;"
-        "  min-height: 34px;"
+        "  margin: 0 6px 6px 0;"
+        "  min-height: 24px;"
         "  font-weight: 600;"
+        "}"
+        ".action-btn {"
+        "  padding: 2px 4px;"
+        "  border-radius: 2px;"
+        "  min-height: 24px;"
+        "  font-weight: 600;"
+        "}"
+        ".action-btn:hover {"
+        "  box-shadow: 0 0 0 1px rgba(90, 145, 220, 0.42), 0 0 8px rgba(75, 130, 205, 0.24);"
+        "}"
+        ".action-btn:focus {"
+        "  box-shadow: 0 0 0 1px rgba(105, 165, 235, 0.52), 0 0 10px rgba(80, 140, 210, 0.30);"
         "}"
         ".accent-btn {"
         "  background: #3e88cc;"
         "  color: #ffffff;"
         "  border-color: #347aba;"
         "  background-image: none;"
-        "  box-shadow: none;"
+        "  box-shadow: 0 0 0 1px rgba(82, 145, 220, 0.45), 0 0 9px rgba(72, 135, 205, 0.26);"
         "}"
         ".accent-btn:hover {"
         "  background: #4c95d8;"
         "  background-image: none;"
-        "  box-shadow: none;"
+        "  box-shadow: 0 0 0 1px rgba(94, 158, 232, 0.52), 0 0 11px rgba(84, 146, 214, 0.30);"
         "}"
         ".meta-info {"
         "  color: #3d5875;"
@@ -3443,6 +3467,7 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     GtkWidget *browser_shell = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
     GtkWidget *browser_split = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
     GtkWidget *browser_info_revealer = gtk_revealer_new();
+    GtkWidget *browser_info_scroller = gtk_scrolled_window_new(NULL, NULL);
     GtkWidget *browser_info = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
     GtkWidget *thumbs_scroller = gtk_scrolled_window_new(NULL, NULL);
     GtkWidget *icon_view = NULL;
@@ -3663,10 +3688,15 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     gtk_box_pack_start(GTK_BOX(browser_info), paths_scroller, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(browser_info), actions, FALSE, FALSE, 0);
     gtk_widget_set_size_request(browser_info, -1, 120);
+    gtk_container_add(GTK_CONTAINER(browser_info_scroller), browser_info);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(browser_info_scroller),
+                                   GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+    gtk_widget_set_size_request(browser_info_scroller, -1, 130);
+    gtk_style_context_add_class(gtk_widget_get_style_context(browser_info_scroller), "surface");
     gtk_revealer_set_transition_type(GTK_REVEALER(browser_info_revealer),
                                      GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
     gtk_revealer_set_transition_duration(GTK_REVEALER(browser_info_revealer), 160);
-    gtk_container_add(GTK_CONTAINER(browser_info_revealer), browser_info);
+    gtk_container_add(GTK_CONTAINER(browser_info_revealer), browser_info_scroller);
     gtk_widget_set_hexpand(browser_info_revealer, TRUE);
 
     g_object_set(G_OBJECT(browser_split), "wide-handle", TRUE, NULL);
