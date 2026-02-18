@@ -24,6 +24,13 @@ typedef enum {
     SHOT_MARK_RECT
 } ShotMarkType;
 
+typedef enum {
+    SHOT_TEXT_STYLE_NORMAL = 0,
+    SHOT_TEXT_STYLE_BOLD,
+    SHOT_TEXT_STYLE_ITALIC,
+    SHOT_TEXT_STYLE_BOLD_ITALIC
+} ShotTextStyle;
+
 enum {
     SHOT_HANDLE_NONE = 0,
     SHOT_HANDLE_ARROW_START = 1,
@@ -42,8 +49,19 @@ typedef struct {
     gdouble stroke_width;
     gdouble arrow_head_len;
     gdouble arrow_head_spread;
+    gdouble text_size;
+    gdouble text_fill_opacity;
+    gdouble rect_fill_opacity;
+    gdouble text_stroke_width;
     gchar *text;
     GdkRGBA color;
+    guint text_style;
+    gboolean text_fill_enabled;
+    gboolean text_stroke_enabled;
+    gboolean text_shadow_enabled;
+    gboolean rect_fill_enabled;
+    gboolean rect_stroke_enabled;
+    gboolean rect_shadow_enabled;
 } ShotMark;
 
 typedef struct {
@@ -70,11 +88,27 @@ typedef struct {
     GtkWidget *shots_paths_view;
     GtkWidget *shots_folder_label;
     GtkWidget *shots_editor_canvas;
+    GtkWidget *shots_editor_canvas_overlay;
     GtkWidget *shots_editor_status;
     GtkWidget *shots_editor_tool_combo;
+    GtkWidget *shots_tool_btn_select;
+    GtkWidget *shots_tool_btn_arrow;
+    GtkWidget *shots_tool_btn_rect;
+    GtkWidget *shots_tool_btn_text;
+    GtkWidget *shots_tool_btn_stamp;
     GtkWidget *shots_editor_stamp_combo;
     GtkWidget *shots_editor_text_entry;
     GtkWidget *shots_editor_color_btn;
+    GtkWidget *shots_editor_font_style_combo;
+    GtkWidget *shots_editor_font_size_scale;
+    GtkWidget *shots_editor_text_stroke_width_scale;
+    GtkWidget *shots_editor_rect_fill_opacity_scale;
+    GtkWidget *shots_editor_text_fill_check;
+    GtkWidget *shots_editor_text_stroke_check;
+    GtkWidget *shots_editor_text_shadow_check;
+    GtkWidget *shots_editor_rect_fill_check;
+    GtkWidget *shots_editor_rect_stroke_check;
+    GtkWidget *shots_editor_rect_shadow_check;
     GtkWidget *shots_editor_arrow_width_scale;
     GtkWidget *shots_editor_arrow_head_len_scale;
     GtkWidget *shots_editor_arrow_head_angle_scale;
@@ -112,7 +146,11 @@ typedef struct {
     gdouble shots_editor_draw_offset_y;
     gint shots_editor_next_step;
     gboolean shots_editor_style_syncing;
+    gboolean shots_editor_tool_syncing;
     gboolean shots_editor_tools_docked_right;
+    GtkWidget *shots_editor_inline_entry;
+    gint shots_editor_inline_mark_index;
+    gboolean shots_editor_inline_active;
 
     GtkWidget *utils_status;
 
@@ -125,6 +163,11 @@ typedef struct {
 
 static void shots_reload(AppState *state);
 static void shots_editor_show_color_palette_menu(AppState *state, GdkEventButton *event);
+static void shots_editor_apply_text_value_to_mark(AppState *state, ShotMark *mark, const gchar *raw_text);
+static void shots_editor_inline_begin(AppState *state, gint mark_index);
+static void shots_editor_inline_hide(AppState *state, gboolean apply_changes);
+static void shots_editor_inline_reposition(AppState *state);
+static void shots_editor_sync_tool_buttons(AppState *state, const gchar *tool_id);
 
 static gboolean ends_with_image_ext(const gchar *name) {
     if (!name) {
@@ -411,6 +454,30 @@ static void apply_css_theme(AppState *state, gboolean dark_mode) {
         "  min-height: 24px;"
         "  font-weight: 600;"
         "}"
+        ".tool-ribbon {"
+        "  background: #151d29;"
+        "  border: 1px solid #2f3d52;"
+        "  border-radius: 8px;"
+        "  padding: 4px;"
+        "}"
+        ".tool-btn {"
+        "  min-width: 34px;"
+        "  min-height: 30px;"
+        "  padding: 4px;"
+        "  border-radius: 6px;"
+        "  border: 1px solid transparent;"
+        "  background: transparent;"
+        "  box-shadow: none;"
+        "}"
+        ".tool-btn:hover {"
+        "  background: #253246;"
+        "  border-color: #3f5675;"
+        "}"
+        ".tool-btn:checked {"
+        "  background: #0e639c;"
+        "  border-color: #4d7fb8;"
+        "  box-shadow: 0 0 0 1px rgba(95, 160, 235, 0.45), 0 0 10px rgba(48, 120, 195, 0.35);"
+        "}"
         ".action-btn {"
         "  padding: 2px 4px;"
         "  border-radius: 2px;"
@@ -671,6 +738,31 @@ static void apply_css_theme(AppState *state, gboolean dark_mode) {
         "  min-height: 24px;"
         "  font-weight: 600;"
         "}"
+        ".tool-ribbon {"
+        "  background: #e9f1fb;"
+        "  border: 1px solid #bfd2e9;"
+        "  border-radius: 8px;"
+        "  padding: 4px;"
+        "}"
+        ".tool-btn {"
+        "  min-width: 34px;"
+        "  min-height: 30px;"
+        "  padding: 4px;"
+        "  border-radius: 6px;"
+        "  border: 1px solid transparent;"
+        "  background: transparent;"
+        "  box-shadow: none;"
+        "}"
+        ".tool-btn:hover {"
+        "  background: #d9e8f9;"
+        "  border-color: #a8c3e3;"
+        "}"
+        ".tool-btn:checked {"
+        "  background: #3e88cc;"
+        "  border-color: #2f6fae;"
+        "  color: #ffffff;"
+        "  box-shadow: 0 0 0 1px rgba(94, 150, 220, 0.45), 0 0 10px rgba(84, 140, 210, 0.28);"
+        "}"
         ".action-btn {"
         "  padding: 2px 4px;"
         "  border-radius: 2px;"
@@ -830,6 +922,41 @@ static void style_action_button(GtkWidget *button, gboolean accent) {
     if (accent) {
         gtk_style_context_add_class(ctx, "accent-btn");
     }
+}
+
+static GtkWidget *create_tool_ribbon_button(GtkWidget *group_source,
+                                            const gchar *tool_id,
+                                            const gchar *icon_name,
+                                            const gchar *fallback_label,
+                                            const gchar *tooltip) {
+    GtkWidget *button = NULL;
+    GtkIconTheme *theme = gtk_icon_theme_get_default();
+    gboolean has_icon = FALSE;
+
+    if (group_source) {
+        button = gtk_radio_button_new_from_widget(GTK_RADIO_BUTTON(group_source));
+    } else {
+        button = gtk_radio_button_new(NULL);
+    }
+
+    gtk_toggle_button_set_mode(GTK_TOGGLE_BUTTON(button), FALSE);
+    gtk_button_set_relief(GTK_BUTTON(button), GTK_RELIEF_NONE);
+    gtk_style_context_add_class(gtk_widget_get_style_context(button), "tool-btn");
+
+    has_icon = (theme && icon_name && *icon_name && gtk_icon_theme_has_icon(theme, icon_name));
+    if (has_icon) {
+        GtkWidget *image = gtk_image_new_from_icon_name(icon_name, GTK_ICON_SIZE_LARGE_TOOLBAR);
+        gtk_button_set_image(GTK_BUTTON(button), image);
+        gtk_button_set_always_show_image(GTK_BUTTON(button), TRUE);
+    } else if (fallback_label && *fallback_label) {
+        gtk_button_set_label(GTK_BUTTON(button), fallback_label);
+    }
+
+    if (tooltip && *tooltip) {
+        gtk_widget_set_tooltip_text(button, tooltip);
+    }
+    g_object_set_data(G_OBJECT(button), "tool-id", (gpointer)tool_id);
+    return button;
 }
 
 static gchar *run_command_capture(const gchar *command, gint *exit_status) {
@@ -1335,6 +1462,102 @@ static gdouble shots_editor_get_arrow_head_spread_control(AppState *state) {
     return degrees * (G_PI / 180.0);
 }
 
+static gdouble shots_editor_get_text_size_control(AppState *state) {
+    if (state && state->shots_editor_font_size_scale) {
+        return gtk_range_get_value(GTK_RANGE(state->shots_editor_font_size_scale));
+    }
+    return 24.0;
+}
+
+static gdouble shots_editor_get_text_stroke_width_control(AppState *state) {
+    if (state && state->shots_editor_text_stroke_width_scale) {
+        return gtk_range_get_value(GTK_RANGE(state->shots_editor_text_stroke_width_scale));
+    }
+    return 2.0;
+}
+
+static gdouble shots_editor_get_rect_fill_opacity_control(AppState *state) {
+    if (state && state->shots_editor_rect_fill_opacity_scale) {
+        return gtk_range_get_value(GTK_RANGE(state->shots_editor_rect_fill_opacity_scale));
+    }
+    return 0.18;
+}
+
+static gboolean shots_editor_check_is_active(GtkWidget *check, gboolean fallback) {
+    if (!check) {
+        return fallback;
+    }
+    return gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(check));
+}
+
+static guint shots_editor_get_text_style_control(AppState *state) {
+    const gchar *id = NULL;
+
+    if (!state || !state->shots_editor_font_style_combo) {
+        return SHOT_TEXT_STYLE_BOLD;
+    }
+
+    id = gtk_combo_box_get_active_id(GTK_COMBO_BOX(state->shots_editor_font_style_combo));
+    if (!id || g_strcmp0(id, "bold") == 0) {
+        return SHOT_TEXT_STYLE_BOLD;
+    }
+    if (g_strcmp0(id, "normal") == 0) {
+        return SHOT_TEXT_STYLE_NORMAL;
+    }
+    if (g_strcmp0(id, "italic") == 0) {
+        return SHOT_TEXT_STYLE_ITALIC;
+    }
+    if (g_strcmp0(id, "bolditalic") == 0) {
+        return SHOT_TEXT_STYLE_BOLD_ITALIC;
+    }
+    return SHOT_TEXT_STYLE_BOLD;
+}
+
+static void shots_editor_apply_text_style_to_mark(AppState *state, ShotMark *mark) {
+    if (!mark || (mark->type != SHOT_MARK_TEXT && mark->type != SHOT_MARK_RECT)) {
+        return;
+    }
+
+    mark->text_size = shots_editor_get_text_size_control(state);
+    mark->text_stroke_width = shots_editor_get_text_stroke_width_control(state);
+    mark->text_style = shots_editor_get_text_style_control(state);
+    mark->text_fill_enabled = shots_editor_check_is_active(state ? state->shots_editor_text_fill_check : NULL, TRUE);
+    mark->text_stroke_enabled = shots_editor_check_is_active(state ? state->shots_editor_text_stroke_check : NULL, FALSE);
+    mark->text_shadow_enabled = shots_editor_check_is_active(state ? state->shots_editor_text_shadow_check : NULL, TRUE);
+    mark->text_fill_opacity = 1.0;
+
+    if (!mark->text_fill_enabled && !mark->text_stroke_enabled) {
+        mark->text_fill_enabled = TRUE;
+    }
+    if (mark->text_stroke_width <= 0.0) {
+        mark->text_stroke_width = 2.0;
+    }
+    if (mark->text_size <= 0.0) {
+        mark->text_size = 24.0;
+    }
+}
+
+static void shots_editor_apply_rect_style_to_mark(AppState *state, ShotMark *mark) {
+    if (!mark || mark->type != SHOT_MARK_RECT) {
+        return;
+    }
+
+    mark->rect_fill_enabled = shots_editor_check_is_active(state ? state->shots_editor_rect_fill_check : NULL, TRUE);
+    mark->rect_stroke_enabled = shots_editor_check_is_active(state ? state->shots_editor_rect_stroke_check : NULL, TRUE);
+    mark->rect_shadow_enabled = shots_editor_check_is_active(state ? state->shots_editor_rect_shadow_check : NULL, TRUE);
+    mark->rect_fill_opacity = shots_editor_get_rect_fill_opacity_control(state);
+
+    if (!mark->rect_fill_enabled && !mark->rect_stroke_enabled) {
+        mark->rect_stroke_enabled = TRUE;
+    }
+    if (mark->rect_fill_opacity < 0.0) {
+        mark->rect_fill_opacity = 0.0;
+    }
+    if (mark->rect_fill_opacity > 1.0) {
+        mark->rect_fill_opacity = 1.0;
+    }
+}
+
 static void shots_editor_apply_arrow_style_to_mark(AppState *state, ShotMark *mark) {
     if (!mark || mark->type != SHOT_MARK_ARROW) {
         return;
@@ -1389,6 +1612,10 @@ static void shots_editor_sync_controls_from_selected_arrow(AppState *state) {
 
 static void shots_editor_sync_controls_from_selected_mark(AppState *state) {
     ShotMark *mark = shots_editor_get_selected_mark(state);
+    const gchar *style_id = "bold";
+    gdouble text_size = 24.0;
+    gdouble text_stroke_width = 2.0;
+    gdouble rect_fill_opacity = 0.18;
 
     if (!state || !mark) {
         return;
@@ -1401,6 +1628,71 @@ static void shots_editor_sync_controls_from_selected_mark(AppState *state) {
     if (state->shots_editor_text_entry &&
         (mark->type == SHOT_MARK_TEXT || mark->type == SHOT_MARK_STAMP || mark->type == SHOT_MARK_RECT)) {
         gtk_entry_set_text(GTK_ENTRY(state->shots_editor_text_entry), mark->text ? mark->text : "");
+    }
+    if (mark->type == SHOT_MARK_TEXT || mark->type == SHOT_MARK_RECT) {
+        gboolean text_fill = mark->text_fill_enabled || !mark->text_stroke_enabled;
+        gboolean text_stroke = mark->text_stroke_enabled;
+        gboolean text_shadow = mark->text_shadow_enabled || (mark->text_size <= 0.0 && mark->text_style == 0);
+        text_size = mark->text_size > 0.0 ? mark->text_size : 24.0;
+        text_stroke_width = mark->text_stroke_width > 0.0 ? mark->text_stroke_width : 2.0;
+        if (state->shots_editor_font_size_scale) {
+            gtk_range_set_value(GTK_RANGE(state->shots_editor_font_size_scale), text_size);
+        }
+        if (state->shots_editor_text_stroke_width_scale) {
+            gtk_range_set_value(GTK_RANGE(state->shots_editor_text_stroke_width_scale), text_stroke_width);
+        }
+
+        switch (mark->text_style) {
+            case SHOT_TEXT_STYLE_NORMAL:
+                style_id = "normal";
+                break;
+            case SHOT_TEXT_STYLE_ITALIC:
+                style_id = "italic";
+                break;
+            case SHOT_TEXT_STYLE_BOLD_ITALIC:
+                style_id = "bolditalic";
+                break;
+            case SHOT_TEXT_STYLE_BOLD:
+            default:
+                style_id = "bold";
+                break;
+        }
+        if (state->shots_editor_font_style_combo) {
+            gtk_combo_box_set_active_id(GTK_COMBO_BOX(state->shots_editor_font_style_combo), style_id);
+        }
+        if (state->shots_editor_text_fill_check) {
+            gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(state->shots_editor_text_fill_check),
+                                         text_fill);
+        }
+        if (state->shots_editor_text_stroke_check) {
+            gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(state->shots_editor_text_stroke_check),
+                                         text_stroke);
+        }
+        if (state->shots_editor_text_shadow_check) {
+            gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(state->shots_editor_text_shadow_check),
+                                         text_shadow);
+        }
+    }
+    if (mark->type == SHOT_MARK_RECT) {
+        gboolean rect_fill = mark->rect_fill_enabled || !mark->rect_stroke_enabled;
+        gboolean rect_stroke = mark->rect_stroke_enabled || !mark->rect_fill_enabled;
+        gboolean rect_shadow = mark->rect_shadow_enabled || (mark->rect_fill_opacity <= 0.0);
+        rect_fill_opacity = mark->rect_fill_opacity > 0.0 ? mark->rect_fill_opacity : 0.18;
+        if (state->shots_editor_rect_fill_opacity_scale) {
+            gtk_range_set_value(GTK_RANGE(state->shots_editor_rect_fill_opacity_scale), rect_fill_opacity);
+        }
+        if (state->shots_editor_rect_fill_check) {
+            gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(state->shots_editor_rect_fill_check),
+                                         rect_fill);
+        }
+        if (state->shots_editor_rect_stroke_check) {
+            gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(state->shots_editor_rect_stroke_check),
+                                         rect_stroke);
+        }
+        if (state->shots_editor_rect_shadow_check) {
+            gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(state->shots_editor_rect_shadow_check),
+                                         rect_shadow);
+        }
     }
     state->shots_editor_style_syncing = FALSE;
 
@@ -1446,6 +1738,245 @@ static void shots_editor_set_selected_mark(AppState *state, gint index) {
     }
 }
 
+static gboolean shots_editor_mark_supports_inline_text(const ShotMark *mark) {
+    return mark && (mark->type == SHOT_MARK_TEXT || mark->type == SHOT_MARK_RECT);
+}
+
+static void shots_editor_autosize_rect_for_text(ShotMark *mark) {
+    const gchar *text = NULL;
+    gchar **lines = NULL;
+    gsize max_chars = 0;
+    gsize line_count = 0;
+    gdouble text_size = 24.0;
+    gdouble need_w = 0.0;
+    gdouble need_h = 0.0;
+    gdouble left = 0.0;
+    gdouble right = 0.0;
+    gdouble top = 0.0;
+    gdouble bottom = 0.0;
+    gdouble width = 0.0;
+    gdouble height = 0.0;
+
+    if (!mark || mark->type != SHOT_MARK_RECT) {
+        return;
+    }
+
+    text = (mark->text && *mark->text) ? mark->text : "Callout";
+    text_size = mark->text_size > 0.0 ? mark->text_size : 24.0;
+
+    lines = g_strsplit(text, "\n", -1);
+    for (gsize i = 0; lines && lines[i]; ++i) {
+        gsize chars = (gsize)g_utf8_strlen(lines[i], -1);
+        if (chars > max_chars) {
+            max_chars = chars;
+        }
+        line_count++;
+    }
+    if (line_count == 0) {
+        line_count = 1;
+    }
+    if (max_chars == 0) {
+        max_chars = 4;
+    }
+
+    need_w = (gdouble)max_chars * (text_size * 0.62) + 24.0;
+    need_h = (gdouble)line_count * (text_size + 4.0) + 20.0;
+
+    left = MIN(mark->x1, mark->x2);
+    right = MAX(mark->x1, mark->x2);
+    top = MIN(mark->y1, mark->y2);
+    bottom = MAX(mark->y1, mark->y2);
+    width = right - left;
+    height = bottom - top;
+
+    if (width < need_w) {
+        right = left + need_w;
+    }
+    if (height < need_h) {
+        bottom = top + need_h;
+    }
+
+    mark->x1 = left;
+    mark->y1 = top;
+    mark->x2 = right;
+    mark->y2 = bottom;
+    g_strfreev(lines);
+}
+
+static gboolean shots_editor_get_mark_text_anchor_widget_xy(AppState *state,
+                                                            const ShotMark *mark,
+                                                            gint *x_out,
+                                                            gint *y_out) {
+    gdouble image_x = 0.0;
+    gdouble image_y = 0.0;
+    gdouble widget_x = 0.0;
+    gdouble widget_y = 0.0;
+
+    if (!state || !mark || !state->shots_editor_pixbuf || state->shots_editor_draw_scale <= 0.0) {
+        return FALSE;
+    }
+
+    if (mark->type == SHOT_MARK_TEXT) {
+        gdouble text_size = mark->text_size > 0.0 ? mark->text_size : 24.0;
+        image_x = mark->x1;
+        image_y = mark->y1 - text_size - 4.0;
+    } else if (mark->type == SHOT_MARK_RECT) {
+        image_x = MIN(mark->x1, mark->x2) + 10.0;
+        image_y = MIN(mark->y1, mark->y2) + 6.0;
+    } else {
+        return FALSE;
+    }
+
+    widget_x = state->shots_editor_draw_offset_x + image_x * state->shots_editor_draw_scale;
+    widget_y = state->shots_editor_draw_offset_y + image_y * state->shots_editor_draw_scale;
+
+    if (x_out) {
+        *x_out = (gint)MAX(0.0, floor(widget_x));
+    }
+    if (y_out) {
+        *y_out = (gint)MAX(0.0, floor(widget_y));
+    }
+    return TRUE;
+}
+
+static void shots_editor_apply_text_value_to_mark(AppState *state, ShotMark *mark, const gchar *raw_text) {
+    gchar *text = g_strdup(raw_text ? raw_text : "");
+
+    if (!state || !mark) {
+        g_free(text);
+        return;
+    }
+    if (!text) {
+        text = g_strdup("");
+    } else {
+        g_strstrip(text);
+    }
+
+    g_free(mark->text);
+    if (*text == '\0') {
+        if (mark->type == SHOT_MARK_STAMP) {
+            mark->text = g_strdup("1");
+        } else if (mark->type == SHOT_MARK_RECT) {
+            mark->text = g_strdup("Callout");
+        } else {
+            mark->text = g_strdup("Note");
+        }
+    } else {
+        mark->text = text;
+        text = NULL;
+    }
+    g_free(text);
+
+    if (mark->type == SHOT_MARK_TEXT || mark->type == SHOT_MARK_RECT) {
+        shots_editor_apply_text_style_to_mark(state, mark);
+    }
+    if (mark->type == SHOT_MARK_RECT) {
+        shots_editor_apply_rect_style_to_mark(state, mark);
+        shots_editor_autosize_rect_for_text(mark);
+    }
+}
+
+static void shots_editor_inline_reposition(AppState *state) {
+    ShotMark *mark = NULL;
+    gint x = 0;
+    gint y = 0;
+    gint width = 280;
+
+    if (!state || !state->shots_editor_inline_active || !state->shots_editor_inline_entry) {
+        return;
+    }
+
+    shots_editor_ensure_marks(state);
+    if (state->shots_editor_inline_mark_index < 0 ||
+        (guint)state->shots_editor_inline_mark_index >= state->shots_editor_marks->len) {
+        shots_editor_inline_hide(state, FALSE);
+        return;
+    }
+
+    mark = g_ptr_array_index(state->shots_editor_marks, (guint)state->shots_editor_inline_mark_index);
+    if (!shots_editor_mark_supports_inline_text(mark)) {
+        shots_editor_inline_hide(state, FALSE);
+        return;
+    }
+
+    if (!shots_editor_get_mark_text_anchor_widget_xy(state, mark, &x, &y)) {
+        return;
+    }
+
+    if (state->shots_editor_canvas) {
+        GtkAllocation alloc = {0};
+        gtk_widget_get_allocation(state->shots_editor_canvas, &alloc);
+        if (x + width > alloc.width - 8) {
+            width = MAX(140, alloc.width - x - 8);
+        }
+    }
+
+    gtk_widget_set_halign(state->shots_editor_inline_entry, GTK_ALIGN_START);
+    gtk_widget_set_valign(state->shots_editor_inline_entry, GTK_ALIGN_START);
+    gtk_widget_set_margin_start(state->shots_editor_inline_entry, x);
+    gtk_widget_set_margin_top(state->shots_editor_inline_entry, y);
+    gtk_widget_set_size_request(state->shots_editor_inline_entry, width, -1);
+}
+
+static void shots_editor_inline_begin(AppState *state, gint mark_index) {
+    ShotMark *mark = NULL;
+
+    if (!state || !state->shots_editor_inline_entry) {
+        return;
+    }
+
+    shots_editor_ensure_marks(state);
+    if (mark_index < 0 || (guint)mark_index >= state->shots_editor_marks->len) {
+        shots_editor_inline_hide(state, FALSE);
+        return;
+    }
+
+    mark = g_ptr_array_index(state->shots_editor_marks, (guint)mark_index);
+    if (!shots_editor_mark_supports_inline_text(mark)) {
+        shots_editor_inline_hide(state, FALSE);
+        return;
+    }
+
+    state->shots_editor_inline_mark_index = mark_index;
+    state->shots_editor_inline_active = TRUE;
+    gtk_entry_set_text(GTK_ENTRY(state->shots_editor_inline_entry), mark->text ? mark->text : "");
+    gtk_widget_show(state->shots_editor_inline_entry);
+    shots_editor_inline_reposition(state);
+    gtk_widget_grab_focus(state->shots_editor_inline_entry);
+    gtk_editable_set_position(GTK_EDITABLE(state->shots_editor_inline_entry), -1);
+}
+
+static void shots_editor_inline_hide(AppState *state, gboolean apply_changes) {
+    ShotMark *mark = NULL;
+
+    if (!state || !state->shots_editor_inline_entry || !state->shots_editor_inline_active) {
+        return;
+    }
+
+    if (apply_changes) {
+        shots_editor_ensure_marks(state);
+        if (state->shots_editor_inline_mark_index >= 0 &&
+            (guint)state->shots_editor_inline_mark_index < state->shots_editor_marks->len) {
+            mark = g_ptr_array_index(state->shots_editor_marks, (guint)state->shots_editor_inline_mark_index);
+            if (mark) {
+                const gchar *text = gtk_entry_get_text(GTK_ENTRY(state->shots_editor_inline_entry));
+                shots_editor_apply_text_value_to_mark(state, mark, text);
+                if (state->shots_editor_text_entry) {
+                    gtk_entry_set_text(GTK_ENTRY(state->shots_editor_text_entry), mark->text ? mark->text : "");
+                }
+            }
+        }
+    }
+
+    state->shots_editor_inline_active = FALSE;
+    state->shots_editor_inline_mark_index = -1;
+    gtk_widget_hide(state->shots_editor_inline_entry);
+    if (state->shots_editor_canvas) {
+        gtk_widget_grab_focus(state->shots_editor_canvas);
+        gtk_widget_queue_draw(state->shots_editor_canvas);
+    }
+}
+
 static void shots_editor_recompute_next_step(AppState *state) {
     gint max_step = 0;
 
@@ -1475,6 +2006,7 @@ static void shots_editor_clear_marks(AppState *state) {
     if (!state) {
         return;
     }
+    shots_editor_inline_hide(state, FALSE);
     shots_editor_ensure_marks(state);
     while (state->shots_editor_marks->len > 0) {
         g_ptr_array_remove_index(state->shots_editor_marks, state->shots_editor_marks->len - 1);
@@ -1660,8 +2192,9 @@ static gint shots_editor_find_mark_at_point(AppState *state, gdouble x, gdouble 
         }
 
         if (mark->type == SHOT_MARK_TEXT) {
-            gdouble text_w = 14.0 * (gdouble)MAX(1, (gint)strlen(mark->text ? mark->text : "Note"));
-            gdouble text_h = 28.0;
+            gdouble text_size = mark->text_size > 0.0 ? mark->text_size : 24.0;
+            gdouble text_w = (text_size * 0.62) * (gdouble)MAX(1, (gint)strlen(mark->text ? mark->text : "Note"));
+            gdouble text_h = text_size + 8.0;
             if (x >= mark->x1 && x <= mark->x1 + text_w &&
                 y <= mark->y1 && y >= mark->y1 - text_h) {
                 if (arrow_handle_out) {
@@ -1742,23 +2275,97 @@ static void shots_editor_draw_stamp(cairo_t *cr, const ShotMark *mark) {
     cairo_show_text(cr, text);
 }
 
+static void shots_editor_text_style_to_cairo(guint text_style,
+                                             cairo_font_slant_t *slant_out,
+                                             cairo_font_weight_t *weight_out) {
+    cairo_font_slant_t slant = CAIRO_FONT_SLANT_NORMAL;
+    cairo_font_weight_t weight = CAIRO_FONT_WEIGHT_BOLD;
+
+    switch (text_style) {
+        case SHOT_TEXT_STYLE_NORMAL:
+            slant = CAIRO_FONT_SLANT_NORMAL;
+            weight = CAIRO_FONT_WEIGHT_NORMAL;
+            break;
+        case SHOT_TEXT_STYLE_ITALIC:
+            slant = CAIRO_FONT_SLANT_ITALIC;
+            weight = CAIRO_FONT_WEIGHT_NORMAL;
+            break;
+        case SHOT_TEXT_STYLE_BOLD_ITALIC:
+            slant = CAIRO_FONT_SLANT_ITALIC;
+            weight = CAIRO_FONT_WEIGHT_BOLD;
+            break;
+        case SHOT_TEXT_STYLE_BOLD:
+        default:
+            slant = CAIRO_FONT_SLANT_NORMAL;
+            weight = CAIRO_FONT_WEIGHT_BOLD;
+            break;
+    }
+
+    if (slant_out) {
+        *slant_out = slant;
+    }
+    if (weight_out) {
+        *weight_out = weight;
+    }
+}
+
+static void shots_editor_draw_styled_text(cairo_t *cr,
+                                          const ShotMark *mark,
+                                          const gchar *text,
+                                          gdouble x,
+                                          gdouble y) {
+    cairo_font_slant_t slant = CAIRO_FONT_SLANT_NORMAL;
+    cairo_font_weight_t weight = CAIRO_FONT_WEIGHT_BOLD;
+    gdouble text_size = 24.0;
+    gdouble stroke_width = 2.0;
+    gdouble fill_alpha = 1.0;
+    gboolean fill_enabled = TRUE;
+    gboolean stroke_enabled = FALSE;
+    gboolean shadow_enabled = TRUE;
+
+    if (!cr || !mark || !text) {
+        return;
+    }
+
+    shots_editor_text_style_to_cairo(mark->text_style, &slant, &weight);
+    text_size = mark->text_size > 0.0 ? mark->text_size : 24.0;
+    stroke_width = mark->text_stroke_width > 0.0 ? mark->text_stroke_width : 2.0;
+    fill_alpha = mark->text_fill_opacity > 0.0 ? mark->text_fill_opacity : 1.0;
+    fill_enabled = mark->text_fill_enabled || !mark->text_stroke_enabled;
+    stroke_enabled = mark->text_stroke_enabled;
+    shadow_enabled = mark->text_shadow_enabled;
+
+    cairo_select_font_face(cr, "Sans", slant, weight);
+    cairo_set_font_size(cr, text_size);
+
+    if (shadow_enabled) {
+        cairo_move_to(cr, x + 2.0, y + 2.0);
+        cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.45);
+        cairo_show_text(cr, text);
+    }
+
+    if (stroke_enabled) {
+        cairo_move_to(cr, x, y);
+        cairo_text_path(cr, text);
+        cairo_set_line_width(cr, stroke_width);
+        cairo_set_source_rgba(cr, 0.02, 0.03, 0.05, 0.9);
+        cairo_stroke(cr);
+    }
+
+    if (fill_enabled) {
+        cairo_move_to(cr, x, y);
+        cairo_set_source_rgba(cr, mark->color.red, mark->color.green, mark->color.blue, fill_alpha);
+        cairo_show_text(cr, text);
+    }
+}
+
 static void shots_editor_draw_text(cairo_t *cr, const ShotMark *mark) {
     const gchar *text = (mark && mark->text && *mark->text) ? mark->text : "Note";
 
     if (!cr || !mark) {
         return;
     }
-
-    cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-    cairo_set_font_size(cr, 24.0);
-
-    cairo_move_to(cr, mark->x1 + 2.0, mark->y1 + 2.0);
-    cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.45);
-    cairo_show_text(cr, text);
-
-    cairo_move_to(cr, mark->x1, mark->y1);
-    cairo_set_source_rgba(cr, mark->color.red, mark->color.green, mark->color.blue, 1.0);
-    cairo_show_text(cr, text);
+    shots_editor_draw_styled_text(cr, mark, text, mark->x1, mark->y1);
 }
 
 static void shots_editor_draw_rect(cairo_t *cr, const ShotMark *mark) {
@@ -1784,27 +2391,31 @@ static void shots_editor_draw_rect(cairo_t *cr, const ShotMark *mark) {
         return;
     }
 
-    cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.28);
-    cairo_rectangle(cr, left + 4.0, top + 4.0, width, height);
-    cairo_fill(cr);
+    if (mark->rect_shadow_enabled) {
+        cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.28);
+        cairo_rectangle(cr, left + 4.0, top + 4.0, width, height);
+        cairo_fill(cr);
+    }
 
-    cairo_set_source_rgba(cr, mark->color.red, mark->color.green, mark->color.blue, 0.18);
     cairo_rectangle(cr, left, top, width, height);
-    cairo_fill_preserve(cr);
+    if (mark->rect_fill_enabled) {
+        gdouble fill_alpha = mark->rect_fill_opacity > 0.0 ? mark->rect_fill_opacity : 0.18;
+        cairo_set_source_rgba(cr, mark->color.red, mark->color.green, mark->color.blue, fill_alpha);
+        if (mark->rect_stroke_enabled) {
+            cairo_fill_preserve(cr);
+        } else {
+            cairo_fill(cr);
+        }
+    }
 
-    cairo_set_source_rgba(cr, mark->color.red, mark->color.green, mark->color.blue, 1.0);
-    cairo_set_line_width(cr, mark->stroke_width > 0.0 ? mark->stroke_width : 3.0);
-    cairo_stroke(cr);
+    if (mark->rect_stroke_enabled) {
+        cairo_set_source_rgba(cr, mark->color.red, mark->color.green, mark->color.blue, 1.0);
+        cairo_set_line_width(cr, mark->stroke_width > 0.0 ? mark->stroke_width : 3.0);
+        cairo_stroke(cr);
+    }
 
     text = (mark->text && *mark->text) ? mark->text : "Callout";
-    cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-    cairo_set_font_size(cr, 19.0);
-    cairo_move_to(cr, left + 12.0, top + 30.0);
-    cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.4);
-    cairo_show_text(cr, text);
-    cairo_move_to(cr, left + 10.0, top + 28.0);
-    cairo_set_source_rgba(cr, 0.98, 0.99, 1.0, 0.95);
-    cairo_show_text(cr, text);
+    shots_editor_draw_styled_text(cr, mark, text, left + 10.0, top + 28.0);
 }
 
 static void shots_editor_draw_mark(cairo_t *cr, const ShotMark *mark) {
@@ -1869,6 +2480,8 @@ static void shots_editor_draw_marks(AppState *state, cairo_t *cr, gboolean inclu
                 g_strstrip(text);
             }
             preview.text = (text && *text) ? text : "Callout";
+            shots_editor_apply_text_style_to_mark(state, &preview);
+            shots_editor_apply_rect_style_to_mark(state, &preview);
         }
         shots_editor_draw_mark(cr, &preview);
         g_free(text);
@@ -1900,8 +2513,9 @@ static void shots_editor_draw_selection_overlay(AppState *state, cairo_t *cr) {
         cairo_arc(cr, mark->x1, mark->y1, 26.0, 0, 2 * G_PI);
         cairo_stroke(cr);
     } else if (mark->type == SHOT_MARK_TEXT) {
-        gdouble w = 14.0 * (gdouble)MAX(1, (gint)strlen(mark->text ? mark->text : "Note"));
-        gdouble h = 28.0;
+        gdouble text_size = mark->text_size > 0.0 ? mark->text_size : 24.0;
+        gdouble w = (text_size * 0.62) * (gdouble)MAX(1, (gint)strlen(mark->text ? mark->text : "Note"));
+        gdouble h = text_size + 8.0;
         cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.9);
         cairo_set_line_width(cr, 2.0);
         cairo_rectangle(cr, mark->x1 - 3.0, mark->y1 - h, w + 6.0, h + 6.0);
@@ -1971,6 +2585,10 @@ static gboolean on_shots_editor_draw(GtkWidget *widget, cairo_t *cr, gpointer us
     shots_editor_draw_selection_overlay(state, cr);
     cairo_restore(cr);
 
+    if (state->shots_editor_inline_active) {
+        shots_editor_inline_reposition(state);
+    }
+
     return FALSE;
 }
 
@@ -1990,6 +2608,10 @@ static gboolean on_shots_editor_button_press(GtkWidget *widget, GdkEventButton *
 
     if (!shots_editor_widget_to_image(state, event->x, event->y, &ix, &iy, FALSE)) {
         return FALSE;
+    }
+
+    if (state->shots_editor_inline_active) {
+        shots_editor_inline_hide(state, TRUE);
     }
 
     if (event->button == 3) {
@@ -2021,6 +2643,21 @@ static gboolean on_shots_editor_button_press(GtkWidget *widget, GdkEventButton *
         shots_editor_set_selected_mark(state, hit_index);
         if ((guint)hit_index < state->shots_editor_marks->len) {
             ShotMark *mark = g_ptr_array_index(state->shots_editor_marks, (guint)hit_index);
+            if (mark &&
+                event->type == GDK_2BUTTON_PRESS &&
+                (mark->type == SHOT_MARK_TEXT || mark->type == SHOT_MARK_RECT || mark->type == SHOT_MARK_STAMP)) {
+                if (shots_editor_mark_supports_inline_text(mark)) {
+                    shots_editor_inline_begin(state, hit_index);
+                    shots_editor_set_status(state, "Inline edit active. Press Enter to apply or Escape to cancel.");
+                    return TRUE;
+                }
+                if (mark->type == SHOT_MARK_STAMP && state->shots_editor_text_entry) {
+                    gtk_entry_set_text(GTK_ENTRY(state->shots_editor_text_entry), mark->text ? mark->text : "");
+                    gtk_widget_grab_focus(state->shots_editor_text_entry);
+                    shots_editor_set_status(state, "Stamp text loaded. Edit it and click Apply Text.");
+                    return TRUE;
+                }
+            }
             if (mark && arrow_handle > SHOT_HANDLE_NONE) {
                 state->shots_editor_selected_arrow_handle = arrow_handle;
                 state->shots_editor_edit_dragging = TRUE;
@@ -2127,6 +2764,7 @@ static gboolean on_shots_editor_button_press(GtkWidget *widget, GdkEventButton *
         mark->y2 = iy;
         mark->color = color;
         mark->text = text;
+        shots_editor_apply_text_style_to_mark(state, mark);
         g_ptr_array_add(state->shots_editor_marks, mark);
         shots_editor_set_selected_mark(state, (gint)state->shots_editor_marks->len - 1);
         gtk_widget_queue_draw(state->shots_editor_canvas);
@@ -2349,6 +2987,8 @@ static gboolean on_shots_editor_button_release(GtkWidget *widget, GdkEventButton
             mark->text = g_strdup("Callout");
         }
         g_free(label);
+        shots_editor_apply_text_style_to_mark(state, mark);
+        shots_editor_apply_rect_style_to_mark(state, mark);
 
         shots_editor_ensure_marks(state);
         g_ptr_array_add(state->shots_editor_marks, mark);
@@ -2434,6 +3074,58 @@ static gchar *shots_editor_make_output_path(AppState *state, const gchar *extens
     return path;
 }
 
+static void shots_editor_sync_tool_buttons(AppState *state, const gchar *tool_id) {
+    const gchar *id = tool_id ? tool_id : "arrow";
+
+    if (!state) {
+        return;
+    }
+
+    state->shots_editor_tool_syncing = TRUE;
+    if (state->shots_tool_btn_select) {
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(state->shots_tool_btn_select),
+                                     g_strcmp0(id, "select") == 0);
+    }
+    if (state->shots_tool_btn_arrow) {
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(state->shots_tool_btn_arrow),
+                                     g_strcmp0(id, "arrow") == 0);
+    }
+    if (state->shots_tool_btn_rect) {
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(state->shots_tool_btn_rect),
+                                     g_strcmp0(id, "rect") == 0);
+    }
+    if (state->shots_tool_btn_text) {
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(state->shots_tool_btn_text),
+                                     g_strcmp0(id, "text") == 0);
+    }
+    if (state->shots_tool_btn_stamp) {
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(state->shots_tool_btn_stamp),
+                                     g_strcmp0(id, "stamp") == 0);
+    }
+    state->shots_editor_tool_syncing = FALSE;
+}
+
+static void on_shots_editor_tool_button_toggled(GtkToggleButton *button, gpointer user_data) {
+    AppState *state = user_data;
+    const gchar *tool_id = NULL;
+
+    if (!state || state->shots_editor_tool_syncing || !gtk_toggle_button_get_active(button)) {
+        return;
+    }
+    if (!state->shots_editor_tool_combo) {
+        return;
+    }
+
+    tool_id = g_object_get_data(G_OBJECT(button), "tool-id");
+    if (!tool_id || *tool_id == '\0') {
+        return;
+    }
+
+    state->shots_editor_tool_syncing = TRUE;
+    gtk_combo_box_set_active_id(GTK_COMBO_BOX(state->shots_editor_tool_combo), tool_id);
+    state->shots_editor_tool_syncing = FALSE;
+}
+
 static void on_shots_editor_tool_changed(GtkComboBox *combo, gpointer user_data) {
     AppState *state = user_data;
     const gchar *id = gtk_combo_box_get_active_id(combo);
@@ -2441,8 +3133,12 @@ static void on_shots_editor_tool_changed(GtkComboBox *combo, gpointer user_data)
     if (!state) {
         return;
     }
+    if (state->shots_editor_inline_active) {
+        shots_editor_inline_hide(state, TRUE);
+    }
+    shots_editor_sync_tool_buttons(state, id);
     if (id && g_strcmp0(id, "select") == 0) {
-        shots_editor_set_status(state, "Select mode: drag annotations to move/edit. Right-click for quick color palette.");
+        shots_editor_set_status(state, "Select mode: drag annotations to move/edit. Double-click text/callout to edit label.");
     } else if (id && g_strcmp0(id, "rect") == 0) {
         shots_editor_set_status(state, "Callout mode: drag to create a shadowed box.");
     }
@@ -2462,10 +3158,60 @@ static void on_shots_editor_color_set(GtkColorButton *button, gpointer user_data
     }
 }
 
+static void on_shots_editor_text_style_control_changed(GtkWidget *widget, gpointer user_data) {
+    AppState *state = user_data;
+    ShotMark *mark = shots_editor_get_selected_mark(state);
+    (void)widget;
+
+    if (!state || state->shots_editor_style_syncing || !mark) {
+        return;
+    }
+
+    if (mark->type == SHOT_MARK_TEXT || mark->type == SHOT_MARK_RECT) {
+        shots_editor_apply_text_style_to_mark(state, mark);
+    }
+    if (mark->type == SHOT_MARK_RECT) {
+        shots_editor_apply_rect_style_to_mark(state, mark);
+    } else if (mark->type != SHOT_MARK_TEXT) {
+        return;
+    }
+
+    gtk_widget_queue_draw(state->shots_editor_canvas);
+    shots_editor_set_status(state, "Selected text/callout style updated.");
+}
+
+static void on_shots_editor_inline_activate(GtkEntry *entry, gpointer user_data) {
+    AppState *state = user_data;
+    (void)entry;
+    shots_editor_inline_hide(state, TRUE);
+    shots_editor_set_status(state, "Inline text applied.");
+}
+
+static gboolean on_shots_editor_inline_focus_out(GtkWidget *widget, GdkEventFocus *event, gpointer user_data) {
+    AppState *state = user_data;
+    (void)widget;
+    (void)event;
+    shots_editor_inline_hide(state, TRUE);
+    return FALSE;
+}
+
+static gboolean on_shots_editor_inline_key_press(GtkWidget *widget, GdkEventKey *event, gpointer user_data) {
+    AppState *state = user_data;
+    (void)widget;
+    if (!state || !state->shots_editor_inline_active) {
+        return FALSE;
+    }
+    if (event->keyval == GDK_KEY_Escape) {
+        shots_editor_inline_hide(state, FALSE);
+        shots_editor_set_status(state, "Inline edit canceled.");
+        return TRUE;
+    }
+    return FALSE;
+}
+
 static void on_shots_editor_apply_text_clicked(GtkButton *button, gpointer user_data) {
     AppState *state = user_data;
     ShotMark *mark = shots_editor_get_selected_mark(state);
-    gchar *text = NULL;
 
     (void)button;
     if (!state || !state->shots_editor_text_entry) {
@@ -2480,27 +3226,7 @@ static void on_shots_editor_apply_text_clicked(GtkButton *button, gpointer user_
         return;
     }
 
-    text = g_strdup(gtk_entry_get_text(GTK_ENTRY(state->shots_editor_text_entry)));
-    if (!text) {
-        text = g_strdup("");
-    } else {
-        g_strstrip(text);
-    }
-
-    g_free(mark->text);
-    if (*text == '\0') {
-        if (mark->type == SHOT_MARK_STAMP) {
-            mark->text = g_strdup("1");
-        } else if (mark->type == SHOT_MARK_RECT) {
-            mark->text = g_strdup("Callout");
-        } else {
-            mark->text = g_strdup("Note");
-        }
-    } else {
-        mark->text = text;
-        text = NULL;
-    }
-    g_free(text);
+    shots_editor_apply_text_value_to_mark(state, mark, gtk_entry_get_text(GTK_ENTRY(state->shots_editor_text_entry)));
 
     gtk_widget_queue_draw(state->shots_editor_canvas);
     shots_editor_recompute_next_step(state);
@@ -3457,11 +4183,19 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     GtkWidget *workspace_split = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
     GtkWidget *editor_shell = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
     GtkWidget *editor_header = gtk_label_new(NULL);
+    GtkWidget *tool_ribbon = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
+    GtkWidget *tool_btn_select = NULL;
+    GtkWidget *tool_btn_arrow = NULL;
+    GtkWidget *tool_btn_rect = NULL;
+    GtkWidget *tool_btn_text = NULL;
+    GtkWidget *tool_btn_stamp = NULL;
     GtkWidget *editor_main_paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
     GtkWidget *editor_canvas_panel = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
     GtkWidget *editor_sidebar = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
     GtkWidget *editor_sidebar_scroller = gtk_scrolled_window_new(NULL, NULL);
+    GtkWidget *editor_canvas_overlay = gtk_overlay_new();
     GtkWidget *editor_canvas = gtk_drawing_area_new();
+    GtkWidget *editor_inline_entry = gtk_entry_new();
     GtkWidget *editor_path = gtk_label_new("Editing: (none)");
     GtkWidget *editor_status = gtk_label_new("Select one screenshot or click Edit Selected.");
     GtkWidget *browser_shell = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
@@ -3495,6 +4229,21 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     GtkWidget *text_label = gtk_label_new("Text");
     GtkWidget *text_entry = gtk_entry_new();
     GtkWidget *btn_apply_text = gtk_button_new_with_label("Apply Text");
+    GtkWidget *font_style_label = gtk_label_new("Font style");
+    GtkWidget *font_style_combo = gtk_combo_box_text_new();
+    GtkWidget *font_size_label = gtk_label_new("Font size");
+    GtkWidget *font_size_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 10, 72, 1);
+    GtkWidget *text_stroke_width_label = gtk_label_new("Text stroke width");
+    GtkWidget *text_stroke_width_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.5, 8.0, 0.5);
+    GtkWidget *text_fill_check = gtk_check_button_new_with_label("Text fill");
+    GtkWidget *text_stroke_check = gtk_check_button_new_with_label("Text stroke");
+    GtkWidget *text_shadow_check = gtk_check_button_new_with_label("Text shadow");
+    GtkWidget *rect_style_label = gtk_label_new("Callout style");
+    GtkWidget *rect_fill_check = gtk_check_button_new_with_label("Callout fill");
+    GtkWidget *rect_stroke_check = gtk_check_button_new_with_label("Callout stroke");
+    GtkWidget *rect_shadow_check = gtk_check_button_new_with_label("Callout shadow");
+    GtkWidget *rect_fill_opacity_label = gtk_label_new("Callout fill opacity");
+    GtkWidget *rect_fill_opacity_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.05, 0.95, 0.01);
     GtkWidget *color_label = gtk_label_new("Color");
     GtkWidget *color_btn = gtk_color_button_new();
     GtkWidget *arrow_width_label = gtk_label_new("Arrow width");
@@ -3508,6 +4257,7 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     gtk_style_context_add_class(gtk_widget_get_style_context(root), "panel-root");
     gtk_style_context_add_class(gtk_widget_get_style_context(toolbar), "action-row");
     gtk_style_context_add_class(gtk_widget_get_style_context(editor_shell), "card");
+    gtk_style_context_add_class(gtk_widget_get_style_context(tool_ribbon), "tool-ribbon");
     gtk_style_context_add_class(gtk_widget_get_style_context(browser_info), "card");
     gtk_style_context_add_class(gtk_widget_get_style_context(browser_shell), "surface");
     gtk_style_context_add_class(gtk_widget_get_style_context(editor_canvas_panel), "surface");
@@ -3542,6 +4292,37 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     style_action_button(btn_dock_toggle, FALSE);
     style_action_button(btn_step_reset, FALSE);
     style_action_button(btn_apply_text, FALSE);
+
+    tool_btn_select = create_tool_ribbon_button(NULL,
+                                                "select",
+                                                "input-mouse-symbolic",
+                                                "SEL",
+                                                "Select/Edit");
+    tool_btn_arrow = create_tool_ribbon_button(tool_btn_select,
+                                               "arrow",
+                                               "draw-line-symbolic",
+                                               "ARW",
+                                               "Arrow");
+    tool_btn_rect = create_tool_ribbon_button(tool_btn_select,
+                                              "rect",
+                                              "selection-rectangular-symbolic",
+                                              "BOX",
+                                              "Callout Box");
+    tool_btn_text = create_tool_ribbon_button(tool_btn_select,
+                                              "text",
+                                              "insert-text-symbolic",
+                                              "TXT",
+                                              "Text");
+    tool_btn_stamp = create_tool_ribbon_button(tool_btn_select,
+                                               "stamp",
+                                               "emblem-ok-symbolic",
+                                               "STP",
+                                               "Step/Stamp");
+    gtk_box_pack_start(GTK_BOX(tool_ribbon), tool_btn_select, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(tool_ribbon), tool_btn_arrow, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(tool_ribbon), tool_btn_rect, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(tool_ribbon), tool_btn_text, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(tool_ribbon), tool_btn_stamp, FALSE, FALSE, 0);
 
     gtk_box_pack_start(GTK_BOX(toolbar), btn_refresh, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(toolbar), btn_select_all, FALSE, FALSE, 0);
@@ -3601,6 +4382,11 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     gtk_label_set_xalign(GTK_LABEL(stamp_label), 0.0);
     gtk_label_set_xalign(GTK_LABEL(step_label), 0.0);
     gtk_label_set_xalign(GTK_LABEL(text_label), 0.0);
+    gtk_label_set_xalign(GTK_LABEL(font_style_label), 0.0);
+    gtk_label_set_xalign(GTK_LABEL(font_size_label), 0.0);
+    gtk_label_set_xalign(GTK_LABEL(text_stroke_width_label), 0.0);
+    gtk_label_set_xalign(GTK_LABEL(rect_style_label), 0.0);
+    gtk_label_set_xalign(GTK_LABEL(rect_fill_opacity_label), 0.0);
     gtk_label_set_xalign(GTK_LABEL(color_label), 0.0);
     gtk_label_set_xalign(GTK_LABEL(arrow_width_label), 0.0);
     gtk_label_set_xalign(GTK_LABEL(arrow_head_len_label), 0.0);
@@ -3612,6 +4398,10 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(tool_combo), "stamp", "Step/Stamp");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(tool_combo), "text", "Text");
     gtk_combo_box_set_active_id(GTK_COMBO_BOX(tool_combo), "arrow");
+    gtk_widget_set_no_show_all(tool_label, TRUE);
+    gtk_widget_set_no_show_all(tool_combo, TRUE);
+    gtk_widget_hide(tool_label);
+    gtk_widget_hide(tool_combo);
 
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(stamp_combo), "1", "1");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(stamp_combo), "2", "2");
@@ -3621,15 +4411,32 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(stamp_combo), "OK", "OK");
     gtk_combo_box_set_active_id(GTK_COMBO_BOX(stamp_combo), "1");
 
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(font_style_combo), "normal", "Normal");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(font_style_combo), "bold", "Bold");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(font_style_combo), "italic", "Italic");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(font_style_combo), "bolditalic", "Bold Italic");
+    gtk_combo_box_set_active_id(GTK_COMBO_BOX(font_style_combo), "bold");
+
     gtk_entry_set_placeholder_text(GTK_ENTRY(text_entry), "Enter label text...");
     gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(color_btn), &default_color);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(auto_step_check), TRUE);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(text_fill_check), TRUE);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(text_stroke_check), FALSE);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(text_shadow_check), TRUE);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(rect_fill_check), TRUE);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(rect_stroke_check), TRUE);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(rect_shadow_check), TRUE);
+    gtk_range_set_value(GTK_RANGE(font_size_scale), 24.0);
+    gtk_range_set_value(GTK_RANGE(text_stroke_width_scale), 2.0);
+    gtk_range_set_value(GTK_RANGE(rect_fill_opacity_scale), 0.18);
     gtk_range_set_value(GTK_RANGE(arrow_width_scale), 6.0);
     gtk_range_set_value(GTK_RANGE(arrow_head_len_scale), 20.0);
     gtk_range_set_value(GTK_RANGE(arrow_head_angle_scale), 25.0);
     gtk_scale_set_draw_value(GTK_SCALE(arrow_width_scale), FALSE);
     gtk_scale_set_draw_value(GTK_SCALE(arrow_head_len_scale), FALSE);
     gtk_scale_set_draw_value(GTK_SCALE(arrow_head_angle_scale), FALSE);
+    gtk_scale_set_digits(GTK_SCALE(rect_fill_opacity_scale), 2);
+    gtk_scale_set_digits(GTK_SCALE(text_stroke_width_scale), 1);
 
     gtk_box_pack_start(GTK_BOX(editor_sidebar), btn_capture, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(editor_sidebar), btn_edit_selected, FALSE, FALSE, 0);
@@ -3649,6 +4456,21 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     gtk_box_pack_start(GTK_BOX(editor_sidebar), text_label, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(editor_sidebar), text_entry, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(editor_sidebar), btn_apply_text, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(editor_sidebar), font_style_label, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(editor_sidebar), font_style_combo, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(editor_sidebar), font_size_label, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(editor_sidebar), font_size_scale, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(editor_sidebar), text_stroke_width_label, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(editor_sidebar), text_stroke_width_scale, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(editor_sidebar), text_fill_check, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(editor_sidebar), text_stroke_check, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(editor_sidebar), text_shadow_check, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(editor_sidebar), rect_style_label, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(editor_sidebar), rect_fill_check, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(editor_sidebar), rect_stroke_check, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(editor_sidebar), rect_shadow_check, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(editor_sidebar), rect_fill_opacity_label, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(editor_sidebar), rect_fill_opacity_scale, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(editor_sidebar), color_label, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(editor_sidebar), color_btn, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(editor_sidebar), arrow_width_label, FALSE, FALSE, 0);
@@ -3673,14 +4495,24 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
                           GDK_BUTTON_PRESS_MASK |
                           GDK_BUTTON_RELEASE_MASK |
                           GDK_POINTER_MOTION_MASK);
+    gtk_widget_set_hexpand(editor_canvas_overlay, TRUE);
+    gtk_widget_set_vexpand(editor_canvas_overlay, TRUE);
+    gtk_container_add(GTK_CONTAINER(editor_canvas_overlay), editor_canvas);
+    gtk_overlay_add_overlay(GTK_OVERLAY(editor_canvas_overlay), editor_inline_entry);
+    gtk_widget_set_halign(editor_inline_entry, GTK_ALIGN_START);
+    gtk_widget_set_valign(editor_inline_entry, GTK_ALIGN_START);
+    gtk_entry_set_placeholder_text(GTK_ENTRY(editor_inline_entry), "Edit text...");
+    gtk_widget_set_no_show_all(editor_inline_entry, TRUE);
+    gtk_widget_hide(editor_inline_entry);
 
     gtk_box_pack_start(GTK_BOX(editor_canvas_panel), editor_path, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(editor_canvas_panel), editor_canvas, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(editor_canvas_panel), editor_canvas_overlay, TRUE, TRUE, 0);
     gtk_box_pack_start(GTK_BOX(editor_canvas_panel), editor_status, FALSE, FALSE, 0);
 
     gtk_widget_set_hexpand(editor_main_paned, TRUE);
     gtk_widget_set_vexpand(editor_main_paned, TRUE);
     gtk_box_pack_start(GTK_BOX(editor_shell), editor_header, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(editor_shell), tool_ribbon, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(editor_shell), editor_main_paned, TRUE, TRUE, 0);
 
     gtk_box_pack_start(GTK_BOX(browser_info), status, FALSE, FALSE, 0);
@@ -3733,11 +4565,30 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     state->shots_browser_toggle_btn = btn_toggle_shell;
     state->shots_browser_split_paned = browser_split;
     state->shots_editor_canvas = editor_canvas;
+    state->shots_editor_canvas_overlay = editor_canvas_overlay;
+    state->shots_editor_inline_entry = editor_inline_entry;
+    state->shots_editor_inline_mark_index = -1;
+    state->shots_editor_inline_active = FALSE;
     state->shots_editor_status = editor_status;
     state->shots_editor_tool_combo = tool_combo;
+    state->shots_tool_btn_select = tool_btn_select;
+    state->shots_tool_btn_arrow = tool_btn_arrow;
+    state->shots_tool_btn_rect = tool_btn_rect;
+    state->shots_tool_btn_text = tool_btn_text;
+    state->shots_tool_btn_stamp = tool_btn_stamp;
     state->shots_editor_stamp_combo = stamp_combo;
     state->shots_editor_text_entry = text_entry;
     state->shots_editor_color_btn = color_btn;
+    state->shots_editor_font_style_combo = font_style_combo;
+    state->shots_editor_font_size_scale = font_size_scale;
+    state->shots_editor_text_stroke_width_scale = text_stroke_width_scale;
+    state->shots_editor_rect_fill_opacity_scale = rect_fill_opacity_scale;
+    state->shots_editor_text_fill_check = text_fill_check;
+    state->shots_editor_text_stroke_check = text_stroke_check;
+    state->shots_editor_text_shadow_check = text_shadow_check;
+    state->shots_editor_rect_fill_check = rect_fill_check;
+    state->shots_editor_rect_stroke_check = rect_stroke_check;
+    state->shots_editor_rect_shadow_check = rect_shadow_check;
     state->shots_editor_arrow_width_scale = arrow_width_scale;
     state->shots_editor_arrow_head_len_scale = arrow_head_len_scale;
     state->shots_editor_arrow_head_angle_scale = arrow_head_angle_scale;
@@ -3774,8 +4625,27 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     g_signal_connect(btn_dock_toggle, "clicked", G_CALLBACK(on_shots_editor_toggle_dock_clicked), state);
     g_signal_connect(btn_step_reset, "clicked", G_CALLBACK(on_shots_editor_step_reset_clicked), state);
     g_signal_connect(btn_apply_text, "clicked", G_CALLBACK(on_shots_editor_apply_text_clicked), state);
+    g_signal_connect(text_entry, "activate", G_CALLBACK(on_shots_editor_apply_text_clicked), state);
     g_signal_connect(tool_combo, "changed", G_CALLBACK(on_shots_editor_tool_changed), state);
+    g_signal_connect(tool_btn_select, "toggled", G_CALLBACK(on_shots_editor_tool_button_toggled), state);
+    g_signal_connect(tool_btn_arrow, "toggled", G_CALLBACK(on_shots_editor_tool_button_toggled), state);
+    g_signal_connect(tool_btn_rect, "toggled", G_CALLBACK(on_shots_editor_tool_button_toggled), state);
+    g_signal_connect(tool_btn_text, "toggled", G_CALLBACK(on_shots_editor_tool_button_toggled), state);
+    g_signal_connect(tool_btn_stamp, "toggled", G_CALLBACK(on_shots_editor_tool_button_toggled), state);
     g_signal_connect(color_btn, "color-set", G_CALLBACK(on_shots_editor_color_set), state);
+    g_signal_connect(font_style_combo, "changed", G_CALLBACK(on_shots_editor_text_style_control_changed), state);
+    g_signal_connect(font_size_scale, "value-changed", G_CALLBACK(on_shots_editor_text_style_control_changed), state);
+    g_signal_connect(text_stroke_width_scale, "value-changed", G_CALLBACK(on_shots_editor_text_style_control_changed), state);
+    g_signal_connect(rect_fill_opacity_scale, "value-changed", G_CALLBACK(on_shots_editor_text_style_control_changed), state);
+    g_signal_connect(text_fill_check, "toggled", G_CALLBACK(on_shots_editor_text_style_control_changed), state);
+    g_signal_connect(text_stroke_check, "toggled", G_CALLBACK(on_shots_editor_text_style_control_changed), state);
+    g_signal_connect(text_shadow_check, "toggled", G_CALLBACK(on_shots_editor_text_style_control_changed), state);
+    g_signal_connect(rect_fill_check, "toggled", G_CALLBACK(on_shots_editor_text_style_control_changed), state);
+    g_signal_connect(rect_stroke_check, "toggled", G_CALLBACK(on_shots_editor_text_style_control_changed), state);
+    g_signal_connect(rect_shadow_check, "toggled", G_CALLBACK(on_shots_editor_text_style_control_changed), state);
+    g_signal_connect(editor_inline_entry, "activate", G_CALLBACK(on_shots_editor_inline_activate), state);
+    g_signal_connect(editor_inline_entry, "focus-out-event", G_CALLBACK(on_shots_editor_inline_focus_out), state);
+    g_signal_connect(editor_inline_entry, "key-press-event", G_CALLBACK(on_shots_editor_inline_key_press), state);
     g_signal_connect(arrow_width_scale, "value-changed", G_CALLBACK(on_shots_editor_arrow_style_changed), state);
     g_signal_connect(arrow_head_len_scale, "value-changed", G_CALLBACK(on_shots_editor_arrow_style_changed), state);
     g_signal_connect(arrow_head_angle_scale, "value-changed", G_CALLBACK(on_shots_editor_arrow_style_changed), state);
@@ -3784,6 +4654,7 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     g_signal_connect(editor_canvas, "button-release-event", G_CALLBACK(on_shots_editor_button_release), state);
     g_signal_connect(editor_canvas, "motion-notify-event", G_CALLBACK(on_shots_editor_motion), state);
 
+    shots_editor_sync_tool_buttons(state, gtk_combo_box_get_active_id(GTK_COMBO_BOX(tool_combo)));
     shots_set_browser_info_visible(state, FALSE);
     shots_reload(state);
     return root;
