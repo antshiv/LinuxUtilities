@@ -1,0 +1,111 @@
+[meta]
+title=Linux Workbench DSL
+root=root
+
+[root]
+type=box
+orientation=vertical
+spacing=12
+margin=16
+
+[title]
+type=label
+parent=root
+text=<b>Linux Workbench Launcher</b>
+use_markup=true
+xalign=0.0
+class=title
+
+[subtitle]
+type=label
+parent=root
+text=Declarative GTK layout loaded from file. Edit this .gdsl to shape your own tools.
+xalign=0.0
+wrap=true
+class=subtitle
+
+[quick_row]
+type=box
+parent=root
+orientation=horizontal
+spacing=10
+
+[btn_control_center]
+type=button
+parent=quick_row
+text=Open Linux Control Center
+on_click=./linux_control_center
+expand=true
+fill=true
+
+[btn_terminal]
+type=button
+parent=quick_row
+text=Open Terminator
+on_click=terminator
+expand=true
+fill=true
+
+[utilities_grid]
+type=grid
+parent=root
+row_spacing=10
+column_spacing=10
+hexpand=true
+vexpand=true
+
+[btn_pavu]
+type=button
+parent=utilities_grid
+text=Pavucontrol
+on_click=pavucontrol
+left=0
+top=0
+
+[btn_cc_switch]
+type=button
+parent=utilities_grid
+text=CC Switch
+on_click=cc-switch
+left=1
+top=0
+
+[btn_flameshot]
+type=button
+parent=utilities_grid
+text=Flameshot
+on_click=flameshot gui
+left=0
+top=1
+
+[btn_network]
+type=button
+parent=utilities_grid
+text=Network Editor
+on_click=nm-connection-editor
+left=1
+top=1
+
+[btn_bluetooth]
+type=button
+parent=utilities_grid
+text=Bluetooth Manager
+on_click=blueman-manager
+left=0
+top=2
+
+[btn_screens]
+type=button
+parent=utilities_grid
+text=Open Screenshots
+on_click=xdg-open Screenshots
+left=1
+top=2
+
+[hint]
+type=label
+parent=root
+text=Tip: Add new groups with type=button and on_click=<command>. Use box/grid parent to place them.
+xalign=0.0
+wrap=true
+class=subtitle
