@@ -20,8 +20,18 @@ typedef struct {
 typedef enum {
     SHOT_MARK_ARROW = 0,
     SHOT_MARK_STAMP,
-    SHOT_MARK_TEXT
+    SHOT_MARK_TEXT,
+    SHOT_MARK_RECT
 } ShotMarkType;
+
+enum {
+    SHOT_HANDLE_NONE = 0,
+    SHOT_HANDLE_ARROW_START = 1,
+    SHOT_HANDLE_ARROW_END = 2,
+    SHOT_HANDLE_MOVE = 3,
+    SHOT_HANDLE_RECT_START = 4,
+    SHOT_HANDLE_RECT_END = 5
+};
 
 typedef struct {
     ShotMarkType type;
@@ -70,6 +80,9 @@ typedef struct {
     GtkWidget *shots_editor_arrow_head_angle_scale;
     GtkWidget *shots_editor_auto_step_check;
     GtkWidget *shots_editor_step_label;
+    GtkWidget *shots_browser_info_revealer;
+    GtkWidget *shots_browser_toggle_btn;
+    GtkWidget *shots_browser_split_paned;
     GtkWidget *shots_editor_main_paned;
     GtkWidget *shots_editor_canvas_panel;
     GtkWidget *shots_editor_sidebar;
@@ -89,6 +102,7 @@ typedef struct {
     gdouble shots_editor_edit_origin_x2;
     gdouble shots_editor_edit_origin_y2;
     gboolean shots_editor_dragging;
+    ShotMarkType shots_editor_drag_mark_type;
     gdouble shots_editor_drag_start_x;
     gdouble shots_editor_drag_start_y;
     gdouble shots_editor_drag_cur_x;
@@ -110,6 +124,7 @@ typedef struct {
 } AppState;
 
 static void shots_reload(AppState *state);
+static void shots_editor_show_color_palette_menu(AppState *state, GdkEventButton *event);
 
 static gboolean ends_with_image_ext(const gchar *name) {
     if (!name) {
@@ -334,6 +349,17 @@ static void apply_css_theme(AppState *state, gboolean dark_mode) {
         ".surface {"
         "  border: 1px solid #2d3748;"
         "  border-radius: 10px;"
+        "}"
+        ".split-pane > separator {"
+        "  min-height: 10px;"
+        "  min-width: 10px;"
+        "  background: #273246;"
+        "  border: 1px solid #3c4c64;"
+        "  border-radius: 6px;"
+        "}"
+        ".split-pane > separator:hover {"
+        "  background: #2e3f58;"
+        "  border-color: #4f6690;"
         "}"
         "scale trough {"
         "  background: #3b4556;"
@@ -571,6 +597,17 @@ static void apply_css_theme(AppState *state, gboolean dark_mode) {
         ".surface {"
         "  border: 1px solid #c5d5ea;"
         "  border-radius: 10px;"
+        "}"
+        ".split-pane > separator {"
+        "  min-height: 10px;"
+        "  min-width: 10px;"
+        "  background: #d6e4f5;"
+        "  border: 1px solid #b4cae3;"
+        "  border-radius: 6px;"
+        "}"
+        ".split-pane > separator:hover {"
+        "  background: #c8dbf1;"
+        "  border-color: #9ebcdc;"
         "}"
         "scale trough {"
         "  background: #ccd8ea;"
@@ -1326,6 +1363,47 @@ static void shots_editor_sync_controls_from_selected_arrow(AppState *state) {
     state->shots_editor_style_syncing = FALSE;
 }
 
+static void shots_editor_sync_controls_from_selected_mark(AppState *state) {
+    ShotMark *mark = shots_editor_get_selected_mark(state);
+
+    if (!state || !mark) {
+        return;
+    }
+
+    state->shots_editor_style_syncing = TRUE;
+    if (state->shots_editor_color_btn) {
+        gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(state->shots_editor_color_btn), &mark->color);
+    }
+    if (state->shots_editor_text_entry &&
+        (mark->type == SHOT_MARK_TEXT || mark->type == SHOT_MARK_STAMP || mark->type == SHOT_MARK_RECT)) {
+        gtk_entry_set_text(GTK_ENTRY(state->shots_editor_text_entry), mark->text ? mark->text : "");
+    }
+    state->shots_editor_style_syncing = FALSE;
+
+    if (mark->type == SHOT_MARK_ARROW) {
+        shots_editor_sync_controls_from_selected_arrow(state);
+    }
+}
+
+static gboolean shots_editor_apply_color_to_selected(AppState *state, const GdkRGBA *color, gboolean sync_picker) {
+    ShotMark *mark = shots_editor_get_selected_mark(state);
+
+    if (!state || !mark || !color) {
+        return FALSE;
+    }
+
+    mark->color = *color;
+    if (sync_picker && state->shots_editor_color_btn) {
+        state->shots_editor_style_syncing = TRUE;
+        gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(state->shots_editor_color_btn), color);
+        state->shots_editor_style_syncing = FALSE;
+    }
+    if (state->shots_editor_canvas) {
+        gtk_widget_queue_draw(state->shots_editor_canvas);
+    }
+    return TRUE;
+}
+
 static void shots_editor_set_selected_mark(AppState *state, gint index) {
     if (!state) {
         return;
@@ -1336,7 +1414,7 @@ static void shots_editor_set_selected_mark(AppState *state, gint index) {
         state->shots_editor_selected_mark_index = -1;
     } else {
         state->shots_editor_selected_mark_index = index;
-        shots_editor_sync_controls_from_selected_arrow(state);
+        shots_editor_sync_controls_from_selected_mark(state);
     }
     state->shots_editor_selected_arrow_handle = 0;
     if (state->shots_editor_canvas) {
@@ -1522,6 +1600,36 @@ static gint shots_editor_find_mark_at_point(AppState *state, gdouble x, gdouble 
 
         if (mark->type == SHOT_MARK_STAMP) {
             if (sqrt(shots_editor_dist_sq(x, y, mark->x1, mark->y1)) <= 24.0) {
+                if (arrow_handle_out) {
+                    *arrow_handle_out = SHOT_HANDLE_MOVE;
+                }
+                return i;
+            }
+            continue;
+        }
+
+        if (mark->type == SHOT_MARK_RECT) {
+            gdouble left = MIN(mark->x1, mark->x2);
+            gdouble right = MAX(mark->x1, mark->x2);
+            gdouble top = MIN(mark->y1, mark->y2);
+            gdouble bottom = MAX(mark->y1, mark->y2);
+
+            if (sqrt(shots_editor_dist_sq(x, y, mark->x1, mark->y1)) <= endpoint_threshold) {
+                if (arrow_handle_out) {
+                    *arrow_handle_out = SHOT_HANDLE_RECT_START;
+                }
+                return i;
+            }
+            if (sqrt(shots_editor_dist_sq(x, y, mark->x2, mark->y2)) <= endpoint_threshold) {
+                if (arrow_handle_out) {
+                    *arrow_handle_out = SHOT_HANDLE_RECT_END;
+                }
+                return i;
+            }
+            if (x >= left && x <= right && y >= top && y <= bottom) {
+                if (arrow_handle_out) {
+                    *arrow_handle_out = SHOT_HANDLE_MOVE;
+                }
                 return i;
             }
             continue;
@@ -1532,6 +1640,9 @@ static gint shots_editor_find_mark_at_point(AppState *state, gdouble x, gdouble 
             gdouble text_h = 28.0;
             if (x >= mark->x1 && x <= mark->x1 + text_w &&
                 y <= mark->y1 && y >= mark->y1 - text_h) {
+                if (arrow_handle_out) {
+                    *arrow_handle_out = SHOT_HANDLE_MOVE;
+                }
                 return i;
             }
         }
@@ -1626,6 +1737,52 @@ static void shots_editor_draw_text(cairo_t *cr, const ShotMark *mark) {
     cairo_show_text(cr, text);
 }
 
+static void shots_editor_draw_rect(cairo_t *cr, const ShotMark *mark) {
+    gdouble left = 0.0;
+    gdouble right = 0.0;
+    gdouble top = 0.0;
+    gdouble bottom = 0.0;
+    gdouble width = 0.0;
+    gdouble height = 0.0;
+    const gchar *text = NULL;
+
+    if (!cr || !mark) {
+        return;
+    }
+
+    left = MIN(mark->x1, mark->x2);
+    right = MAX(mark->x1, mark->x2);
+    top = MIN(mark->y1, mark->y2);
+    bottom = MAX(mark->y1, mark->y2);
+    width = right - left;
+    height = bottom - top;
+    if (width < 2.0 || height < 2.0) {
+        return;
+    }
+
+    cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.28);
+    cairo_rectangle(cr, left + 4.0, top + 4.0, width, height);
+    cairo_fill(cr);
+
+    cairo_set_source_rgba(cr, mark->color.red, mark->color.green, mark->color.blue, 0.18);
+    cairo_rectangle(cr, left, top, width, height);
+    cairo_fill_preserve(cr);
+
+    cairo_set_source_rgba(cr, mark->color.red, mark->color.green, mark->color.blue, 1.0);
+    cairo_set_line_width(cr, mark->stroke_width > 0.0 ? mark->stroke_width : 3.0);
+    cairo_stroke(cr);
+
+    text = (mark->text && *mark->text) ? mark->text : "Callout";
+    cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+    cairo_set_font_size(cr, 19.0);
+    cairo_move_to(cr, left + 12.0, top + 30.0);
+    cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.4);
+    cairo_show_text(cr, text);
+    cairo_move_to(cr, left + 10.0, top + 28.0);
+    cairo_set_source_rgba(cr, 0.98, 0.99, 1.0, 0.95);
+    cairo_show_text(cr, text);
+}
+
 static void shots_editor_draw_mark(cairo_t *cr, const ShotMark *mark) {
     if (!cr || !mark) {
         return;
@@ -1639,6 +1796,9 @@ static void shots_editor_draw_mark(cairo_t *cr, const ShotMark *mark) {
             break;
         case SHOT_MARK_TEXT:
             shots_editor_draw_text(cr, mark);
+            break;
+        case SHOT_MARK_RECT:
+            shots_editor_draw_rect(cr, mark);
             break;
         default:
             break;
@@ -1659,6 +1819,7 @@ static void shots_editor_draw_marks(AppState *state, cairo_t *cr, gboolean inclu
     if (include_preview_arrow && state->shots_editor_dragging) {
         ShotMark preview = {0};
         GdkRGBA color = {0};
+        gchar *text = NULL;
 
         if (state->shots_editor_color_btn) {
             gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(state->shots_editor_color_btn), &color);
@@ -1669,7 +1830,7 @@ static void shots_editor_draw_marks(AppState *state, cairo_t *cr, gboolean inclu
             color.alpha = 1.0;
         }
 
-        preview.type = SHOT_MARK_ARROW;
+        preview.type = state->shots_editor_drag_mark_type;
         preview.x1 = state->shots_editor_drag_start_x;
         preview.y1 = state->shots_editor_drag_start_y;
         preview.x2 = state->shots_editor_drag_cur_x;
@@ -1678,7 +1839,15 @@ static void shots_editor_draw_marks(AppState *state, cairo_t *cr, gboolean inclu
         preview.arrow_head_len = shots_editor_get_arrow_head_len_control(state);
         preview.arrow_head_spread = shots_editor_get_arrow_head_spread_control(state);
         preview.color = color;
+        if (preview.type == SHOT_MARK_RECT && state->shots_editor_text_entry) {
+            text = g_strdup(gtk_entry_get_text(GTK_ENTRY(state->shots_editor_text_entry)));
+            if (text) {
+                g_strstrip(text);
+            }
+            preview.text = (text && *text) ? text : "Callout";
+        }
         shots_editor_draw_mark(cr, &preview);
+        g_free(text);
     }
 }
 
@@ -1713,6 +1882,22 @@ static void shots_editor_draw_selection_overlay(AppState *state, cairo_t *cr) {
         cairo_set_line_width(cr, 2.0);
         cairo_rectangle(cr, mark->x1 - 3.0, mark->y1 - h, w + 6.0, h + 6.0);
         cairo_stroke(cr);
+    } else if (mark->type == SHOT_MARK_RECT) {
+        gdouble left = MIN(mark->x1, mark->x2);
+        gdouble right = MAX(mark->x1, mark->x2);
+        gdouble top = MIN(mark->y1, mark->y2);
+        gdouble bottom = MAX(mark->y1, mark->y2);
+
+        cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.9);
+        cairo_set_line_width(cr, 2.0);
+        cairo_rectangle(cr, left - 2.0, top - 2.0, (right - left) + 4.0, (bottom - top) + 4.0);
+        cairo_stroke(cr);
+
+        cairo_set_source_rgba(cr, 0.08, 0.55, 0.98, 0.95);
+        cairo_arc(cr, mark->x1, mark->y1, 5.5, 0, 2 * G_PI);
+        cairo_fill(cr);
+        cairo_arc(cr, mark->x2, mark->y2, 5.5, 0, 2 * G_PI);
+        cairo_fill(cr);
     }
 }
 
@@ -1775,11 +1960,23 @@ static gboolean on_shots_editor_button_press(GtkWidget *widget, GdkEventButton *
     GdkRGBA color = {0.95, 0.24, 0.24, 1.0};
 
     (void)widget;
-    if (!state || event->button != 1 || !state->shots_editor_pixbuf) {
+    if (!state || !state->shots_editor_pixbuf) {
         return FALSE;
     }
 
     if (!shots_editor_widget_to_image(state, event->x, event->y, &ix, &iy, FALSE)) {
+        return FALSE;
+    }
+
+    if (event->button == 3) {
+        hit_index = shots_editor_find_mark_at_point(state, ix, iy, &arrow_handle);
+        if (hit_index >= 0) {
+            shots_editor_set_selected_mark(state, hit_index);
+        }
+        shots_editor_show_color_palette_menu(state, event);
+        return TRUE;
+    }
+    if (event->button != 1) {
         return FALSE;
     }
 
@@ -1800,7 +1997,7 @@ static gboolean on_shots_editor_button_press(GtkWidget *widget, GdkEventButton *
         shots_editor_set_selected_mark(state, hit_index);
         if ((guint)hit_index < state->shots_editor_marks->len) {
             ShotMark *mark = g_ptr_array_index(state->shots_editor_marks, (guint)hit_index);
-            if (mark && mark->type == SHOT_MARK_ARROW && arrow_handle > 0) {
+            if (mark && arrow_handle > SHOT_HANDLE_NONE) {
                 state->shots_editor_selected_arrow_handle = arrow_handle;
                 state->shots_editor_edit_dragging = TRUE;
                 state->shots_editor_edit_anchor_x = ix;
@@ -1810,12 +2007,18 @@ static gboolean on_shots_editor_button_press(GtkWidget *widget, GdkEventButton *
                 state->shots_editor_edit_origin_x2 = mark->x2;
                 state->shots_editor_edit_origin_y2 = mark->y2;
 
-                if (arrow_handle == 1) {
+                if (mark->type == SHOT_MARK_ARROW && arrow_handle == SHOT_HANDLE_ARROW_START) {
                     shots_editor_set_status(state, "Editing arrow start. Drag the blue handle.");
-                } else if (arrow_handle == 2) {
+                } else if (mark->type == SHOT_MARK_ARROW && arrow_handle == SHOT_HANDLE_ARROW_END) {
                     shots_editor_set_status(state, "Editing arrow head. Drag the tip handle.");
-                } else {
+                } else if (mark->type == SHOT_MARK_ARROW) {
                     shots_editor_set_status(state, "Editing arrow path. Drag to move the full arrow.");
+                } else if (mark->type == SHOT_MARK_RECT && arrow_handle == SHOT_HANDLE_RECT_START) {
+                    shots_editor_set_status(state, "Editing callout anchor corner.");
+                } else if (mark->type == SHOT_MARK_RECT && arrow_handle == SHOT_HANDLE_RECT_END) {
+                    shots_editor_set_status(state, "Editing callout opposite corner.");
+                } else {
+                    shots_editor_set_status(state, "Editing annotation position.");
                 }
             } else {
                 shots_editor_set_status(state, "Annotation selected.");
@@ -1827,6 +2030,19 @@ static gboolean on_shots_editor_button_press(GtkWidget *widget, GdkEventButton *
     if (g_strcmp0(tool, "arrow") == 0) {
         shots_editor_set_selected_mark(state, -1);
         state->shots_editor_dragging = TRUE;
+        state->shots_editor_drag_mark_type = SHOT_MARK_ARROW;
+        state->shots_editor_drag_start_x = ix;
+        state->shots_editor_drag_start_y = iy;
+        state->shots_editor_drag_cur_x = ix;
+        state->shots_editor_drag_cur_y = iy;
+        gtk_widget_queue_draw(state->shots_editor_canvas);
+        return TRUE;
+    }
+
+    if (g_strcmp0(tool, "rect") == 0) {
+        shots_editor_set_selected_mark(state, -1);
+        state->shots_editor_dragging = TRUE;
+        state->shots_editor_drag_mark_type = SHOT_MARK_RECT;
         state->shots_editor_drag_start_x = ix;
         state->shots_editor_drag_start_y = iy;
         state->shots_editor_drag_cur_x = ix;
@@ -1910,45 +2126,109 @@ static gboolean on_shots_editor_motion(GtkWidget *widget, GdkEventMotion *event,
     if (state->shots_editor_edit_dragging) {
         ShotMark *mark = shots_editor_get_selected_mark(state);
         if (!mark || mark->type != SHOT_MARK_ARROW) {
-            return FALSE;
+            if (!mark) {
+                return FALSE;
+            }
         }
         if (!shots_editor_widget_to_image(state, event->x, event->y, &ix, &iy, TRUE)) {
             return FALSE;
         }
 
-        if (state->shots_editor_selected_arrow_handle == 1) {
-            mark->x1 = ix;
-            mark->y1 = iy;
-        } else if (state->shots_editor_selected_arrow_handle == 2) {
-            mark->x2 = ix;
-            mark->y2 = iy;
-        } else if (state->shots_editor_selected_arrow_handle == 3) {
+        if (mark->type == SHOT_MARK_ARROW) {
+            if (state->shots_editor_selected_arrow_handle == SHOT_HANDLE_ARROW_START) {
+                mark->x1 = ix;
+                mark->y1 = iy;
+            } else if (state->shots_editor_selected_arrow_handle == SHOT_HANDLE_ARROW_END) {
+                mark->x2 = ix;
+                mark->y2 = iy;
+            } else if (state->shots_editor_selected_arrow_handle == SHOT_HANDLE_MOVE) {
+                gint width = gdk_pixbuf_get_width(state->shots_editor_pixbuf);
+                gint height = gdk_pixbuf_get_height(state->shots_editor_pixbuf);
+                gdouble dx = ix - state->shots_editor_edit_anchor_x;
+                gdouble dy = iy - state->shots_editor_edit_anchor_y;
+                gdouble min_dx = -MIN(state->shots_editor_edit_origin_x1, state->shots_editor_edit_origin_x2);
+                gdouble max_dx = (gdouble)(width - 1) - MAX(state->shots_editor_edit_origin_x1, state->shots_editor_edit_origin_x2);
+                gdouble min_dy = -MIN(state->shots_editor_edit_origin_y1, state->shots_editor_edit_origin_y2);
+                gdouble max_dy = (gdouble)(height - 1) - MAX(state->shots_editor_edit_origin_y1, state->shots_editor_edit_origin_y2);
+
+                if (dx < min_dx) {
+                    dx = min_dx;
+                }
+                if (dx > max_dx) {
+                    dx = max_dx;
+                }
+                if (dy < min_dy) {
+                    dy = min_dy;
+                }
+                if (dy > max_dy) {
+                    dy = max_dy;
+                }
+
+                mark->x1 = state->shots_editor_edit_origin_x1 + dx;
+                mark->y1 = state->shots_editor_edit_origin_y1 + dy;
+                mark->x2 = state->shots_editor_edit_origin_x2 + dx;
+                mark->y2 = state->shots_editor_edit_origin_y2 + dy;
+            }
+        } else if (mark->type == SHOT_MARK_RECT) {
+            if (state->shots_editor_selected_arrow_handle == SHOT_HANDLE_RECT_START) {
+                mark->x1 = ix;
+                mark->y1 = iy;
+            } else if (state->shots_editor_selected_arrow_handle == SHOT_HANDLE_RECT_END) {
+                mark->x2 = ix;
+                mark->y2 = iy;
+            } else if (state->shots_editor_selected_arrow_handle == SHOT_HANDLE_MOVE) {
+                gint width = gdk_pixbuf_get_width(state->shots_editor_pixbuf);
+                gint height = gdk_pixbuf_get_height(state->shots_editor_pixbuf);
+                gdouble dx = ix - state->shots_editor_edit_anchor_x;
+                gdouble dy = iy - state->shots_editor_edit_anchor_y;
+                gdouble min_dx = -MIN(state->shots_editor_edit_origin_x1, state->shots_editor_edit_origin_x2);
+                gdouble max_dx = (gdouble)(width - 1) - MAX(state->shots_editor_edit_origin_x1, state->shots_editor_edit_origin_x2);
+                gdouble min_dy = -MIN(state->shots_editor_edit_origin_y1, state->shots_editor_edit_origin_y2);
+                gdouble max_dy = (gdouble)(height - 1) - MAX(state->shots_editor_edit_origin_y1, state->shots_editor_edit_origin_y2);
+
+                if (dx < min_dx) {
+                    dx = min_dx;
+                }
+                if (dx > max_dx) {
+                    dx = max_dx;
+                }
+                if (dy < min_dy) {
+                    dy = min_dy;
+                }
+                if (dy > max_dy) {
+                    dy = max_dy;
+                }
+
+                mark->x1 = state->shots_editor_edit_origin_x1 + dx;
+                mark->y1 = state->shots_editor_edit_origin_y1 + dy;
+                mark->x2 = state->shots_editor_edit_origin_x2 + dx;
+                mark->y2 = state->shots_editor_edit_origin_y2 + dy;
+            }
+        } else if (state->shots_editor_selected_arrow_handle == SHOT_HANDLE_MOVE) {
             gint width = gdk_pixbuf_get_width(state->shots_editor_pixbuf);
             gint height = gdk_pixbuf_get_height(state->shots_editor_pixbuf);
             gdouble dx = ix - state->shots_editor_edit_anchor_x;
             gdouble dy = iy - state->shots_editor_edit_anchor_y;
-            gdouble min_dx = -MIN(state->shots_editor_edit_origin_x1, state->shots_editor_edit_origin_x2);
-            gdouble max_dx = (gdouble)(width - 1) - MAX(state->shots_editor_edit_origin_x1, state->shots_editor_edit_origin_x2);
-            gdouble min_dy = -MIN(state->shots_editor_edit_origin_y1, state->shots_editor_edit_origin_y2);
-            gdouble max_dy = (gdouble)(height - 1) - MAX(state->shots_editor_edit_origin_y1, state->shots_editor_edit_origin_y2);
+            gdouble new_x = state->shots_editor_edit_origin_x1 + dx;
+            gdouble new_y = state->shots_editor_edit_origin_y1 + dy;
 
-            if (dx < min_dx) {
-                dx = min_dx;
+            if (new_x < 0.0) {
+                new_x = 0.0;
             }
-            if (dx > max_dx) {
-                dx = max_dx;
+            if (new_y < 0.0) {
+                new_y = 0.0;
             }
-            if (dy < min_dy) {
-                dy = min_dy;
+            if (new_x > (gdouble)(width - 1)) {
+                new_x = (gdouble)(width - 1);
             }
-            if (dy > max_dy) {
-                dy = max_dy;
+            if (new_y > (gdouble)(height - 1)) {
+                new_y = (gdouble)(height - 1);
             }
 
-            mark->x1 = state->shots_editor_edit_origin_x1 + dx;
-            mark->y1 = state->shots_editor_edit_origin_y1 + dy;
-            mark->x2 = state->shots_editor_edit_origin_x2 + dx;
-            mark->y2 = state->shots_editor_edit_origin_y2 + dy;
+            mark->x1 = new_x;
+            mark->y1 = new_y;
+            mark->x2 = new_x;
+            mark->y2 = new_y;
         }
 
         gtk_widget_queue_draw(state->shots_editor_canvas);
@@ -1981,9 +2261,16 @@ static gboolean on_shots_editor_button_release(GtkWidget *widget, GdkEventButton
     }
 
     if (state->shots_editor_edit_dragging) {
+        ShotMark *mark = shots_editor_get_selected_mark(state);
         state->shots_editor_edit_dragging = FALSE;
         state->shots_editor_selected_arrow_handle = 0;
-        shots_editor_set_status(state, "Arrow updated.");
+        if (mark && mark->type == SHOT_MARK_RECT) {
+            shots_editor_set_status(state, "Callout updated.");
+        } else if (mark && mark->type == SHOT_MARK_ARROW) {
+            shots_editor_set_status(state, "Arrow updated.");
+        } else {
+            shots_editor_set_status(state, "Annotation updated.");
+        }
         gtk_widget_queue_draw(state->shots_editor_canvas);
         return TRUE;
     }
@@ -1999,7 +2286,7 @@ static gboolean on_shots_editor_button_release(GtkWidget *widget, GdkEventButton
 
     dx = state->shots_editor_drag_cur_x - state->shots_editor_drag_start_x;
     dy = state->shots_editor_drag_cur_y - state->shots_editor_drag_start_y;
-    if (sqrt(dx * dx + dy * dy) >= 3.0) {
+    if (state->shots_editor_drag_mark_type == SHOT_MARK_ARROW && sqrt(dx * dx + dy * dy) >= 3.0) {
         ShotMark *mark = g_new0(ShotMark, 1);
         mark->type = SHOT_MARK_ARROW;
         mark->x1 = state->shots_editor_drag_start_x;
@@ -2012,6 +2299,37 @@ static gboolean on_shots_editor_button_release(GtkWidget *widget, GdkEventButton
         g_ptr_array_add(state->shots_editor_marks, mark);
         shots_editor_set_selected_mark(state, (gint)state->shots_editor_marks->len - 1);
         shots_editor_set_status(state, "Arrow added.");
+    } else if (state->shots_editor_drag_mark_type == SHOT_MARK_RECT &&
+               fabs(dx) >= 6.0 && fabs(dy) >= 6.0) {
+        ShotMark *mark = g_new0(ShotMark, 1);
+        gchar *label = NULL;
+
+        mark->type = SHOT_MARK_RECT;
+        mark->x1 = state->shots_editor_drag_start_x;
+        mark->y1 = state->shots_editor_drag_start_y;
+        mark->x2 = state->shots_editor_drag_cur_x;
+        mark->y2 = state->shots_editor_drag_cur_y;
+        mark->color = color;
+        mark->stroke_width = MAX(2.0, shots_editor_get_arrow_width_control(state) * 0.5);
+
+        if (state->shots_editor_text_entry) {
+            label = g_strdup(gtk_entry_get_text(GTK_ENTRY(state->shots_editor_text_entry)));
+            if (label) {
+                g_strstrip(label);
+            }
+        }
+        if (label && *label) {
+            mark->text = label;
+            label = NULL;
+        } else {
+            mark->text = g_strdup("Callout");
+        }
+        g_free(label);
+
+        shots_editor_ensure_marks(state);
+        g_ptr_array_add(state->shots_editor_marks, mark);
+        shots_editor_set_selected_mark(state, (gint)state->shots_editor_marks->len - 1);
+        shots_editor_set_status(state, "Callout box added.");
     }
 
     gtk_widget_queue_draw(state->shots_editor_canvas);
@@ -2100,8 +2418,118 @@ static void on_shots_editor_tool_changed(GtkComboBox *combo, gpointer user_data)
         return;
     }
     if (id && g_strcmp0(id, "select") == 0) {
-        shots_editor_set_status(state, "Select mode: click arrow start/tip/path to edit.");
+        shots_editor_set_status(state, "Select mode: drag annotations to move/edit. Right-click for quick color palette.");
+    } else if (id && g_strcmp0(id, "rect") == 0) {
+        shots_editor_set_status(state, "Callout mode: drag to create a shadowed box.");
     }
+}
+
+static void on_shots_editor_color_set(GtkColorButton *button, gpointer user_data) {
+    AppState *state = user_data;
+    GdkRGBA color = {0};
+
+    if (!state || state->shots_editor_style_syncing) {
+        return;
+    }
+
+    gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(button), &color);
+    if (shots_editor_apply_color_to_selected(state, &color, FALSE)) {
+        shots_editor_set_status(state, "Selected annotation color updated.");
+    }
+}
+
+static void on_shots_editor_apply_text_clicked(GtkButton *button, gpointer user_data) {
+    AppState *state = user_data;
+    ShotMark *mark = shots_editor_get_selected_mark(state);
+    gchar *text = NULL;
+
+    (void)button;
+    if (!state || !state->shots_editor_text_entry) {
+        return;
+    }
+    if (!mark) {
+        shots_editor_set_status(state, "Select a text/callout/stamp annotation first.");
+        return;
+    }
+    if (!(mark->type == SHOT_MARK_TEXT || mark->type == SHOT_MARK_STAMP || mark->type == SHOT_MARK_RECT)) {
+        shots_editor_set_status(state, "Text edit applies to Text, Stamp, or Callout annotations.");
+        return;
+    }
+
+    text = g_strdup(gtk_entry_get_text(GTK_ENTRY(state->shots_editor_text_entry)));
+    if (!text) {
+        text = g_strdup("");
+    } else {
+        g_strstrip(text);
+    }
+
+    g_free(mark->text);
+    if (*text == '\0') {
+        if (mark->type == SHOT_MARK_STAMP) {
+            mark->text = g_strdup("1");
+        } else if (mark->type == SHOT_MARK_RECT) {
+            mark->text = g_strdup("Callout");
+        } else {
+            mark->text = g_strdup("Note");
+        }
+    } else {
+        mark->text = text;
+        text = NULL;
+    }
+    g_free(text);
+
+    gtk_widget_queue_draw(state->shots_editor_canvas);
+    shots_editor_recompute_next_step(state);
+    shots_editor_set_status(state, "Selected annotation text updated.");
+}
+
+static void on_shots_editor_color_preset_activate(GtkMenuItem *item, gpointer user_data) {
+    AppState *state = user_data;
+    const gchar *spec = g_object_get_data(G_OBJECT(item), "color_spec");
+    GdkRGBA color = {0};
+
+    if (!state || !spec || !gdk_rgba_parse(&color, spec)) {
+        return;
+    }
+    if (shots_editor_apply_color_to_selected(state, &color, TRUE)) {
+        shots_editor_set_status(state, "Selected annotation color updated from palette.");
+    }
+}
+
+static void shots_editor_show_color_palette_menu(AppState *state, GdkEventButton *event) {
+    GtkWidget *menu = NULL;
+    struct {
+        const gchar *label;
+        const gchar *hex;
+    } presets[] = {
+        { "Red", "#ef4444" },
+        { "Orange", "#f97316" },
+        { "Yellow", "#eab308" },
+        { "Green", "#22c55e" },
+        { "Blue", "#3b82f6" },
+        { "Purple", "#8b5cf6" },
+        { "White", "#f8fafc" },
+        { "Black", "#111827" }
+    };
+
+    if (!state || !event) {
+        return;
+    }
+
+    if (!shots_editor_get_selected_mark(state)) {
+        shots_editor_set_status(state, "Right-click palette needs a selected annotation.");
+        return;
+    }
+
+    menu = gtk_menu_new();
+    for (guint i = 0; i < G_N_ELEMENTS(presets); ++i) {
+        GtkWidget *item = gtk_menu_item_new_with_label(presets[i].label);
+        g_object_set_data_full(G_OBJECT(item), "color_spec", g_strdup(presets[i].hex), g_free);
+        g_signal_connect(item, "activate", G_CALLBACK(on_shots_editor_color_preset_activate), state);
+        gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+    }
+    gtk_widget_show_all(menu);
+    gtk_menu_popup_at_pointer(GTK_MENU(menu), (GdkEvent *)event);
 }
 
 static void on_shots_editor_arrow_style_changed(GtkRange *range, gpointer user_data) {
@@ -2112,13 +2540,17 @@ static void on_shots_editor_arrow_style_changed(GtkRange *range, gpointer user_d
     if (!state || state->shots_editor_style_syncing) {
         return;
     }
-    if (!mark || mark->type != SHOT_MARK_ARROW) {
+    if (!mark || (mark->type != SHOT_MARK_ARROW && mark->type != SHOT_MARK_RECT)) {
         return;
     }
 
-    shots_editor_apply_arrow_style_to_mark(state, mark);
+    if (mark->type == SHOT_MARK_ARROW) {
+        shots_editor_apply_arrow_style_to_mark(state, mark);
+    } else {
+        mark->stroke_width = MAX(2.0, shots_editor_get_arrow_width_control(state) * 0.5);
+    }
     gtk_widget_queue_draw(state->shots_editor_canvas);
-    shots_editor_set_status(state, "Selected arrow head/style updated.");
+    shots_editor_set_status(state, "Selected annotation style updated.");
 }
 
 static void on_shots_editor_step_reset_clicked(GtkButton *button, gpointer user_data) {
@@ -2573,6 +3005,39 @@ static void on_shots_item_activated(GtkIconView *icon_view, GtkTreePath *path, g
     g_free(fullpath);
 }
 
+static void shots_set_browser_info_visible(AppState *state, gboolean visible) {
+    if (!state) {
+        return;
+    }
+    if (state->shots_browser_info_revealer) {
+        gtk_revealer_set_reveal_child(GTK_REVEALER(state->shots_browser_info_revealer), visible);
+    }
+    if (state->shots_browser_split_paned) {
+        if (visible) {
+            gtk_paned_set_position(GTK_PANED(state->shots_browser_split_paned), 130);
+        } else {
+            gtk_paned_set_position(GTK_PANED(state->shots_browser_split_paned), 0);
+        }
+    }
+    if (state->shots_browser_toggle_btn) {
+        gtk_button_set_label(GTK_BUTTON(state->shots_browser_toggle_btn),
+                             visible ? "Hide Selection Shell" : "Show Selection Shell");
+    }
+}
+
+static void on_shots_toggle_shell_clicked(GtkButton *button, gpointer user_data) {
+    AppState *state = user_data;
+    gboolean visible = FALSE;
+
+    (void)button;
+    if (!state || !state->shots_browser_info_revealer) {
+        return;
+    }
+
+    visible = gtk_revealer_get_reveal_child(GTK_REVEALER(state->shots_browser_info_revealer));
+    shots_set_browser_info_visible(state, !visible);
+}
+
 static void on_shots_refresh_clicked(GtkButton *button, gpointer user_data) {
     (void)button;
     shots_reload(user_data);
@@ -2962,9 +3427,10 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     GtkWidget *btn_refresh = gtk_button_new_with_label("Refresh");
     GtkWidget *btn_select_all = gtk_button_new_with_label("Select All");
     GtkWidget *btn_clear_selection = gtk_button_new_with_label("Clear Selection");
+    GtkWidget *btn_toggle_shell = gtk_button_new_with_label("Show Selection Shell");
     GtkWidget *btn_import = gtk_button_new_with_label("Run Import Script");
     GtkWidget *btn_open = gtk_button_new_with_label("Open Folder");
-    GtkWidget *workspace_stack = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    GtkWidget *workspace_split = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
     GtkWidget *editor_shell = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
     GtkWidget *editor_header = gtk_label_new(NULL);
     GtkWidget *editor_main_paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
@@ -2975,6 +3441,8 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     GtkWidget *editor_path = gtk_label_new("Editing: (none)");
     GtkWidget *editor_status = gtk_label_new("Select one screenshot or click Edit Selected.");
     GtkWidget *browser_shell = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    GtkWidget *browser_split = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
+    GtkWidget *browser_info_revealer = gtk_revealer_new();
     GtkWidget *browser_info = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
     GtkWidget *thumbs_scroller = gtk_scrolled_window_new(NULL, NULL);
     GtkWidget *icon_view = NULL;
@@ -3001,6 +3469,7 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     GtkWidget *btn_step_reset = gtk_button_new_with_label("Reset Step");
     GtkWidget *text_label = gtk_label_new("Text");
     GtkWidget *text_entry = gtk_entry_new();
+    GtkWidget *btn_apply_text = gtk_button_new_with_label("Apply Text");
     GtkWidget *color_label = gtk_label_new("Color");
     GtkWidget *color_btn = gtk_color_button_new();
     GtkWidget *arrow_width_label = gtk_label_new("Arrow width");
@@ -3019,6 +3488,9 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     gtk_style_context_add_class(gtk_widget_get_style_context(editor_canvas_panel), "surface");
     gtk_style_context_add_class(gtk_widget_get_style_context(editor_sidebar), "surface");
     gtk_style_context_add_class(gtk_widget_get_style_context(actions), "action-row");
+    gtk_style_context_add_class(gtk_widget_get_style_context(editor_main_paned), "split-pane");
+    gtk_style_context_add_class(gtk_widget_get_style_context(browser_split), "split-pane");
+    gtk_style_context_add_class(gtk_widget_get_style_context(workspace_split), "split-pane");
 
     gtk_label_set_text(GTK_LABEL(title), "Screenshot Browser + Quick Annotator");
     gtk_label_set_xalign(GTK_LABEL(title), 0.0);
@@ -3031,6 +3503,7 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     style_action_button(btn_refresh, FALSE);
     style_action_button(btn_select_all, FALSE);
     style_action_button(btn_clear_selection, FALSE);
+    style_action_button(btn_toggle_shell, FALSE);
     style_action_button(btn_import, FALSE);
     style_action_button(btn_open, FALSE);
     style_action_button(btn_copy_paths, FALSE);
@@ -3043,10 +3516,12 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     style_action_button(btn_save_svg, FALSE);
     style_action_button(btn_dock_toggle, FALSE);
     style_action_button(btn_step_reset, FALSE);
+    style_action_button(btn_apply_text, FALSE);
 
     gtk_box_pack_start(GTK_BOX(toolbar), btn_refresh, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(toolbar), btn_select_all, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(toolbar), btn_clear_selection, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(toolbar), btn_toggle_shell, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(toolbar), btn_import, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(toolbar), btn_open, FALSE, FALSE, 0);
 
@@ -3079,7 +3554,7 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     gtk_icon_view_set_columns(GTK_ICON_VIEW(icon_view), 8);
     gtk_icon_view_set_selection_mode(GTK_ICON_VIEW(icon_view), GTK_SELECTION_MULTIPLE);
     gtk_container_add(GTK_CONTAINER(thumbs_scroller), icon_view);
-    gtk_widget_set_size_request(thumbs_scroller, -1, 230);
+    gtk_widget_set_size_request(thumbs_scroller, -1, 180);
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(thumbs_scroller),
                                    GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
     gtk_style_context_add_class(gtk_widget_get_style_context(thumbs_scroller), "surface");
@@ -3108,6 +3583,7 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
 
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(tool_combo), "select", "Select/Edit");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(tool_combo), "arrow", "Arrow");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(tool_combo), "rect", "Callout Box");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(tool_combo), "stamp", "Step/Stamp");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(tool_combo), "text", "Text");
     gtk_combo_box_set_active_id(GTK_COMBO_BOX(tool_combo), "arrow");
@@ -3147,6 +3623,7 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     gtk_box_pack_start(GTK_BOX(editor_sidebar), btn_step_reset, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(editor_sidebar), text_label, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(editor_sidebar), text_entry, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(editor_sidebar), btn_apply_text, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(editor_sidebar), color_label, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(editor_sidebar), color_btn, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(editor_sidebar), arrow_width_label, FALSE, FALSE, 0);
@@ -3165,7 +3642,7 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
 
     gtk_widget_set_hexpand(editor_canvas, TRUE);
     gtk_widget_set_vexpand(editor_canvas, TRUE);
-    gtk_widget_set_size_request(editor_canvas, 520, 420);
+    gtk_widget_set_size_request(editor_canvas, -1, 260);
     gtk_style_context_add_class(gtk_widget_get_style_context(editor_canvas), "surface");
     gtk_widget_add_events(editor_canvas,
                           GDK_BUTTON_PRESS_MASK |
@@ -3185,27 +3662,46 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     gtk_box_pack_start(GTK_BOX(browser_info), selected, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(browser_info), paths_scroller, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(browser_info), actions, FALSE, FALSE, 0);
+    gtk_widget_set_size_request(browser_info, -1, 120);
+    gtk_revealer_set_transition_type(GTK_REVEALER(browser_info_revealer),
+                                     GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
+    gtk_revealer_set_transition_duration(GTK_REVEALER(browser_info_revealer), 160);
+    gtk_container_add(GTK_CONTAINER(browser_info_revealer), browser_info);
+    gtk_widget_set_hexpand(browser_info_revealer, TRUE);
 
-    gtk_box_pack_start(GTK_BOX(browser_shell), browser_info, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(browser_shell), thumbs_scroller, TRUE, TRUE, 0);
+    g_object_set(G_OBJECT(browser_split), "wide-handle", TRUE, NULL);
+    gtk_widget_set_hexpand(browser_split, TRUE);
+    gtk_widget_set_vexpand(browser_split, TRUE);
+    gtk_paned_pack1(GTK_PANED(browser_split), browser_info_revealer, FALSE, TRUE);
+    gtk_paned_pack2(GTK_PANED(browser_split), thumbs_scroller, TRUE, FALSE);
+    gtk_paned_set_position(GTK_PANED(browser_split), 120);
+
+    gtk_box_pack_start(GTK_BOX(browser_shell), browser_split, TRUE, TRUE, 0);
     gtk_widget_set_vexpand(browser_shell, FALSE);
-    gtk_widget_set_size_request(browser_shell, -1, 290);
+    gtk_widget_set_size_request(browser_shell, -1, 230);
+    gtk_widget_set_margin_bottom(browser_shell, 10);
 
-    gtk_widget_set_hexpand(workspace_stack, TRUE);
-    gtk_widget_set_vexpand(workspace_stack, TRUE);
-    gtk_box_pack_start(GTK_BOX(workspace_stack), editor_shell, TRUE, TRUE, 0);
-    gtk_box_pack_start(GTK_BOX(workspace_stack), browser_shell, FALSE, TRUE, 0);
+    g_object_set(G_OBJECT(workspace_split), "wide-handle", TRUE, NULL);
+    gtk_widget_set_hexpand(workspace_split, TRUE);
+    gtk_widget_set_vexpand(workspace_split, TRUE);
+    gtk_widget_set_margin_bottom(workspace_split, 8);
+    gtk_paned_pack1(GTK_PANED(workspace_split), editor_shell, TRUE, FALSE);
+    gtk_paned_pack2(GTK_PANED(workspace_split), browser_shell, FALSE, FALSE);
+    gtk_paned_set_position(GTK_PANED(workspace_split), 430);
 
     gtk_box_pack_start(GTK_BOX(root), title, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(root), folder, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(root), toolbar, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(root), workspace_stack, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(root), workspace_split, TRUE, TRUE, 0);
 
     state->shots_icon_view = icon_view;
     state->shots_status = status;
     state->shots_selected = selected;
     state->shots_paths_view = paths_view;
     state->shots_folder_label = folder;
+    state->shots_browser_info_revealer = browser_info_revealer;
+    state->shots_browser_toggle_btn = btn_toggle_shell;
+    state->shots_browser_split_paned = browser_split;
     state->shots_editor_canvas = editor_canvas;
     state->shots_editor_status = editor_status;
     state->shots_editor_tool_combo = tool_combo;
@@ -3232,6 +3728,7 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     g_signal_connect(btn_refresh, "clicked", G_CALLBACK(on_shots_refresh_clicked), state);
     g_signal_connect(btn_select_all, "clicked", G_CALLBACK(on_shots_select_all_clicked), state);
     g_signal_connect(btn_clear_selection, "clicked", G_CALLBACK(on_shots_clear_selection_clicked), state);
+    g_signal_connect(btn_toggle_shell, "clicked", G_CALLBACK(on_shots_toggle_shell_clicked), state);
     g_signal_connect(btn_open, "clicked", G_CALLBACK(on_shots_open_folder_clicked), state);
     g_signal_connect(btn_import, "clicked", G_CALLBACK(on_shots_import_clicked), state);
     g_signal_connect(btn_copy_paths, "clicked", G_CALLBACK(on_shots_copy_paths_clicked), state);
@@ -3246,7 +3743,9 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     g_signal_connect(btn_save_svg, "clicked", G_CALLBACK(on_shots_editor_save_svg_clicked), state);
     g_signal_connect(btn_dock_toggle, "clicked", G_CALLBACK(on_shots_editor_toggle_dock_clicked), state);
     g_signal_connect(btn_step_reset, "clicked", G_CALLBACK(on_shots_editor_step_reset_clicked), state);
+    g_signal_connect(btn_apply_text, "clicked", G_CALLBACK(on_shots_editor_apply_text_clicked), state);
     g_signal_connect(tool_combo, "changed", G_CALLBACK(on_shots_editor_tool_changed), state);
+    g_signal_connect(color_btn, "color-set", G_CALLBACK(on_shots_editor_color_set), state);
     g_signal_connect(arrow_width_scale, "value-changed", G_CALLBACK(on_shots_editor_arrow_style_changed), state);
     g_signal_connect(arrow_head_len_scale, "value-changed", G_CALLBACK(on_shots_editor_arrow_style_changed), state);
     g_signal_connect(arrow_head_angle_scale, "value-changed", G_CALLBACK(on_shots_editor_arrow_style_changed), state);
@@ -3255,6 +3754,7 @@ static GtkWidget *build_screenshots_tab(AppState *state) {
     g_signal_connect(editor_canvas, "button-release-event", G_CALLBACK(on_shots_editor_button_release), state);
     g_signal_connect(editor_canvas, "motion-notify-event", G_CALLBACK(on_shots_editor_motion), state);
 
+    shots_set_browser_info_visible(state, FALSE);
     shots_reload(state);
     return root;
 }

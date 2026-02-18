@@ -8,23 +8,94 @@ if [[ -z "$MSG_FILE" || ! -f "$MSG_FILE" ]]; then
     exit 1
 fi
 
-require_section() {
-    local section="$1"
-    if ! grep -Eq "^${section}:[[:space:]]*$" "$MSG_FILE"; then
-        echo "Commit message must include section: '${section}:'"
-        return 1
-    fi
-    return 0
+fail() {
+    echo "commit-msg hook: $1"
+    exit 1
 }
 
-if ! grep -Eq '^[a-z]+(\([^)]+\))?: .+' "$MSG_FILE"; then
-    echo "Commit title must follow: type(scope): summary"
-    exit 1
+get_title_line() {
+    awk '
+        /^[[:space:]]*#/ {next}
+        /^[[:space:]]*$/ {next}
+        {print; exit}
+    ' "$MSG_FILE"
+}
+
+require_section_header() {
+    local section="$1"
+    grep -Eq "^${section}:[[:space:]]*$" "$MSG_FILE" ||
+        fail "missing required section header '${section}:'"
+}
+
+get_section_block() {
+    local section="$1"
+    awk -v section="$section" '
+        BEGIN { in_section=0 }
+        /^[[:space:]]*#/ { next }
+        $0 ~ ("^" section ":[[:space:]]*$") { in_section=1; next }
+        in_section && $0 ~ /^[A-Z][A-Za-z ]*:[[:space:]]*$/ { exit }
+        in_section { print }
+    ' "$MSG_FILE"
+}
+
+require_meaningful_bullet() {
+    local section="$1"
+    local allow_none="${2:-0}"
+    local block
+
+    block="$(get_section_block "$section")"
+    if ! grep -Eq '^[[:space:]]*-[[:space:]]+\S' <<<"$block"; then
+        fail "section '${section}' must include at least one bullet (- ...)"
+    fi
+
+    while IFS= read -r line; do
+        local item
+        item="$(sed -E 's/^[[:space:]]*-[[:space:]]+//' <<<"$line")"
+        item="$(sed -E 's/[[:space:]]+$//' <<<"$item")"
+
+        [[ -z "$item" ]] && continue
+
+        if grep -Eq '^<[^>]+>$' <<<"$item"; then
+            fail "section '${section}' still contains template placeholder text"
+        fi
+
+        if [[ "$item" =~ ^(TBD|TODO|\.\.\.)$ ]]; then
+            fail "section '${section}' contains placeholder value '${item}'"
+        fi
+
+        if [[ "$allow_none" -ne 1 && "$item" =~ ^(None|none|N/A|n/a)$ ]]; then
+            fail "section '${section}' cannot be '${item}'"
+        fi
+    done < <(grep -E '^[[:space:]]*-[[:space:]]+\S' <<<"$block")
+}
+
+title_line="$(get_title_line)"
+[[ -n "$title_line" ]] || fail "empty commit message title"
+
+if [[ "$title_line" =~ ^(Merge|Revert)\  ]]; then
+    exit 0
 fi
 
-require_section "Changed"
-require_section "Feature"
-require_section "Tests Run"
-require_section "Test Cases Added"
+if ! [[ "$title_line" =~ ^(feat|fix|chore|docs|refactor|test|perf|build|ci|style)(\([a-zA-Z0-9._/-]+\))?(!)?:[[:space:]][^[:space:]].+ ]]; then
+    fail "title must follow Conventional Commits style, e.g. feat(ui): add screenshot splitter"
+fi
+
+summary="${title_line#*: }"
+if [[ "$summary" == *"<"* || "$summary" == *">"* ]]; then
+    fail "title summary contains template placeholders"
+fi
+if (( ${#summary} < 8 || ${#summary} > 72 )); then
+    fail "title summary should be between 8 and 72 characters"
+fi
+
+require_section_header "Changed"
+require_section_header "Feature"
+require_section_header "Tests Run"
+require_section_header "Test Cases Added"
+
+require_meaningful_bullet "Changed" 0
+require_meaningful_bullet "Feature" 0
+require_meaningful_bullet "Tests Run" 0
+require_meaningful_bullet "Test Cases Added" 1
 
 exit 0

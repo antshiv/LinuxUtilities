@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT_DIR="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+FAST_TEST_SCRIPT="$ROOT_DIR/tests/run_fast.sh"
+
+if [[ ! -x "$FAST_TEST_SCRIPT" ]]; then
+    echo "pre-commit: missing executable test runner: $FAST_TEST_SCRIPT"
+    echo "Run: chmod +x tests/run_fast.sh"
+    exit 1
+fi
+
+echo "pre-commit: running fast tests..."
+"$FAST_TEST_SCRIPT"
