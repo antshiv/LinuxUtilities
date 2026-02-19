@@ -84,6 +84,10 @@ local volume_step = "5%"
 local flameshot_mouse_button = 8
 local utility_mouse_button = 9
 local flameshot_lock = false
+local spotlight_toggle_lock = false
+local spotlight_radius = 180
+local spotlight_dim = 0.68
+local spotlight_fps = 50
 local audio_notification_id = nil
 local audio_state = { volume = "?", mute = "unknown", sink = "unknown" }
 local battery_state = { status = "unknown", percent = "?", time = "" }
@@ -340,6 +344,154 @@ local function shell_quote(value)
         return "''"
     end
     return "'" .. tostring(value):gsub("'", "'\\''") .. "'"
+end
+
+local function clamp_number(value, lo, hi)
+    if value < lo then
+        return lo
+    end
+    if value > hi then
+        return hi
+    end
+    return value
+end
+
+local function release_spotlight_toggle_lock()
+    gears.timer.start_new(0.2, function()
+        spotlight_toggle_lock = false
+        return false
+    end)
+end
+
+local function notify_spotlight_settings(prefix)
+    naughty.notify({
+        title = "Cursor Spotlight",
+        text = string.format("%s Radius: %d  Dim: %.2f", prefix or "Settings", spotlight_radius, spotlight_dim),
+        timeout = 1.8,
+    })
+end
+
+local function handle_spotlight_start_result(stdout, exit_code)
+    local result = (stdout or ""):gsub("%s+$", "")
+    local failed_reason = nil
+
+    if result:sub(1, 7) == "failed:" then
+        failed_reason = result:sub(8)
+        result = "failed"
+    end
+
+    if result == "missing" then
+        naughty.notify({
+            preset = naughty.config.presets.warn,
+            title = "Cursor Spotlight Missing",
+            text = "Build LinuxUtilities/cursor_spotlight first.",
+        })
+    elseif exit_code ~= 0 or result == "failed" then
+        naughty.notify({
+            preset = naughty.config.presets.warn,
+            title = "Cursor Spotlight Failed",
+            text = failed_reason or "Start a compositor (for example: picom) and try again.",
+        })
+    end
+end
+
+local function start_cursor_spotlight(restart_existing, notify_on_start)
+    local restart_cmd = ""
+    if restart_existing then
+        restart_cmd = "pkill -u \"$USER\" -f \"(^|/)cursor_spotlight( |$)\" >/dev/null 2>&1 || true\nsleep 0.1\n"
+    end
+
+    awful.spawn.easy_async_with_shell(string.format([[
+        spot_pat='(^|/)cursor_spotlight( |$)'
+        bin="$HOME/Workspace/LinuxUtilities/cursor_spotlight"
+        errfile="${XDG_RUNTIME_DIR:-/tmp}/cursor_spotlight.err"
+        if [ ! -x "$bin" ]; then
+            echo missing
+            exit 2
+        fi
+        if ! pgrep -u "$USER" -x picom >/dev/null 2>&1; then
+            if command -v picom >/dev/null 2>&1; then
+                picom --config /dev/null >/dev/null 2>&1 &
+                sleep 0.4
+            fi
+        fi
+        %s: >"$errfile"
+        "$bin" --radius %d --dim %.2f --fps %d 2>"$errfile" >/dev/null &
+        sleep 0.2
+        if pgrep -u "$USER" -f "$spot_pat" >/dev/null 2>&1; then
+            echo started
+        else
+            reason="$(head -n1 "$errfile" 2>/dev/null || true)"
+            if [ -n "$reason" ]; then
+                printf 'failed:%%s\n' "$reason"
+            else
+                echo failed
+            fi
+            exit 3
+        fi
+    ]], restart_cmd, spotlight_radius, spotlight_dim, spotlight_fps), function(stdout, _, _, exit_code)
+        local result = (stdout or ""):gsub("%s+$", "")
+        if notify_on_start and exit_code == 0 and result == "started" then
+            naughty.notify({
+                title = "Cursor Spotlight",
+                text = "Enabled.",
+                timeout = 1.2,
+            })
+        end
+        handle_spotlight_start_result(stdout, exit_code)
+        release_spotlight_toggle_lock()
+    end)
+end
+
+local function toggle_cursor_spotlight()
+    if spotlight_toggle_lock then
+        return
+    end
+    spotlight_toggle_lock = true
+
+    awful.spawn.easy_async_with_shell([[
+        if pgrep -u "$USER" -f '(^|/)cursor_spotlight( |$)' >/dev/null 2>&1; then
+            echo running
+        else
+            echo stopped
+        fi
+    ]], function(stdout)
+        local status = (stdout or ""):gsub("%s+$", "")
+        if status == "running" then
+            awful.spawn.easy_async_with_shell("pkill -u \"$USER\" -f '(^|/)cursor_spotlight( |$)' >/dev/null 2>&1 || true", function()
+                naughty.notify({
+                    title = "Cursor Spotlight",
+                    text = "Disabled.",
+                    timeout = 1.2,
+                })
+                release_spotlight_toggle_lock()
+            end)
+        else
+            start_cursor_spotlight(false, true)
+        end
+    end)
+end
+
+local function adjust_cursor_spotlight(radius_delta, dim_delta)
+    spotlight_radius = math.floor(clamp_number(spotlight_radius + (radius_delta or 0), 80, 520))
+    spotlight_dim = clamp_number(spotlight_dim + (dim_delta or 0), 0.10, 0.90)
+    spotlight_dim = math.floor(spotlight_dim * 100 + 0.5) / 100
+    notify_spotlight_settings("Updated.")
+
+    awful.spawn.easy_async_with_shell([[
+        if pgrep -u "$USER" -f '(^|/)cursor_spotlight( |$)' >/dev/null 2>&1; then
+            echo running
+        else
+            echo stopped
+        fi
+    ]], function(stdout)
+        local status = (stdout or ""):gsub("%s+$", "")
+        if status ~= "running" or spotlight_toggle_lock then
+            return
+        end
+        spotlight_toggle_lock = true
+        start_cursor_spotlight(true, false)
+    end)
 end
 
 local function expand_tilde_path(path)
@@ -790,7 +942,16 @@ local function autostart_desktop_applets()
     ]])
 end
 
+local function autostart_compositor()
+    awful.spawn.with_shell([[
+        if command -v picom >/dev/null 2>&1; then
+            pgrep -u "$USER" -x picom >/dev/null 2>&1 || picom --config /dev/null >/dev/null 2>&1 &
+        fi
+    ]])
+end
+
 enable_audio_auto_switch()
+autostart_compositor()
 autostart_desktop_applets()
 gears.timer({
     timeout = 10,
@@ -1055,6 +1216,36 @@ globalkeys = gears.table.join(
     -- Standard program
     awful.key({ modkey,           }, "Return", function () awful.spawn(terminal) end,
               {description = "open a terminal", group = "launcher"}),
+    awful.key({                   }, "F7", toggle_cursor_spotlight,
+              {description = "toggle cursor spotlight", group = "launcher"}),
+    awful.key({                   }, "F9", function () adjust_cursor_spotlight(0, -0.05) end,
+              {description = "spotlight less dim", group = "launcher"}),
+    awful.key({                   }, "F10", function () adjust_cursor_spotlight(0, 0.05) end,
+              {description = "spotlight more dim", group = "launcher"}),
+    awful.key({ "Shift"           }, "F9", function () adjust_cursor_spotlight(-20, 0) end,
+              {description = "spotlight smaller radius", group = "launcher"}),
+    awful.key({ "Shift"           }, "F10", function () adjust_cursor_spotlight(20, 0) end,
+              {description = "spotlight larger radius", group = "launcher"}),
+    awful.key({ modkey            }, "g", toggle_cursor_spotlight,
+              {description = "toggle cursor spotlight (fallback)", group = "launcher"}),
+    awful.key({ modkey            }, "bracketleft", function () adjust_cursor_spotlight(0, -0.05) end,
+              {description = "spotlight less dim (fallback)", group = "launcher"}),
+    awful.key({ modkey            }, "bracketright", function () adjust_cursor_spotlight(0, 0.05) end,
+              {description = "spotlight more dim (fallback)", group = "launcher"}),
+    awful.key({ modkey            }, "minus", function () adjust_cursor_spotlight(-20, 0) end,
+              {description = "spotlight smaller radius (fallback)", group = "launcher"}),
+    awful.key({ modkey            }, "equal", function () adjust_cursor_spotlight(20, 0) end,
+              {description = "spotlight larger radius (fallback)", group = "launcher"}),
+    awful.key({ "Control", "Mod1" }, "g", toggle_cursor_spotlight,
+              {description = "toggle cursor spotlight (Ctrl+Alt fallback)", group = "launcher"}),
+    awful.key({ "Control", "Mod1" }, "bracketleft", function () adjust_cursor_spotlight(0, -0.05) end,
+              {description = "spotlight less dim (Ctrl+Alt fallback)", group = "launcher"}),
+    awful.key({ "Control", "Mod1" }, "bracketright", function () adjust_cursor_spotlight(0, 0.05) end,
+              {description = "spotlight more dim (Ctrl+Alt fallback)", group = "launcher"}),
+    awful.key({ "Control", "Mod1" }, "minus", function () adjust_cursor_spotlight(-20, 0) end,
+              {description = "spotlight smaller radius (Ctrl+Alt fallback)", group = "launcher"}),
+    awful.key({ "Control", "Mod1" }, "equal", function () adjust_cursor_spotlight(20, 0) end,
+              {description = "spotlight larger radius (Ctrl+Alt fallback)", group = "launcher"}),
     awful.key({                   }, "F8", open_flameshot,
               {description = "open flameshot", group = "launcher"}),
     awful.key({                   }, "Print", open_flameshot,

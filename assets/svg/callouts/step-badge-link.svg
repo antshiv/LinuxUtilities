@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="160" viewBox="0 0 200 160">
+  <circle cx="80" cy="80" r="64" fill="#f97316"/>
+  <text x="80" y="98" text-anchor="middle" font-family="Ubuntu, Noto Sans, sans-serif" font-size="64" font-weight="700" fill="#ffffff">1</text>
+  <path d="M142 80h42" stroke="#f97316" stroke-width="10" stroke-linecap="round"/>
+  <path d="M172 60l20 20-20 20" fill="none" stroke="#f97316" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
