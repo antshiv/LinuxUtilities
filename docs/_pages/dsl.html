@@ -1,0 +1,157 @@
+<!-- TITLE: GTK DSL -->
+<!-- NAV: tools -->
+
+<h1>GTK DSL</h1>
+
+<p>A declarative domain-specific language for building GTK3 user interfaces from plain text files. Write layout descriptions in <code>.gdsl</code> files — the engine parses them at runtime and constructs native GTK widget trees automatically.</p>
+
+<div class="card card-accent" style="margin: 1.5rem 0;">
+    <h3>Why a DSL?</h3>
+    <p>GTK's C API requires ~40 lines to create a labeled slider inside a box. The DSL reduces it to <strong>3 lines</strong>. No XML, no Glade, no runtime interpreter — just a simple text grammar compiled alongside your C code.</p>
+</div>
+
+<h2>Build &amp; Run</h2>
+
+<pre><code>cd LinuxUtilities
+./build_gtk_dsl_demo.sh          # compiles gtk_dsl_demo.c
+./gtk_dsl_demo dsl/workbench.gdsl  # load a .gdsl layout</code></pre>
+
+<h2>File Format</h2>
+
+<p>A <code>.gdsl</code> file is a series of widget declarations, one per line. Each widget has a <strong>type</strong>, optional <strong>parent</strong> reference, and key=value properties.</p>
+
+<pre><code># Example: workbench.gdsl
+# ─────────────────────────
+
+# Root container — a vertical box
+box  id=root  orientation=vertical  spacing=8
+
+# Header label
+label  parent=root  text="GTK DSL Workbench"  css="font-size:18px;font-weight:bold"
+
+# Horizontal toolbar
+box  id=toolbar  parent=root  orientation=horizontal  spacing=4
+
+button  parent=toolbar  label="Open"    action=open_file
+button  parent=toolbar  label="Save"    action=save_file
+button  parent=toolbar  label="Refresh" action=reload_dsl
+
+# Settings panel
+grid  id=settings  parent=root  columns=2  row-spacing=6  col-spacing=12
+
+label   parent=settings  text="Brightness"
+scale   parent=settings  min=0  max=100  value=75  action=set_brightness
+
+label   parent=settings  text="Night Mode"
+switch  parent=settings  active=true  action=toggle_night</code></pre>
+
+<h2>Widget Types</h2>
+
+<table>
+    <thead>
+        <tr><th>Type</th><th>GTK Widget</th><th>Key Properties</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>box</code></td>
+            <td>GtkBox</td>
+            <td><code>orientation</code> (vertical/horizontal), <code>spacing</code></td>
+        </tr>
+        <tr>
+            <td><code>grid</code></td>
+            <td>GtkGrid</td>
+            <td><code>columns</code>, <code>row-spacing</code>, <code>col-spacing</code></td>
+        </tr>
+        <tr>
+            <td><code>label</code></td>
+            <td>GtkLabel</td>
+            <td><code>text</code>, <code>css</code></td>
+        </tr>
+        <tr>
+            <td><code>button</code></td>
+            <td>GtkButton</td>
+            <td><code>label</code>, <code>action</code></td>
+        </tr>
+        <tr>
+            <td><code>switch</code></td>
+            <td>GtkSwitch</td>
+            <td><code>active</code> (true/false), <code>action</code></td>
+        </tr>
+        <tr>
+            <td><code>scale</code></td>
+            <td>GtkScale</td>
+            <td><code>min</code>, <code>max</code>, <code>value</code>, <code>step</code>, <code>action</code></td>
+        </tr>
+        <tr>
+            <td><code>entry</code></td>
+            <td>GtkEntry</td>
+            <td><code>placeholder</code>, <code>text</code>, <code>action</code></td>
+        </tr>
+        <tr>
+            <td><code>image</code></td>
+            <td>GtkImage</td>
+            <td><code>file</code>, <code>width</code>, <code>height</code></td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>Common Properties</h2>
+
+<table>
+    <thead>
+        <tr><th>Property</th><th>Applies To</th><th>Description</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><code>id</code></td><td>All</td><td>Unique widget name (used as parent reference)</td></tr>
+        <tr><td><code>parent</code></td><td>All</td><td>ID of the containing widget</td></tr>
+        <tr><td><code>css</code></td><td>All</td><td>Inline CSS string applied via GtkCssProvider</td></tr>
+        <tr><td><code>action</code></td><td>Button, Switch, Scale, Entry</td><td>Callback name registered in C code</td></tr>
+        <tr><td><code>tooltip</code></td><td>All</td><td>Hover tooltip text</td></tr>
+        <tr><td><code>visible</code></td><td>All</td><td><code>true</code> (default) or <code>false</code></td></tr>
+        <tr><td><code>sensitive</code></td><td>All</td><td>Enable/disable widget interaction</td></tr>
+    </tbody>
+</table>
+
+<h2>Architecture</h2>
+
+<div class="card card-accent">
+    <div class="diagram">┌──── .gdsl file ─────┐     ┌────── Parser ──────┐     ┌────── GTK Tree ──────┐
+│                     │     │                    │     │                      │
+│  box id=root ...    │────▶│  tokenize line     │────▶│  GtkBox (root)       │
+│  label parent=root  │     │  extract type      │     │  ├─ GtkLabel         │
+│  button parent=root │     │  parse key=value   │     │  ├─ GtkButton        │
+│  scale parent=root  │     │  resolve parent    │     │  └─ GtkScale         │
+│                     │     │  create widget     │     │                      │
+└─────────────────────┘     └────────────────────┘     └──────────────────────┘
+                                                                │
+                                                                ▼
+                                                       ┌────── Actions ──────┐
+                                                       │                     │
+                                                       │  C callback map     │
+                                                       │  g_signal_connect   │
+                                                       │                     │
+                                                       └─────────────────────┘</div>
+</div>
+
+<h2>Registering Custom Actions</h2>
+
+<p>Actions in <code>.gdsl</code> files map to C functions registered in the action table:</p>
+
+<pre><code>// In gtk_dsl_demo.c
+static void on_set_brightness(GtkRange *range, gpointer data) {
+    int value = (int)gtk_range_get_value(range);
+    printf("Brightness: %d%%\n", value);
+}
+
+// Register before loading .gdsl
+dsl_register_action("set_brightness", G_CALLBACK(on_set_brightness));</code></pre>
+
+<h2>Tips</h2>
+
+<ul>
+    <li><strong>Comments</strong> — lines starting with <code>#</code> are ignored</li>
+    <li><strong>Whitespace</strong> — use spaces to separate properties (not commas)</li>
+    <li><strong>Quotes</strong> — required for values containing spaces: <code>text="Hello World"</code></li>
+    <li><strong>Hot reload</strong> — the "Refresh" button re-parses the <code>.gdsl</code> without restarting</li>
+    <li><strong>Debugging</strong> — set <code>GTK_DEBUG=interactive</code> to inspect the generated widget tree</li>
+</ul>

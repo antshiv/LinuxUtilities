@@ -1,0 +1,87 @@
+<!-- TITLE: Setup Guide -->
+<!-- NAV: setup -->
+
+<h1>Setup Guide</h1>
+
+<p>Everything you need to get LinuxUtilities running on a fresh Linux Mint + AwesomeWM installation.</p>
+
+<h2>Prerequisites</h2>
+
+<table>
+    <thead>
+        <tr><th>Component</th><th>Package</th><th>Used By</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>C compiler</td><td><code>build-essential</code></td><td>All C programs</td></tr>
+        <tr><td>pkg-config</td><td><code>pkg-config</code></td><td>Build scripts</td></tr>
+        <tr><td>X11 / XFixes / XRender</td><td><code>libx11-dev libxext-dev libxfixes-dev libxrender-dev</code></td><td>Cursor Spotlight</td></tr>
+        <tr><td>Cairo</td><td><code>libcairo2-dev</code></td><td>Cursor Spotlight</td></tr>
+        <tr><td>GTK3</td><td><code>libgtk-3-dev</code></td><td>Control Center, GTK DSL</td></tr>
+        <tr><td>Gromit-MPX</td><td><code>gromit-mpx</code></td><td>Presenter drawing</td></tr>
+        <tr><td>xdotool</td><td><code>xdotool</code></td><td>Presenter dash overlay</td></tr>
+    </tbody>
+</table>
+
+<h2>One-Line Install</h2>
+
+<pre><code>sudo apt install build-essential pkg-config \
+    libx11-dev libxext-dev libxfixes-dev libxrender-dev libcairo2-dev \
+    libgtk-3-dev gromit-mpx xdotool
+./install_gromit_profile.sh</code></pre>
+
+<h2>Building Tools</h2>
+
+<div class="grid grid-2">
+    <div class="card card-accent">
+        <h3>Cursor Spotlight</h3>
+        <pre><code>./build_cursor_spotlight.sh
+./cursor_spotlight --radius 180 --dim 0.68 --fps 50</code></pre>
+        <p>Press <kbd>Esc</kbd> to exit. See <a href="spotlight.html">Spotlight docs</a> for all flags.</p>
+    </div>
+    <div class="card card-green">
+        <h3>Linux Control Center</h3>
+        <pre><code>./build_linux_control_center.sh
+./linux_control_center</code></pre>
+        <p>GTK3 app with Night Light, Shortcuts, and Screenshots tabs.</p>
+    </div>
+    <div class="card card-blue">
+        <h3>GTK DSL Demo</h3>
+        <pre><code>./build_gtk_dsl_demo.sh
+./gtk_dsl_demo dsl/workbench.gdsl</code></pre>
+        <p>Edit <code>dsl/workbench.gdsl</code> to customise the launcher.</p>
+    </div>
+    <div class="card">
+        <h3>Presenter Dash</h3>
+        <pre><code># No build step — it's a shell script
+./install_gromit_profile.sh   # install shape/modifier map once
+./presenter_dash.sh anchor   # set anchor at cursor
+./presenter_dash.sh dash     # dashed segment
+./presenter_dash.sh arrow    # arrow segment</code></pre>
+    </div>
+</div>
+
+<h2>AwesomeWM Configuration</h2>
+
+<div class="alert alert-info">
+    <span class="alert-icon">ℹ</span>
+    <div>Always back up your existing <code>~/.config/awesome/rc.lua</code> before replacing it.</div>
+</div>
+
+<pre><code>cp rc.lua ~/.config/awesome/rc.lua
+
+# Reload AwesomeWM
+# Press Mod4 + Ctrl + R   (or restart from the menu)</code></pre>
+
+<p>The config adds a <strong>Utilities</strong> widget to the wibar with buttons for Spotlight, Gromit, Control Center, and shortcuts. All presenter-related hotkeys are on the <kbd>F6</kbd>–<kbd>F11</kbd> row.</p>
+
+<h2>Building the Docs</h2>
+
+<pre><code>cd docs
+bash build.sh
+
+# Preview locally
+cd build
+python3 -m http.server 8080
+# Open http://localhost:8080</code></pre>
+
+<p>Generated pages go into <code>docs/build/</code> which is gitignored. Only <code>_pages/</code>, <code>_partials/</code>, <code>css/</code>, <code>js/</code>, and <code>assets/</code> are tracked in version control.</p>

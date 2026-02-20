@@ -1,0 +1,91 @@
+<!-- TITLE: Presenter Flow -->
+<!-- NAV: tools -->
+
+<h1>Presenter Flow</h1>
+
+<p>Real-time drawing overlays and animated path segments for live presentations. Combines Gromit-MPX for freehand drawing with a custom <code>presenter_dash.sh</code> for structured flow diagrams.</p>
+
+<h2>Setup</h2>
+
+<pre><code>sudo apt install gromit-mpx xdotool
+./install_gromit_profile.sh</code></pre>
+
+<p>Both tools are controlled via AwesomeWM hotkeys defined in <code>rc.lua</code>. The profile installer writes <code>~/.config/gromit-mpx.cfg</code> and enables modifier-based shape tools while drawing.</p>
+
+<h2>Freehand Drawing (Gromit-MPX)</h2>
+
+<table>
+    <thead>
+        <tr><th>Key</th><th>Action</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><kbd>F6</kbd></td><td>Toggle drawing mode (pen follows cursor)</td></tr>
+        <tr><td><kbd>Shift</kbd>+<kbd>F6</kbd></td><td>Clear all strokes</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>F6</kbd></td><td>Undo last stroke</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F6</kbd></td><td>Redo</td></tr>
+        <tr><td><kbd>Alt</kbd>+<kbd>F6</kbd></td><td>Toggle overlay visibility</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F6</kbd></td><td>Quit Gromit completely</td></tr>
+    </tbody>
+</table>
+
+<h3>Draw-Mode Tool Map (Profile)</h3>
+
+<table>
+    <thead>
+        <tr><th>Hold While Dragging</th><th>Tool</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>None</td><td>Cyan pen</td></tr>
+        <tr><td><kbd>Shift</kbd></td><td>Yellow marker</td></tr>
+        <tr><td><kbd>Ctrl</kbd></td><td>Straight line</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd></td><td>Arrow line</td></tr>
+        <tr><td><kbd>Alt</kbd></td><td>Rectangle</td></tr>
+        <tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd></td><td>Circle</td></tr>
+        <tr><td><kbd>Alt</kbd>+<kbd>Ctrl</kbd></td><td>Filled circle</td></tr>
+        <tr><td><kbd>Mouse Button2</kbd></td><td>Smooth path</td></tr>
+        <tr><td><kbd>Mouse Button2</kbd> + <kbd>Shift</kbd></td><td>Orthogonal path</td></tr>
+        <tr><td><kbd>Mouse Button3</kbd></td><td>Eraser</td></tr>
+    </tbody>
+</table>
+
+<p>Gromit-MPX does not provide a native text tool. For text labels, use your screenshot editor or post-processing step.</p>
+
+<h2>Presenter Dash (Animated Segments)</h2>
+
+<p>The <code>presenter_dash.sh</code> script draws animated line segments between an anchor point and the current cursor position using <code>xdotool</code> for coordinates.</p>
+
+<div class="card card-accent">
+    <h3>Workflow</h3>
+    <div class="diagram"><span class="wrn">1.</span> Position cursor where you want the <span class="grn">start point</span>
+<span class="wrn">2.</span> <kbd>Alt+F11</kbd>  →  sets the <span class="hl">anchor</span>
+<span class="wrn">3.</span> Move cursor to the <span class="grn">end point</span>
+<span class="wrn">4.</span> <kbd>F11</kbd>  →  draws a <span class="hl">dashed segment</span> from anchor → cursor
+   <span class="dim">(anchor advances to new cursor position automatically)</span>
+<span class="wrn">5.</span> Repeat step 3-4 to chain segments together</div>
+</div>
+
+<h3>Segment Styles</h3>
+
+<table>
+    <thead>
+        <tr><th>Key</th><th>Style</th><th>Use Case</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><kbd>F11</kbd></td><td>── ── ── (dashed)</td><td>Data flow, process steps</td></tr>
+        <tr><td><kbd>Shift</kbd>+<kbd>F11</kbd></td><td>· · · · · (dotted)</td><td>Optional paths, dependencies</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>F11</kbd></td><td>────── (solid)</td><td>Strong connections</td></tr>
+        <tr><td><kbd>Mod4</kbd>+<kbd>F11</kbd></td><td>───▶ (arrow)</td><td>Direction, causality</td></tr>
+    </tbody>
+</table>
+
+<h3>CLI Usage</h3>
+
+<pre><code>./presenter_dash.sh anchor   # Set start point
+./presenter_dash.sh dash     # Draw dashed segment
+./presenter_dash.sh dot      # Draw dotted segment
+./presenter_dash.sh solid    # Draw solid segment
+./presenter_dash.sh arrow    # Draw arrow segment
+./presenter_dash.sh clear    # Clear all drawings
+./presenter_dash.sh undo     # Undo last stroke
+./presenter_dash.sh redo     # Redo stroke
+./presenter_dash.sh reset    # Remove anchor point</code></pre>

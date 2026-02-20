@@ -1,0 +1,195 @@
+<!-- TITLE: Troubleshooting -->
+<!-- NAV: troubleshooting -->
+
+<h1>Troubleshooting</h1>
+
+<p>Common issues and their solutions, organized by tool.</p>
+
+<h2>Build Issues</h2>
+
+<details open>
+    <summary><strong>gcc: error: gtk+-3.0 not found</strong></summary>
+    <p>GTK3 development headers are missing. Install them:</p>
+    <pre><code>sudo apt install libgtk-3-dev</code></pre>
+</details>
+
+<details>
+    <summary><strong>pkg-config --libs gtk+-3.0 fails</strong></summary>
+    <p>Ensure <code>pkg-config</code> is installed and GTK3 <code>.pc</code> files are on the path:</p>
+    <pre><code>sudo apt install pkg-config libgtk-3-dev
+pkg-config --modversion gtk+-3.0   # should print e.g. 3.24.33</code></pre>
+</details>
+
+<details>
+    <summary><strong>Permission denied when running build scripts</strong></summary>
+    <p>Make the build scripts executable:</p>
+    <pre><code>chmod +x build_*.sh</code></pre>
+</details>
+
+<h2>Cursor Spotlight</h2>
+
+<details>
+    <summary><strong>Spotlight window doesn't appear</strong></summary>
+    <p>Check X11 composite extension is enabled. Spotlight requires compositing for transparency:</p>
+    <pre><code># Verify compositing
+xdpyinfo | grep Composite
+
+# If missing, ensure a compositor is running (picom, compton, xcompmgr)
+picom --daemon</code></pre>
+</details>
+
+<details>
+    <summary><strong>Spotlight appears but no transparency</strong></summary>
+    <p>Your compositor may not support ARGB visuals. Try:</p>
+    <pre><code># Start with explicit 32-bit visual
+./cursor_spotlight --visual 32
+
+# Or check picom configuration
+picom --backend glx --daemon</code></pre>
+</details>
+
+<details>
+    <summary><strong>Spotlight flickers or has wrong position</strong></summary>
+    <p>Multi-monitor setups may cause offset issues. Specify the target display:</p>
+    <pre><code>./cursor_spotlight --display :0 --screen 0</code></pre>
+</details>
+
+<h2>Gromit-MPX</h2>
+
+<details>
+    <summary><strong>F6 does nothing / Gromit not responding</strong></summary>
+    <p>Gromit-MPX may not be running. Start it first:</p>
+    <pre><code>gromit-mpx --key F6 --undo-key F5 &amp;
+# Then press F6 to toggle drawing mode</code></pre>
+    <p>If it's running but unresponsive, check for zombie processes:</p>
+    <pre><code>pkill -f gromit-mpx
+gromit-mpx --key F6 --undo-key F5 &amp;</code></pre>
+</details>
+
+<details>
+    <summary><strong>Drawing strokes are invisible</strong></summary>
+    <p>This usually means the compositor isn't providing transparency. Solutions:</p>
+    <ul>
+        <li>Ensure a compositor is running (<code>picom</code>, <code>xcompmgr</code>)</li>
+        <li>Check Gromit's tool config: <code>~/.config/gromit-mpx.cfg</code></li>
+    </ul>
+</details>
+
+<details>
+    <summary><strong>Custom Gromit profile not loading</strong></summary>
+    <p>Run the installer script to set up the Antsand Gromit profile:</p>
+    <pre><code>./install_gromit_profile.sh
+gromit-mpx -q >/dev/null 2>&amp;1 || true
+gromit-mpx --key F6 --undo-key F5 >/dev/null 2>&amp;1 &amp;</code></pre>
+    <p>This copies the custom tool definitions to <code>~/.config/gromit-mpx.cfg</code>.</p>
+</details>
+
+<details>
+    <summary><strong>Shift drag does not switch to expected shape</strong></summary>
+    <p>Verify the profile is installed and Gromit was restarted after installation:</p>
+    <pre><code>./install_gromit_profile.sh
+gromit-mpx -q >/dev/null 2>&amp;1 || true
+gromit-mpx --key F6 --undo-key F5 >/dev/null 2>&amp;1 &amp;</code></pre>
+    <p>Expected profile mappings include: <kbd>Shift</kbd> marker, <kbd>Ctrl</kbd> line, <kbd>Alt</kbd> rectangle, <kbd>Alt</kbd>+<kbd>Shift</kbd> circle, <kbd>Alt</kbd>+<kbd>Ctrl</kbd> filled circle.</p>
+    <p>Gromit-MPX does not provide a text tool.</p>
+</details>
+
+<h2>Presenter Dash</h2>
+
+<details>
+    <summary><strong>"xdotool: command not found"</strong></summary>
+    <pre><code>sudo apt install xdotool</code></pre>
+</details>
+
+<details>
+    <summary><strong>Segments draw in wrong position</strong></summary>
+    <p>The anchor point may be stale. Reset and re-anchor:</p>
+    <pre><code>./presenter_dash.sh reset
+./presenter_dash.sh anchor</code></pre>
+</details>
+
+<h2>Control Center</h2>
+
+<details>
+    <summary><strong>Night Light toggle has no effect</strong></summary>
+    <p>Ensure <code>redshift</code> is installed:</p>
+    <pre><code>sudo apt install redshift
+# Test manually
+redshift -O 3500   # warm
+redshift -x         # reset</code></pre>
+</details>
+
+<details>
+    <summary><strong>Window appears but tabs are empty</strong></summary>
+    <p>GTK theme may be missing. Install a complete theme package:</p>
+    <pre><code>sudo apt install adwaita-icon-theme-full gnome-themes-extra</code></pre>
+</details>
+
+<h2>AwesomeWM</h2>
+
+<details>
+    <summary><strong>Config fails to load / black screen after restart</strong></summary>
+    <ol>
+        <li>Switch to TTY: <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F2</kbd></li>
+        <li>Check the error: <code>awesome --check ~/.config/awesome/rc.lua</code></li>
+        <li>Restore backup: <code>cp ~/.config/awesome/rc.lua.bak ~/.config/awesome/rc.lua</code></li>
+        <li>Return to GUI: <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F7</kbd></li>
+        <li>Reload: <code>awesome-client 'awesome.restart()'</code></li>
+    </ol>
+</details>
+
+<details>
+    <summary><strong>Hotkeys conflict with other applications</strong></summary>
+    <p>Check for conflicts in AwesomeWM's help popup (<kbd>Mod4</kbd>+<kbd>s</kbd>). Common conflicts:</p>
+    <ul>
+        <li><kbd>F6</kbd> / <kbd>F11</kbd> — some browsers use these for address bar / fullscreen</li>
+        <li>Solution: use the keys only when Gromit is active, or remap in <code>rc.lua</code></li>
+    </ul>
+</details>
+
+<details>
+    <summary><strong>rescue-windows.sh not working</strong></summary>
+    <p>The script uses <code>wmctrl</code>. Install it:</p>
+    <pre><code>sudo apt install wmctrl</code></pre>
+</details>
+
+<h2>GTK DSL</h2>
+
+<details>
+    <summary><strong>Parser error: "unknown widget type"</strong></summary>
+    <p>Check spelling of the widget type. Valid types: <code>box</code>, <code>grid</code>, <code>label</code>, <code>button</code>, <code>switch</code>, <code>scale</code>, <code>entry</code>, <code>image</code>.</p>
+</details>
+
+<details>
+    <summary><strong>Widget doesn't appear in window</strong></summary>
+    <p>Every widget (except root) needs a <code>parent</code> property pointing to a valid <code>id</code>:</p>
+    <pre><code># Wrong — no parent
+label text="Hello"
+
+# Right
+label parent=root text="Hello"</code></pre>
+</details>
+
+<h2>General</h2>
+
+<details>
+    <summary><strong>How to check all dependencies at once</strong></summary>
+    <pre><code># Quick dependency check
+for cmd in gcc pkg-config gromit-mpx xdotool redshift picom wmctrl awesome; do
+    printf "%-15s" "$cmd"
+    if command -v "$cmd" &gt;/dev/null 2&gt;&amp;1; then
+        echo "✓ $(command -v $cmd)"
+    else
+        echo "✗ NOT FOUND"
+    fi
+done</code></pre>
+</details>
+
+<details>
+    <summary><strong>How to report a bug</strong></summary>
+    <p>Include the following in your report:</p>
+    <pre><code>uname -a
+awesome --version
+pkg-config --modversion gtk+-3.0
+echo $XDG_SESSION_TYPE</code></pre>
+</details>

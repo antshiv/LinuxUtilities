@@ -1,0 +1,92 @@
+<!-- TITLE: Control Center -->
+<!-- NAV: tools -->
+
+<h1>Control Center</h1>
+
+<p>A native GTK3 desktop utility that consolidates frequently used desktop controls into a single tabbed window. Built in C with no runtime dependencies beyond GTK3.</p>
+
+<h2>Build &amp; Run</h2>
+
+<pre><code>cd LinuxUtilities
+./build_linux_control_center.sh   # compiles linux_control_center.c
+./linux_control_center              # launch the app</code></pre>
+
+<p>Or compile manually:</p>
+
+<pre><code>gcc -o linux_control_center linux_control_center.c \
+    $(pkg-config --cflags --libs gtk+-3.0) -lm</code></pre>
+
+<h2>Features</h2>
+
+<div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin: 1.5rem 0;">
+
+    <div class="card">
+        <h3><span class="wrn">🌙</span> Night Light</h3>
+        <p>Adjusts screen color temperature using <code>redshift</code>. Toggle between warm (3500K) for evening and neutral (6500K) for daytime — easy on the eyes during long sessions.</p>
+        <table>
+            <tr><td>Warm</td><td><code>redshift -O 3500</code></td></tr>
+            <tr><td>Neutral</td><td><code>redshift -x</code></td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3><span class="wrn">📸</span> Screenshots</h3>
+        <p>Quick access to common screenshot workflows — full screen, active window, or region selection. Saves to <code>~/Screenshots/</code> with timestamps.</p>
+    </div>
+
+    <div class="card">
+        <h3><span class="wrn">⌨️</span> Shortcuts Viewer</h3>
+        <p>In-app reference for all AwesomeWM keybindings. Displays the same shortcut tables from the <a href="shortcuts.html">Shortcuts</a> docs page in native GTK widgets.</p>
+    </div>
+
+    <div class="card">
+        <h3><span class="wrn">🔊</span> Audio Controls</h3>
+        <p>PulseAudio / PipeWire volume sliders with per-application mixing. Switch outputs (speakers ↔ headphones) without opening pavucontrol.</p>
+    </div>
+
+</div>
+
+<h2>Architecture</h2>
+
+<div class="card card-accent">
+    <div class="diagram">┌───────────────────────────────────────────────── Control Center ─────────────────────────────────────────────────┐
+│                                                                                                                  │
+│  ┌──────────── GtkNotebook (tabbed container) ────────────────────────────────────────────────────────────────┐  │
+│  │                                                                                                            │  │
+│  │   ┌─ Tab 1: Night Light ─┐  ┌─ Tab 2: Screenshots ─┐  ┌─ Tab 3: Shortcuts ─┐  ┌─ Tab 4: Audio ────┐    │  │
+│  │   │                      │  │                       │  │                     │  │                    │    │  │
+│  │   │  GtkScale (temp)     │  │  GtkButton (full)     │  │  GtkTreeView        │  │  GtkScale (vol)    │    │  │
+│  │   │  GtkSwitch (on/off)  │  │  GtkButton (region)   │  │  (shortcut list)    │  │  GtkComboBox       │    │  │
+│  │   │  GtkLabel (status)   │  │  GtkButton (window)   │  │                     │  │  (output device)   │    │  │
+│  │   │                      │  │                       │  │                     │  │                    │    │  │
+│  │   └──────────────────────┘  └───────────────────────┘  └─────────────────────┘  └────────────────────┘    │  │
+│  │                                                                                                            │  │
+│  └────────────────────────────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                                                  │
+│  System calls:   redshift    │    gnome-screenshot / maim    │    (internal)    │    pactl / pw-cli             │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘</div>
+</div>
+
+<h2>Configuration</h2>
+
+<p>The control center reads its configuration from the C source at compile time. To customize:</p>
+
+<table>
+    <thead>
+        <tr><th>Setting</th><th>Location in Source</th><th>Default</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>Night Light warm temp</td><td><code>NIGHT_TEMP_WARM</code></td><td>3500K</td></tr>
+        <tr><td>Screenshot save dir</td><td><code>SCREENSHOT_DIR</code></td><td><code>~/Screenshots</code></td></tr>
+        <tr><td>Window size</td><td><code>gtk_window_set_default_size</code></td><td>600×400</td></tr>
+    </tbody>
+</table>
+
+<h2>AwesomeWM Integration</h2>
+
+<p>Launch the Control Center from AwesomeWM with a hotkey:</p>
+
+<pre><code>-- rc.lua
+awful.key({ modkey }, "c", function()
+    awful.spawn("linux_control_center")
+end, {description = "open control center", group = "utilities"})</code></pre>

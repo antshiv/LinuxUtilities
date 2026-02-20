@@ -1,0 +1,88 @@
+<!-- TITLE: Cursor Spotlight -->
+<!-- NAV: tools -->
+
+<h1>Cursor Spotlight</h1>
+
+<p>A lightweight X11 overlay that dims the entire screen except a configurable circle around your mouse cursor. Perfect for presentations, screen recordings, and pair programming.</p>
+
+<div class="alert alert-info">
+    <span class="alert-icon">ℹ</span>
+    <div><strong>Tech stack:</strong> Pure C · libX11 · XFixes · XRender · Cairo · ~350 lines</div>
+</div>
+
+<h2>Build &amp; Run</h2>
+
+<pre><code># Install dependencies
+sudo apt install pkg-config libx11-dev libxext-dev libxfixes-dev libxrender-dev libcairo2-dev
+
+# Build
+./build_cursor_spotlight.sh
+
+# Run with defaults
+./cursor_spotlight
+
+# Run with custom settings
+./cursor_spotlight --radius 180 --dim 0.68 --fps 50</code></pre>
+
+<h2>Command-Line Flags</h2>
+
+<table>
+    <thead>
+        <tr><th>Flag</th><th>Default</th><th>Description</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><code>--radius</code></td><td>150</td><td>Spotlight circle radius in pixels</td></tr>
+        <tr><td><code>--dim</code></td><td>0.6</td><td>Dimming opacity (0.0 = transparent, 1.0 = black)</td></tr>
+        <tr><td><code>--fps</code></td><td>60</td><td>Refresh rate for the overlay</td></tr>
+    </tbody>
+</table>
+
+<h2>AwesomeWM Integration</h2>
+
+<p>The <code>rc.lua</code> config registers these hotkeys:</p>
+
+<table>
+    <thead>
+        <tr><th>Key</th><th>Action</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><kbd>F7</kbd></td><td>Toggle spotlight on/off</td></tr>
+        <tr><td><kbd>F9</kbd> / <kbd>F10</kbd></td><td>Adjust dimming (less / more)</td></tr>
+        <tr><td><kbd>Shift</kbd>+<kbd>F9</kbd> / <kbd>Shift</kbd>+<kbd>F10</kbd></td><td>Adjust radius (smaller / larger)</td></tr>
+    </tbody>
+</table>
+
+<p>The Utilities widget in the wibar also has <strong>Cursor Spotlight</strong> (toggle) and <strong>Build Spotlight</strong> (recompile) buttons.</p>
+
+<h2>How It Works</h2>
+
+<div class="card card-accent">
+    <h3>Architecture</h3>
+    <div class="diagram">┌─────────────────────────────────────────────────────┐
+│                   X11 Root Window                   │
+│                                                     │
+│  ┌──────────────────────────────────────────────┐   │
+│  │  <span class="wrn">Override-Redirect Window</span> (full-screen)       │   │
+│  │  ┌────────────────────────────────────────┐  │   │
+│  │  │ <span class="hl">Cairo Surface</span>                         │  │   │
+│  │  │  • Fill entire surface with dim color  │  │   │
+│  │  │  • <span class="grn">Punch spotlight circle</span> at cursor   │  │   │
+│  │  │  • XFixes tracks cursor position       │  │   │
+│  │  └────────────────────────────────────────┘  │   │
+│  │  <span class="dim">input-passthrough: clicks go to windows below</span>│   │
+│  └──────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────┘</div>
+</div>
+
+<details>
+    <summary>Key Implementation Details</summary>
+    <div class="accordion-content">
+        <ul>
+            <li><strong>Override-redirect window</strong> — bypasses the window manager so there's no title bar or focus stealing.</li>
+            <li><strong>XFixes cursor tracking</strong> — uses <code>XFixesSelectCursorInput</code> to get cursor position events without polling.</li>
+            <li><strong>Input passthrough</strong> — the overlay window has its input region set to empty, so all clicks and keypresses pass through to the window below.</li>
+            <li><strong>Cairo compositing</strong> — draws a full-screen semi-transparent rectangle, then punches a clear circle using <code>CAIRO_OPERATOR_CLEAR</code>.</li>
+            <li><strong>vsync via usleep</strong> — simple frame-rate limiting to avoid burning CPU.</li>
+        </ul>
+    </div>
+</details>
