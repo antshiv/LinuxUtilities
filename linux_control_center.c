@@ -6463,6 +6463,23 @@ static GtkWidget *build_utilities_tab(AppState *state) {
         "\"$bin\" --radius 180 --dim 0.68 --fps 50 >/dev/null 2>&1 & fi'";
     const gchar *spotlight_build_cmd =
         "bash -lc 'cd \"$HOME/Workspace/LinuxUtilities\" && ./build_cursor_spotlight.sh'";
+    const gchar *gromit_toggle_cmd =
+        "bash -lc 'if ! command -v gromit-mpx >/dev/null 2>&1; then exit 1; fi; "
+        "if ! pgrep -u \"$USER\" -x gromit-mpx >/dev/null 2>&1; then "
+        "gromit-mpx --key F6 --undo-key F5 >/dev/null 2>&1 & sleep 0.25; fi; "
+        "gromit-mpx -t >/dev/null 2>&1'";
+    const gchar *gromit_clear_cmd =
+        "bash -lc 'if pgrep -u \"$USER\" -x gromit-mpx >/dev/null 2>&1; then gromit-mpx -c >/dev/null 2>&1; fi'";
+    const gchar *presenter_anchor_cmd =
+        "bash -lc 'script=\"$HOME/Workspace/LinuxUtilities/presenter_dash.sh\"; [ -x \"$script\" ] || exit 1; \"$script\" anchor'";
+    const gchar *presenter_dash_cmd =
+        "bash -lc 'script=\"$HOME/Workspace/LinuxUtilities/presenter_dash.sh\"; [ -x \"$script\" ] || exit 1; \"$script\" dash'";
+    const gchar *presenter_dot_cmd =
+        "bash -lc 'script=\"$HOME/Workspace/LinuxUtilities/presenter_dash.sh\"; [ -x \"$script\" ] || exit 1; \"$script\" dot'";
+    const gchar *presenter_arrow_cmd =
+        "bash -lc 'script=\"$HOME/Workspace/LinuxUtilities/presenter_dash.sh\"; [ -x \"$script\" ] || exit 1; \"$script\" arrow'";
+    const gchar *shortcut_sheet_cmd =
+        "bash -lc 'sheet=\"$HOME/Workspace/LinuxUtilities/SHORTCUTS_CHEATSHEET.md\"; [ -f \"$sheet\" ] || exit 1; xdg-open \"$sheet\" >/dev/null 2>&1'";
     GtkWidget *b1 = create_utility_button("Pavucontrol", "Audio mixer and device routing", "pavucontrol", state);
     GtkWidget *b2 = create_utility_button("CC Switch", "Project/context switch helper", "cc-switch", state);
     GtkWidget *b3 = create_utility_button("Flameshot", "Capture area screenshot", "flameshot gui", state);
@@ -6473,6 +6490,13 @@ static GtkWidget *build_utilities_tab(AppState *state) {
     GtkWidget *b8 = create_utility_button("Terminator", "Open terminal workspace", "terminator", state);
     GtkWidget *b9 = create_utility_button("Cursor Spotlight", "Toggle cursor highlight overlay", spotlight_toggle_cmd, state);
     GtkWidget *b10 = create_utility_button("Build Spotlight", "Compile spotlight binary", spotlight_build_cmd, state);
+    GtkWidget *b11 = create_utility_button("Gromit Draw", "Toggle screen drawing mode", gromit_toggle_cmd, state);
+    GtkWidget *b12 = create_utility_button("Gromit Clear", "Clear all current strokes", gromit_clear_cmd, state);
+    GtkWidget *b13 = create_utility_button("Dash Anchor", "Set animated path anchor", presenter_anchor_cmd, state);
+    GtkWidget *b14 = create_utility_button("Dash Segment", "Animated dashed segment to cursor", presenter_dash_cmd, state);
+    GtkWidget *b15 = create_utility_button("Dot Segment", "Animated dotted segment to cursor", presenter_dot_cmd, state);
+    GtkWidget *b16 = create_utility_button("Arrow Segment", "Animated arrow segment to cursor", presenter_arrow_cmd, state);
+    GtkWidget *b17 = create_utility_button("Shortcut Cheat Sheet", "Open full key/mouse/shell shortcuts", shortcut_sheet_cmd, state);
 
     gtk_style_context_add_class(gtk_widget_get_style_context(root), "panel-root");
 
@@ -6496,12 +6520,19 @@ static GtkWidget *build_utilities_tab(AppState *state) {
     gtk_grid_attach(GTK_GRID(grid), b8, 1, 3, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), b9, 0, 4, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), b10, 1, 4, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), b11, 0, 5, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), b12, 1, 5, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), b13, 0, 6, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), b14, 1, 6, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), b15, 0, 7, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), b16, 1, 7, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), b17, 0, 8, 2, 1);
     gtk_widget_set_hexpand(grid, TRUE);
     gtk_widget_set_vexpand(grid, TRUE);
     gtk_widget_set_halign(grid, GTK_ALIGN_FILL);
 
     gtk_label_set_text(GTK_LABEL(hotkey_hint),
-                       "Spotlight hotkeys (AwesomeWM): F7 toggle, F9/F10 dim, Shift+F9/F10 radius.");
+                       "F6 draw; F11 dash path (Alt=set anchor, Shift=dot, Ctrl=solid, Mod4=arrow); F7 spotlight; F8/Print capture.");
     gtk_label_set_xalign(GTK_LABEL(hotkey_hint), 0.0);
     gtk_label_set_line_wrap(GTK_LABEL(hotkey_hint), TRUE);
     gtk_style_context_add_class(gtk_widget_get_style_context(hotkey_hint), "meta-info");

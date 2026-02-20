@@ -48,6 +48,45 @@ The `Utilities` tab now includes:
 - `Cursor Spotlight` (toggle)
 - `Build Spotlight` (compile helper)
 
+## Presenter Drawing (Epic Pen Style)
+
+Install:
+
+```bash
+sudo apt install gromit-mpx xdotool
+```
+
+AwesomeWM hotkeys in `rc.lua`:
+
+- `F6`: toggle drawing mode
+- `Shift+F6`: clear all strokes
+- `Ctrl+F6`: undo stroke
+- `Ctrl+Shift+F6`: redo stroke
+- `Alt+F6`: toggle overlay visibility
+- `Ctrl+Alt+F6`: quit overlay
+- `Alt+F11`: set presenter-dash anchor at current cursor
+- `F11`: draw animated dashed segment from anchor to cursor (anchor advances)
+- `Shift+F11`: draw animated dotted segment
+- `Ctrl+F11`: draw animated solid segment
+- `Mod4+F11`: draw animated arrow segment
+- `Ctrl+Alt+F11`: reset presenter-dash anchor
+
+`Utilities` tab helpers:
+- `Gromit Draw` (toggle draw mode)
+- `Gromit Clear` (clear strokes)
+- `Dash Anchor`, `Dash Segment`, `Dot Segment`, `Arrow Segment` (real-time flow overlays)
+- `Shortcut Cheat Sheet` (open complete keyboard/mouse/shell mapping)
+
+Presenter dash helper script:
+- `presenter_dash.sh` supports: `anchor`, `dash`, `dot`, `solid`, `arrow`, `clear`, `undo`, `redo`, `reset`
+
+## Shortcut Cheat Sheet
+
+For the full list of shortcuts (AwesomeWM keys, gromit/presenter controls, mouse side buttons, widget clicks, shell navigation, and interactive browse controls), use:
+
+- File: `SHORTCUTS_CHEATSHEET.md`
+- Utility tab button: `Shortcut Cheat Sheet`
+
 ## Desktop GUI Control Center
 
 - `linux_control_center.c`: GTK desktop app with:

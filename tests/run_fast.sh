@@ -9,6 +9,7 @@ echo "[fast] Bash syntax checks"
 for script in \
     build_linux_control_center.sh \
     build_cursor_spotlight.sh \
+    presenter_dash.sh \
     test_linux_control_center_smoke.sh \
     import_screenshots.sh \
     redshift.sh \

@@ -88,6 +88,7 @@ local spotlight_toggle_lock = false
 local spotlight_radius = 180
 local spotlight_dim = 0.68
 local spotlight_fps = 50
+local gromit_action_lock = false
 local audio_notification_id = nil
 local audio_state = { volume = "?", mute = "unknown", sink = "unknown" }
 local battery_state = { status = "unknown", percent = "?", time = "" }
@@ -492,6 +493,124 @@ local function adjust_cursor_spotlight(radius_delta, dim_delta)
         spotlight_toggle_lock = true
         start_cursor_spotlight(true, false)
     end)
+end
+
+local function release_gromit_action_lock()
+    gears.timer.start_new(0.15, function()
+        gromit_action_lock = false
+        return false
+    end)
+end
+
+local function notify_gromit_result(text, is_warn)
+    naughty.notify({
+        preset = is_warn and naughty.config.presets.warn or nil,
+        title = "Gromit Presenter",
+        text = text,
+        timeout = 1.4,
+    })
+end
+
+local function control_gromit_mpx(control_flag, success_text)
+    if gromit_action_lock then
+        return
+    end
+    gromit_action_lock = true
+
+    awful.spawn.easy_async_with_shell(string.format([[
+        if ! command -v gromit-mpx >/dev/null 2>&1; then
+            echo missing
+            exit 2
+        fi
+        if ! pgrep -u "$USER" -x gromit-mpx >/dev/null 2>&1; then
+            gromit-mpx --key F6 --undo-key F5 >/dev/null 2>&1 &
+            sleep 0.25
+        fi
+        if ! pgrep -u "$USER" -x gromit-mpx >/dev/null 2>&1; then
+            echo failed
+            exit 3
+        fi
+        gromit-mpx %s >/dev/null 2>&1 || exit 4
+        echo ok
+    ]], control_flag), function(stdout, _, _, exit_code)
+        local result = (stdout or ""):gsub("%s+$", "")
+        if result == "missing" then
+            notify_gromit_result("Install gromit-mpx first.", true)
+        elseif exit_code ~= 0 or result ~= "ok" then
+            notify_gromit_result("Gromit command failed.", true)
+        elseif success_text and success_text ~= "" then
+            notify_gromit_result(success_text, false)
+        end
+        release_gromit_action_lock()
+    end)
+end
+
+local function toggle_gromit_draw()
+    control_gromit_mpx("-t", "Draw mode toggled.")
+end
+
+local function clear_gromit_draw()
+    control_gromit_mpx("-c", "Drawings cleared.")
+end
+
+local function undo_gromit_draw()
+    control_gromit_mpx("-z", "Undid last stroke.")
+end
+
+local function redo_gromit_draw()
+    control_gromit_mpx("-y", "Redid stroke.")
+end
+
+local function toggle_gromit_visibility()
+    control_gromit_mpx("-v", "Overlay visibility toggled.")
+end
+
+local function quit_gromit()
+    control_gromit_mpx("-q", "Gromit overlay stopped.")
+end
+
+local function run_presenter_dash(mode)
+    awful.spawn.easy_async_with_shell(string.format([[
+        script="$HOME/Workspace/LinuxUtilities/presenter_dash.sh"
+        if [ ! -x "$script" ]; then
+            echo missing
+            exit 2
+        fi
+        "$script" %s >/dev/null 2>&1
+    ]], shell_quote(mode or "dash")), function(stdout, _, _, exit_code)
+        local result = (stdout or ""):gsub("%s+$", "")
+        if result == "missing" or exit_code ~= 0 then
+            naughty.notify({
+                preset = naughty.config.presets.warn,
+                title = "Presenter Dash",
+                text = "Install xdotool and keep LinuxUtilities/presenter_dash.sh executable.",
+            })
+        end
+    end)
+end
+
+local function presenter_dash_anchor()
+    run_presenter_dash("anchor")
+end
+
+local function presenter_dash_dash()
+    run_presenter_dash("dash")
+end
+
+local function presenter_dash_dot()
+    run_presenter_dash("dot")
+end
+
+local function presenter_dash_solid()
+    run_presenter_dash("solid")
+end
+
+local function presenter_dash_arrow()
+    run_presenter_dash("arrow")
+end
+
+local function presenter_dash_reset()
+    run_presenter_dash("reset")
 end
 
 local function expand_tilde_path(path)
@@ -1216,6 +1335,30 @@ globalkeys = gears.table.join(
     -- Standard program
     awful.key({ modkey,           }, "Return", function () awful.spawn(terminal) end,
               {description = "open a terminal", group = "launcher"}),
+    awful.key({                   }, "F6", toggle_gromit_draw,
+              {description = "toggle presenter drawing (gromit)", group = "launcher"}),
+    awful.key({ "Shift"           }, "F6", clear_gromit_draw,
+              {description = "clear presenter drawing (gromit)", group = "launcher"}),
+    awful.key({ "Control"         }, "F6", undo_gromit_draw,
+              {description = "undo presenter stroke (gromit)", group = "launcher"}),
+    awful.key({ "Control", "Shift"}, "F6", redo_gromit_draw,
+              {description = "redo presenter stroke (gromit)", group = "launcher"}),
+    awful.key({ "Mod1"            }, "F6", toggle_gromit_visibility,
+              {description = "toggle presenter overlay visibility (gromit)", group = "launcher"}),
+    awful.key({ "Control", "Mod1" }, "F6", quit_gromit,
+              {description = "quit presenter overlay (gromit)", group = "launcher"}),
+    awful.key({ "Mod1"            }, "F11", presenter_dash_anchor,
+              {description = "set presenter dash anchor", group = "launcher"}),
+    awful.key({                   }, "F11", presenter_dash_dash,
+              {description = "draw animated dashed segment", group = "launcher"}),
+    awful.key({ "Shift"           }, "F11", presenter_dash_dot,
+              {description = "draw animated dotted segment", group = "launcher"}),
+    awful.key({ "Control"         }, "F11", presenter_dash_solid,
+              {description = "draw animated solid segment", group = "launcher"}),
+    awful.key({ modkey            }, "F11", presenter_dash_arrow,
+              {description = "draw animated arrow segment", group = "launcher"}),
+    awful.key({ "Control", "Mod1" }, "F11", presenter_dash_reset,
+              {description = "reset presenter dash anchor", group = "launcher"}),
     awful.key({                   }, "F7", toggle_cursor_spotlight,
               {description = "toggle cursor spotlight", group = "launcher"}),
     awful.key({                   }, "F9", function () adjust_cursor_spotlight(0, -0.05) end,
