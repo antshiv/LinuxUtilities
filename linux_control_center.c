@@ -231,6 +231,8 @@ typedef struct {
     gboolean shots_editor_inline_active;
 
     GtkWidget *utils_status;
+    GtkWidget *shortcuts_status;
+    GtkWidget *main_notebook;
 
     gchar *repo_root;
     gchar *launch_dir;
@@ -687,6 +689,52 @@ static void apply_css_theme(AppState *state, gboolean dark_mode) {
         "}"
         ".utility-btn label {"
         "  font-weight: 600;"
+        "}"
+        ".shortcut-scroll > viewport {"
+        "  background: transparent;"
+        "}"
+        ".shortcut-card {"
+        "  background: #172231;"
+        "  border: 1px solid #35506f;"
+        "  border-radius: 12px;"
+        "}"
+        ".shortcut-flow {"
+        "  background: #12263c;"
+        "  border: 1px solid #2f6ea7;"
+        "  border-radius: 10px;"
+        "  padding: 10px 12px;"
+        "}"
+        ".shortcut-flow label {"
+        "  color: #d8ebff;"
+        "}"
+        ".shortcut-card-title {"
+        "  color: #f1f6ff;"
+        "  font-size: 12px;"
+        "  font-weight: 700;"
+        "}"
+        ".shortcut-row {"
+        "  background: rgba(26, 44, 66, 0.62);"
+        "  border: 1px solid #28415e;"
+        "  border-radius: 8px;"
+        "  padding: 6px 8px;"
+        "}"
+        ".shortcut-keychip {"
+        "  background: #0f3559;"
+        "  color: #eef7ff;"
+        "  border: 1px solid #4588c7;"
+        "  border-radius: 7px;"
+        "  padding: 4px 8px;"
+        "  font-family: 'Ubuntu Mono', monospace;"
+        "  font-size: 10px;"
+        "  font-weight: 700;"
+        "}"
+        ".shortcut-action {"
+        "  color: #ecf3ff;"
+        "  font-size: 11px;"
+        "  font-weight: 700;"
+        "}"
+        ".shortcut-hint {"
+        "  color: #acc0d8;"
         "}";
     const gchar *light_css =
         "* {"
@@ -1026,6 +1074,52 @@ static void apply_css_theme(AppState *state, gboolean dark_mode) {
         "}"
         ".utility-btn label {"
         "  font-weight: 600;"
+        "}"
+        ".shortcut-scroll > viewport {"
+        "  background: transparent;"
+        "}"
+        ".shortcut-card {"
+        "  background: #fbfdff;"
+        "  border: 1px solid #aac6e3;"
+        "  border-radius: 12px;"
+        "}"
+        ".shortcut-flow {"
+        "  background: #eaf5ff;"
+        "  border: 1px solid #7aaddb;"
+        "  border-radius: 10px;"
+        "  padding: 10px 12px;"
+        "}"
+        ".shortcut-flow label {"
+        "  color: #1d3f5d;"
+        "}"
+        ".shortcut-card-title {"
+        "  color: #1f3043;"
+        "  font-size: 12px;"
+        "  font-weight: 700;"
+        "}"
+        ".shortcut-row {"
+        "  background: #f3f8ff;"
+        "  border: 1px solid #c5d9ef;"
+        "  border-radius: 8px;"
+        "  padding: 6px 8px;"
+        "}"
+        ".shortcut-keychip {"
+        "  background: #e3f0ff;"
+        "  color: #143754;"
+        "  border: 1px solid #84add2;"
+        "  border-radius: 7px;"
+        "  padding: 4px 8px;"
+        "  font-family: 'Ubuntu Mono', monospace;"
+        "  font-size: 10px;"
+        "  font-weight: 700;"
+        "}"
+        ".shortcut-action {"
+        "  color: #1e2f40;"
+        "  font-size: 11px;"
+        "  font-weight: 700;"
+        "}"
+        ".shortcut-hint {"
+        "  color: #486885;"
         "}";
 
     const gchar *css = dark_mode ? dark_css : light_css;
@@ -6259,6 +6353,257 @@ static GtkWidget *create_utility_button(const gchar *title, const gchar *subtitl
     return button;
 }
 
+static void shortcuts_set_status(AppState *state, const gchar *text) {
+    if (!state || !state->shortcuts_status) {
+        return;
+    }
+    set_label_text_trimmed(state->shortcuts_status, text, "Shortcut helper ready.");
+}
+
+static GtkWidget *create_shortcut_row(const gchar *keys, const gchar *action, const gchar *hint) {
+    GtkWidget *row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+    GtkWidget *keys_label = gtk_label_new(keys ? keys : "");
+    GtkWidget *text_col = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+    GtkWidget *action_label = gtk_label_new(action ? action : "");
+    GtkWidget *hint_label = gtk_label_new(hint ? hint : "");
+
+    gtk_style_context_add_class(gtk_widget_get_style_context(row), "shortcut-row");
+    gtk_style_context_add_class(gtk_widget_get_style_context(keys_label), "shortcut-keychip");
+    gtk_style_context_add_class(gtk_widget_get_style_context(action_label), "shortcut-action");
+    gtk_style_context_add_class(gtk_widget_get_style_context(hint_label), "shortcut-hint");
+
+    gtk_label_set_xalign(GTK_LABEL(keys_label), 0.0);
+    gtk_label_set_xalign(GTK_LABEL(action_label), 0.0);
+    gtk_label_set_xalign(GTK_LABEL(hint_label), 0.0);
+    gtk_label_set_line_wrap(GTK_LABEL(action_label), TRUE);
+    gtk_label_set_line_wrap(GTK_LABEL(hint_label), TRUE);
+    gtk_widget_set_size_request(keys_label, 240, -1);
+    gtk_widget_set_hexpand(text_col, TRUE);
+
+    gtk_box_pack_start(GTK_BOX(text_col), action_label, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(text_col), hint_label, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(row), keys_label, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(row), text_col, TRUE, TRUE, 0);
+    return row;
+}
+
+static GtkWidget *create_shortcut_card(const gchar *title, const gchar *subtitle, GtkWidget **body_out) {
+    GtkWidget *card = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    GtkWidget *title_label = gtk_label_new(title ? title : "Shortcuts");
+    GtkWidget *subtitle_label = gtk_label_new(subtitle ? subtitle : "");
+    GtkWidget *body = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+
+    gtk_style_context_add_class(gtk_widget_get_style_context(card), "card");
+    gtk_style_context_add_class(gtk_widget_get_style_context(card), "shortcut-card");
+    gtk_style_context_add_class(gtk_widget_get_style_context(title_label), "shortcut-card-title");
+    gtk_style_context_add_class(gtk_widget_get_style_context(subtitle_label), "meta-info");
+    gtk_container_set_border_width(GTK_CONTAINER(card), 12);
+
+    gtk_label_set_xalign(GTK_LABEL(title_label), 0.0);
+    gtk_label_set_xalign(GTK_LABEL(subtitle_label), 0.0);
+    gtk_label_set_line_wrap(GTK_LABEL(subtitle_label), TRUE);
+    gtk_widget_set_hexpand(body, TRUE);
+
+    gtk_box_pack_start(GTK_BOX(card), title_label, FALSE, FALSE, 0);
+    if (subtitle && *subtitle) {
+        gtk_box_pack_start(GTK_BOX(card), subtitle_label, FALSE, FALSE, 0);
+    }
+    gtk_box_pack_start(GTK_BOX(card), body, FALSE, FALSE, 0);
+
+    if (body_out) {
+        *body_out = body;
+    }
+    return card;
+}
+
+static void on_shortcuts_copy_presenter_flow_clicked(GtkButton *button, gpointer user_data) {
+    AppState *state = user_data;
+    const gchar *flow =
+        "Presenter flow quick sequence:\n"
+        "1) Alt+F11  -> set anchor\n"
+        "2) F11      -> dashed segment\n"
+        "3) Shift+F11 -> dotted segment\n"
+        "4) Mod4+F11 -> arrow segment\n"
+        "5) F6       -> free draw toggle\n"
+        "6) Shift+F6 -> clear strokes\n"
+        "7) F7       -> cursor spotlight";
+
+    (void)button;
+    if (!state || !state->window) {
+        return;
+    }
+    set_clipboard_text(state->window, flow);
+    shortcuts_set_status(state, "Copied presenter flow to clipboard.");
+}
+
+static void on_shortcuts_copy_install_cmd_clicked(GtkButton *button, gpointer user_data) {
+    AppState *state = user_data;
+    const gchar *cmd =
+        "sudo apt install gromit-mpx xdotool flameshot pavucontrol\n"
+        "./build_linux_control_center.sh";
+
+    (void)button;
+    if (!state || !state->window) {
+        return;
+    }
+    set_clipboard_text(state->window, cmd);
+    shortcuts_set_status(state, "Copied install/build command block.");
+}
+
+static void on_shortcuts_open_sheet_clicked(GtkButton *button, gpointer user_data) {
+    AppState *state = user_data;
+    gchar *sheet_path = NULL;
+    gchar *quoted = NULL;
+    gchar *cmd = NULL;
+    gchar *found = NULL;
+
+    (void)button;
+    if (!state || !state->repo_root) {
+        return;
+    }
+
+    sheet_path = g_build_filename(state->repo_root, "SHORTCUTS_CHEATSHEET.md", NULL);
+    if (!g_file_test(sheet_path, G_FILE_TEST_EXISTS)) {
+        shortcuts_set_status(state, "SHORTCUTS_CHEATSHEET.md is missing in repo root.");
+        g_free(sheet_path);
+        return;
+    }
+
+    found = g_find_program_in_path("xdg-open");
+    if (!found) {
+        shortcuts_set_status(state, "xdg-open is not available.");
+        g_free(sheet_path);
+        return;
+    }
+
+    quoted = g_shell_quote(sheet_path);
+    cmd = g_strdup_printf("xdg-open %s", quoted);
+    launch_in_background(cmd);
+    shortcuts_set_status(state, "Opened SHORTCUTS_CHEATSHEET.md.");
+
+    g_free(found);
+    g_free(cmd);
+    g_free(quoted);
+    g_free(sheet_path);
+}
+
+static void on_shortcuts_jump_utilities_clicked(GtkButton *button, gpointer user_data) {
+    AppState *state = user_data;
+
+    (void)button;
+    if (!state || !state->main_notebook || !GTK_IS_NOTEBOOK(state->main_notebook)) {
+        return;
+    }
+
+    gtk_notebook_set_current_page(GTK_NOTEBOOK(state->main_notebook), 2);
+    shortcuts_set_status(state, "Switched to Utilities tab.");
+}
+
+static GtkWidget *build_shortcuts_tab(AppState *state) {
+    GtkWidget *root = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    GtkWidget *title = gtk_label_new("Shortcut Playbook");
+    GtkWidget *subtitle = gtk_label_new("Live-demo controls grouped by workflow so you can present without pausing.");
+    GtkWidget *flow_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 3);
+    GtkWidget *flow_line1 = gtk_label_new("Demo sequence: F7 spotlight -> Alt+F11 anchor -> F11/Shift+F11/Mod4+F11 path -> F6 free draw.");
+    GtkWidget *flow_line2 = gtk_label_new("Reset sequence: Shift+F6 clear, Ctrl+Alt+F6 quit overlay, Ctrl+Alt+F11 reset anchor.");
+    GtkWidget *actions = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    GtkWidget *btn_copy_flow = gtk_button_new_with_label("Copy Presenter Flow");
+    GtkWidget *btn_copy_install = gtk_button_new_with_label("Copy Install/Build");
+    GtkWidget *btn_open_sheet = gtk_button_new_with_label("Open Markdown Sheet");
+    GtkWidget *btn_jump_utils = gtk_button_new_with_label("Jump To Utilities");
+    GtkWidget *scroller = gtk_scrolled_window_new(NULL, NULL);
+    GtkWidget *content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    GtkWidget *status = gtk_label_new("Shortcut helper ready.");
+    GtkWidget *card = NULL;
+    GtkWidget *body = NULL;
+
+    gtk_style_context_add_class(gtk_widget_get_style_context(root), "panel-root");
+    gtk_style_context_add_class(gtk_widget_get_style_context(title), "hero-title");
+    gtk_style_context_add_class(gtk_widget_get_style_context(subtitle), "hero-sub");
+    gtk_style_context_add_class(gtk_widget_get_style_context(flow_box), "shortcut-flow");
+    gtk_style_context_add_class(gtk_widget_get_style_context(scroller), "shortcut-scroll");
+    gtk_style_context_add_class(gtk_widget_get_style_context(status), "status-pill");
+    gtk_style_context_add_class(gtk_widget_get_style_context(actions), "action-row");
+
+    gtk_label_set_xalign(GTK_LABEL(title), 0.0);
+    gtk_label_set_xalign(GTK_LABEL(subtitle), 0.0);
+    gtk_label_set_xalign(GTK_LABEL(flow_line1), 0.0);
+    gtk_label_set_xalign(GTK_LABEL(flow_line2), 0.0);
+    gtk_label_set_xalign(GTK_LABEL(status), 0.0);
+    gtk_label_set_line_wrap(GTK_LABEL(subtitle), TRUE);
+    gtk_label_set_line_wrap(GTK_LABEL(flow_line1), TRUE);
+    gtk_label_set_line_wrap(GTK_LABEL(flow_line2), TRUE);
+    gtk_label_set_line_wrap(GTK_LABEL(status), TRUE);
+
+    style_action_button(btn_copy_flow, TRUE);
+    style_action_button(btn_copy_install, FALSE);
+    style_action_button(btn_open_sheet, FALSE);
+    style_action_button(btn_jump_utils, FALSE);
+
+    gtk_box_pack_start(GTK_BOX(actions), btn_copy_flow, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(actions), btn_copy_install, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(actions), btn_open_sheet, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(actions), btn_jump_utils, FALSE, FALSE, 0);
+
+    gtk_box_pack_start(GTK_BOX(flow_box), flow_line1, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(flow_box), flow_line2, FALSE, FALSE, 0);
+
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroller), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+    gtk_container_add(GTK_CONTAINER(scroller), content);
+    gtk_widget_set_vexpand(scroller, TRUE);
+    gtk_widget_set_hexpand(scroller, TRUE);
+
+    card = create_shortcut_card("Presenter Overlay", "Fast keys for drawing and animated callouts during coding videos.", &body);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("F6", "Toggle draw mode", "When pointer feels locked in drawing mode, press F6 again."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Shift+F6", "Clear all strokes", "Use between topics to reset the canvas."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Ctrl+F6 / Ctrl+Shift+F6", "Undo / Redo stroke", "Quick correction without leaving presentation flow."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Alt+F11, F11, Shift+F11, Mod4+F11", "Anchor + dashed/dotted/arrow segments", "Creates bytebytego-style flow emphasis in real time."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Ctrl+Alt+F11", "Reset presenter anchor", "Resync path start before a new section."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(content), card, FALSE, FALSE, 0);
+
+    card = create_shortcut_card("Spotlight + Capture", "Keep focus on cursor while capturing clean visuals.", &body);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("F7", "Toggle cursor spotlight", "Best used while narrating terminal lines."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("F9 / F10", "Adjust dim amount", "Decrease or increase background dimming."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Shift+F9 / Shift+F10", "Adjust spotlight radius", "Small radius for code, larger for diagrams."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("F8 / Print", "Launch Flameshot capture", "Fast callout screenshot workflow."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(content), card, FALSE, FALSE, 0);
+
+    card = create_shortcut_card("Mouse Mapped Controls", "Side-button accelerators from AwesomeWM root/client bindings.", &body);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Button 8", "Flameshot capture", "Works from desktop and focused client windows."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Button 9", "Open Linux Control Center", "Client-aware launch keeps context aligned."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Mod4 + Mouse Wheel", "Volume up/down", "Quick audio correction while recording."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(content), card, FALSE, FALSE, 0);
+
+    card = create_shortcut_card("Workspace Shell Navigation", "Jump between repos instantly in terminal sessions.", &body);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("ws / ck / ct / ant / lu", "Direct project jump commands", "Loaded by sourcing workspace_shortcuts.sh in your shell rc."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("ws_help / ws_status", "Show command map and load status", "Good onboarding shortcut for new terminals."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("browse", "Interactive workspace browser", "Arrow keys + enter/backspace navigation."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(content), card, FALSE, FALSE, 0);
+
+    card = create_shortcut_card("AwesomeWM Essentials", "High-frequency window manager controls you use while presenting.", &body);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Mod4+Return", "Open terminal", "Primary launcher during demos."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Mod4+s", "Show built-in hotkeys popup", "Fast reminder without leaving workflow."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Mod4+j / Mod4+k", "Focus next/previous client", "Clean camera movement across windows."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Mod4+Tab", "Return to previous client", "Useful for back-and-forth explanation."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Mod4+Ctrl+r", "Reload AwesomeWM config", "Apply rc.lua updates immediately."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(content), card, FALSE, FALSE, 0);
+
+    gtk_box_pack_start(GTK_BOX(root), title, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(root), subtitle, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(root), flow_box, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(root), actions, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(root), scroller, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(root), status, FALSE, FALSE, 0);
+
+    g_signal_connect(btn_copy_flow, "clicked", G_CALLBACK(on_shortcuts_copy_presenter_flow_clicked), state);
+    g_signal_connect(btn_copy_install, "clicked", G_CALLBACK(on_shortcuts_copy_install_cmd_clicked), state);
+    g_signal_connect(btn_open_sheet, "clicked", G_CALLBACK(on_shortcuts_open_sheet_clicked), state);
+    g_signal_connect(btn_jump_utils, "clicked", G_CALLBACK(on_shortcuts_jump_utilities_clicked), state);
+
+    state->shortcuts_status = status;
+    return root;
+}
+
 static GtkWidget *build_night_tab(AppState *state) {
     GtkWidget *root = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
     GtkWidget *title = gtk_label_new(NULL);
@@ -7528,6 +7873,7 @@ static void on_app_activate(GtkApplication *app, gpointer user_data) {
     GtkWidget *night_tab = NULL;
     GtkWidget *audio_tab = NULL;
     GtkWidget *utilities_tab = NULL;
+    GtkWidget *shortcuts_tab = NULL;
     GtkWidget *shots_tab = NULL;
 
     state->window = gtk_application_window_new(app);
@@ -7566,15 +7912,18 @@ static void on_app_activate(GtkApplication *app, gpointer user_data) {
     notebook = gtk_notebook_new();
     gtk_style_context_add_class(gtk_widget_get_style_context(notebook), "app-notebook");
     gtk_notebook_set_tab_pos(GTK_NOTEBOOK(notebook), GTK_POS_TOP);
+    state->main_notebook = notebook;
 
     night_tab = build_night_tab(state);
     audio_tab = build_audio_tab(state);
     utilities_tab = build_utilities_tab(state);
+    shortcuts_tab = build_shortcuts_tab(state);
     shots_tab = build_screenshots_tab(state);
 
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), night_tab, gtk_label_new("Night Light"));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), audio_tab, gtk_label_new("Audio"));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), utilities_tab, gtk_label_new("Utilities"));
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), shortcuts_tab, gtk_label_new("Shortcuts"));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), shots_tab, gtk_label_new("Screenshots"));
 
     gtk_box_pack_start(GTK_BOX(root), notebook, TRUE, TRUE, 0);

@@ -91,6 +91,7 @@ For the full list of shortcuts (AwesomeWM keys, gromit/presenter controls, mouse
 
 - `linux_control_center.c`: GTK desktop app with:
   - Night Light tab (manual/auto Redshift controls)
+  - Shortcuts tab (presenter workflow + grouped key/mouse/shell cheat sheet)
   - Screenshots tab (thumbnail browser, path/prompt copy, open folder)
 - `build_linux_control_center.sh`: Build helper for the GTK app.
 
