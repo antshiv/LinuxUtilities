@@ -12,6 +12,7 @@ for script in \
     presenter_dash.sh \
     test_linux_control_center_smoke.sh \
     import_screenshots.sh \
+    install_gromit_profile.sh \
     redshift.sh \
     install_workspace_shortcuts.sh \
     setup_git_guardrails.sh; do

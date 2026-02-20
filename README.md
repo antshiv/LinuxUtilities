@@ -54,6 +54,7 @@ Install:
 
 ```bash
 sudo apt install gromit-mpx xdotool
+./install_gromit_profile.sh
 ```
 
 AwesomeWM hotkeys in `rc.lua`:
@@ -75,7 +76,16 @@ AwesomeWM hotkeys in `rc.lua`:
 - `Gromit Draw` (toggle draw mode)
 - `Gromit Clear` (clear strokes)
 - `Dash Anchor`, `Dash Segment`, `Dot Segment`, `Arrow Segment` (real-time flow overlays)
+- `Install Gromit Profile` (installs `config/gromit-mpx.cfg` to `~/.config/gromit-mpx.cfg`)
 - `Shortcut Cheat Sheet` (open complete keyboard/mouse/shell mapping)
+
+Gromit shape tools in draw mode (profile-based):
+- hold `Shift`: marker
+- hold `Ctrl`: straight line
+- hold `Ctrl+Shift`: arrow line
+- hold `Alt`: rectangle
+- hold `Alt+Shift`: circle
+- hold `Alt+Ctrl`: filled circle
 
 Presenter dash helper script:
 - `presenter_dash.sh` supports: `anchor`, `dash`, `dot`, `solid`, `arrow`, `clear`, `undo`, `redo`, `reset`

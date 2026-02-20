@@ -26,6 +26,27 @@ Tips:
 - If mouse is stuck drawing, press `F6` to leave draw mode.
 - `Esc` does not quit gromit. Use `Ctrl+Alt+F6` (or `gromit-mpx -q`).
 
+Install profile once (adds shape tools and modifier map):
+
+```bash
+./install_gromit_profile.sh
+```
+
+Draw-mode shape/modifier map (from `config/gromit-mpx.cfg`):
+
+| Hold while dragging | Tool |
+| --- | --- |
+| none | Cyan pen |
+| `Shift` | Yellow marker |
+| `Ctrl` | Straight line |
+| `Ctrl+Shift` | Arrow line |
+| `Alt` | Rectangle |
+| `Alt+Shift` | Circle |
+| `Alt+Ctrl` | Filled circle |
+| `Mouse Button2` | Smooth path |
+| `Mouse Button2 + Shift` | Orthogonal path |
+| `Mouse Button3` | Eraser |
+
 ### Presenter Dash (animated flow lines/arrows)
 
 | Shortcut | Action |
@@ -256,5 +277,5 @@ Buttons available:
 - Dash Segment
 - Dot Segment
 - Arrow Segment
+- Install Gromit Profile
 - Shortcut Cheat Sheet
-

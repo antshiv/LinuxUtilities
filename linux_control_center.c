@@ -6425,8 +6425,9 @@ static void on_shortcuts_copy_presenter_flow_clicked(GtkButton *button, gpointer
         "3) Shift+F11 -> dotted segment\n"
         "4) Mod4+F11 -> arrow segment\n"
         "5) F6       -> free draw toggle\n"
-        "6) Shift+F6 -> clear strokes\n"
-        "7) F7       -> cursor spotlight";
+        "6) Hold Shift/Ctrl/Alt while dragging for marker/line/rect tools\n"
+        "7) Shift+F6 -> clear strokes\n"
+        "8) F7       -> cursor spotlight";
 
     (void)button;
     if (!state || !state->window) {
@@ -6440,6 +6441,7 @@ static void on_shortcuts_copy_install_cmd_clicked(GtkButton *button, gpointer us
     AppState *state = user_data;
     const gchar *cmd =
         "sudo apt install gromit-mpx xdotool flameshot pavucontrol\n"
+        "./install_gromit_profile.sh\n"
         "./build_linux_control_center.sh";
 
     (void)button;
@@ -6505,7 +6507,7 @@ static GtkWidget *build_shortcuts_tab(AppState *state) {
     GtkWidget *subtitle = gtk_label_new("Live-demo controls grouped by workflow so you can present without pausing.");
     GtkWidget *flow_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 3);
     GtkWidget *flow_line1 = gtk_label_new("Demo sequence: F7 spotlight -> Alt+F11 anchor -> F11/Shift+F11/Mod4+F11 path -> F6 free draw.");
-    GtkWidget *flow_line2 = gtk_label_new("Reset sequence: Shift+F6 clear, Ctrl+Alt+F6 quit overlay, Ctrl+Alt+F11 reset anchor.");
+    GtkWidget *flow_line2 = gtk_label_new("Shape mode: hold Shift/Ctrl/Alt while dragging. Reset: Shift+F6 clear, Ctrl+Alt+F6 quit, Ctrl+Alt+F11 anchor reset.");
     GtkWidget *actions = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     GtkWidget *btn_copy_flow = gtk_button_new_with_label("Copy Presenter Flow");
     GtkWidget *btn_copy_install = gtk_button_new_with_label("Copy Install/Build");
@@ -6558,6 +6560,8 @@ static GtkWidget *build_shortcuts_tab(AppState *state) {
     gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Shift+F6", "Clear all strokes", "Use between topics to reset the canvas."), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Ctrl+F6 / Ctrl+Shift+F6", "Undo / Redo stroke", "Quick correction without leaving presentation flow."), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Alt+F11, F11, Shift+F11, Mod4+F11", "Anchor + dashed/dotted/arrow segments", "Creates bytebytego-style flow emphasis in real time."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Shift / Ctrl / Alt + drag", "Marker / line / rectangle (Gromit profile)", "Install profile once via ./install_gromit_profile.sh"), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Alt+Shift / Alt+Ctrl + drag", "Circle / filled circle tools", "Useful for emphasis rings and node grouping."), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Ctrl+Alt+F11", "Reset presenter anchor", "Resync path start before a new section."), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(content), card, FALSE, FALSE, 0);
 
@@ -6823,6 +6827,8 @@ static GtkWidget *build_utilities_tab(AppState *state) {
         "bash -lc 'script=\"$HOME/Workspace/LinuxUtilities/presenter_dash.sh\"; [ -x \"$script\" ] || exit 1; \"$script\" dot'";
     const gchar *presenter_arrow_cmd =
         "bash -lc 'script=\"$HOME/Workspace/LinuxUtilities/presenter_dash.sh\"; [ -x \"$script\" ] || exit 1; \"$script\" arrow'";
+    const gchar *gromit_profile_cmd =
+        "bash -lc 'script=\"$HOME/Workspace/LinuxUtilities/install_gromit_profile.sh\"; [ -x \"$script\" ] || exit 1; \"$script\"'";
     const gchar *shortcut_sheet_cmd =
         "bash -lc 'sheet=\"$HOME/Workspace/LinuxUtilities/SHORTCUTS_CHEATSHEET.md\"; [ -f \"$sheet\" ] || exit 1; xdg-open \"$sheet\" >/dev/null 2>&1'";
     GtkWidget *b1 = create_utility_button("Pavucontrol", "Audio mixer and device routing", "pavucontrol", state);
@@ -6841,7 +6847,8 @@ static GtkWidget *build_utilities_tab(AppState *state) {
     GtkWidget *b14 = create_utility_button("Dash Segment", "Animated dashed segment to cursor", presenter_dash_cmd, state);
     GtkWidget *b15 = create_utility_button("Dot Segment", "Animated dotted segment to cursor", presenter_dot_cmd, state);
     GtkWidget *b16 = create_utility_button("Arrow Segment", "Animated arrow segment to cursor", presenter_arrow_cmd, state);
-    GtkWidget *b17 = create_utility_button("Shortcut Cheat Sheet", "Open full key/mouse/shell shortcuts", shortcut_sheet_cmd, state);
+    GtkWidget *b17 = create_utility_button("Install Gromit Profile", "Enable shape/modifier tools config", gromit_profile_cmd, state);
+    GtkWidget *b18 = create_utility_button("Shortcut Cheat Sheet", "Open full key/mouse/shell shortcuts", shortcut_sheet_cmd, state);
 
     gtk_style_context_add_class(gtk_widget_get_style_context(root), "panel-root");
 
@@ -6871,13 +6878,14 @@ static GtkWidget *build_utilities_tab(AppState *state) {
     gtk_grid_attach(GTK_GRID(grid), b14, 1, 6, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), b15, 0, 7, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), b16, 1, 7, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), b17, 0, 8, 2, 1);
+    gtk_grid_attach(GTK_GRID(grid), b17, 0, 8, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), b18, 1, 8, 1, 1);
     gtk_widget_set_hexpand(grid, TRUE);
     gtk_widget_set_vexpand(grid, TRUE);
     gtk_widget_set_halign(grid, GTK_ALIGN_FILL);
 
     gtk_label_set_text(GTK_LABEL(hotkey_hint),
-                       "F6 draw; F11 dash path (Alt=set anchor, Shift=dot, Ctrl=solid, Mod4=arrow); F7 spotlight; F8/Print capture.");
+                       "F6 draw; shape tools in draw mode: Shift marker, Ctrl line, Alt rect/circle; F11 dash path; F7 spotlight; F8/Print capture.");
     gtk_label_set_xalign(GTK_LABEL(hotkey_hint), 0.0);
     gtk_label_set_line_wrap(GTK_LABEL(hotkey_hint), TRUE);
     gtk_style_context_add_class(gtk_widget_get_style_context(hotkey_hint), "meta-info");
