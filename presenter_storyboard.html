@@ -1,0 +1,2499 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LinuxUtilities Storyboard DSL Player</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --panel: #131b2d;
+      --panel-2: #1c2840;
+      --text: #eaf1ff;
+      --muted: #9cafda;
+      --accent: #79c9ff;
+      --accent-2: #9b8dff;
+      --border: #2e3d5e;
+      --danger: #ff799f;
+      --good: #79e1bf;
+      --warn: #ffd07a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Fira Sans", "Noto Sans", "DejaVu Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at -10% -20%, #2a3d65 0%, transparent 55%),
+        radial-gradient(1000px 700px at 110% -20%, #2a2553 0%, transparent 56%),
+        var(--bg);
+      overflow: hidden;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 420px minmax(0, 1fr);
+      width: 100%;
+      height: 100vh;
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 45%), var(--panel);
+      padding: 12px;
+      overflow: auto;
+    }
+
+    .brand {
+      margin: 0;
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: #b7ddff;
+    }
+
+    .sub {
+      margin: 6px 0 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .group {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.02);
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+
+    .group h3 {
+      margin: 0 0 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin: 6px 0;
+    }
+
+    button, input[type="number"], input[type="text"], textarea {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #1d2840;
+      color: var(--text);
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    button {
+      cursor: pointer;
+      min-height: 34px;
+    }
+
+    button:hover { border-color: #93c6ff; }
+    button.primary {
+      background: linear-gradient(120deg, #34789b, #3f63aa);
+      border-color: #6ca6df;
+    }
+    button.warn {
+      background: #3b2636;
+      border-color: #7a4c62;
+      color: #ffd4df;
+    }
+
+    input[type="range"] { width: 100%; }
+
+    textarea {
+      width: 100%;
+      min-height: 250px;
+      resize: vertical;
+      font-family: "JetBrains Mono", "Fira Mono", monospace;
+      line-height: 1.45;
+      background: #0f1628;
+      font-weight: 500;
+    }
+
+    label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin: 8px 0 4px;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .status {
+      margin-top: 8px;
+      min-height: 40px;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #d6e2ff;
+    }
+
+    .status.ok { color: var(--good); }
+    .status.err { color: #ffb7c8; }
+    .status.warn { color: var(--warn); }
+
+    .viewer {
+      position: relative;
+      overflow: hidden;
+      background:
+        radial-gradient(1200px 800px at 90% -30%, rgba(145, 120, 255, 0.16), transparent 58%),
+        #060911;
+    }
+
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    .hud {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      gap: 8px;
+      z-index: 9;
+      font-size: 12px;
+    }
+
+    .pill {
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(10, 14, 24, 0.82);
+      color: #dce8ff;
+      padding: 6px 10px;
+      font-weight: 700;
+      backdrop-filter: blur(4px);
+    }
+
+    .pill.live { color: #96ffd2; border-color: #448e75; }
+
+    .kbd {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #10172a;
+      padding: 1px 5px;
+      font-size: 11px;
+      font-family: "JetBrains Mono", "Fira Mono", monospace;
+      color: #d4defe;
+    }
+
+    .focus-pill {
+      position: absolute;
+      left: 10px;
+      bottom: 10px;
+      z-index: 10;
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 7px 10px;
+      background: rgba(11, 16, 28, 0.85);
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    body.focus .app { grid-template-columns: 1fr; }
+    body.focus .sidebar { display: none; }
+    body.focus .focus-pill { display: inline-flex; }
+
+    @media (max-width: 1200px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: min(440px, 94vw);
+        z-index: 20;
+        transform: translateX(-100%);
+        transition: transform 0.2s ease;
+      }
+      body.menu-open .sidebar { transform: translateX(0); }
+      .menu-pill { display: inline-flex !important; }
+    }
+
+    .menu-pill { display: none; }
+
+    /* ── 1. Action Strip (mini-timeline bars) ────────── */
+    .action-strip {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 38px;
+      background: rgba(10, 14, 24, 0.88);
+      border-top: 1px solid var(--border);
+      z-index: 8;
+      overflow: hidden;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+    }
+    .action-strip .bar {
+      position: absolute;
+      top: 4px;
+      height: 10px;
+      border-radius: 5px;
+      opacity: 0.82;
+      pointer-events: none;
+    }
+    .action-strip .bar.show { background: #79c9ff; }
+    .action-strip .bar.hide { background: #ff799f; }
+    .action-strip .bar.draw { background: #9b8dff; }
+    .action-strip .bar.move { background: #79e1bf; }
+    .action-strip .bar.pulse { background: #ffd07a; }
+    .action-strip .bar.morph { background: #c288ff; }
+    .action-strip .bar.zoom { background: #ffb070; }
+    .action-strip .bar.pan { background: #8caaff; }
+    .action-strip .playhead {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #fff;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .action-strip .bookmark-mark {
+      position: absolute;
+      top: 22px;
+      width: 8px;
+      height: 8px;
+      transform: translateX(-4px) rotate(45deg);
+      background: var(--warn);
+      z-index: 3;
+      pointer-events: none;
+    }
+    .action-strip .legend {
+      position: absolute;
+      bottom: 2px;
+      left: 6px;
+      display: flex;
+      gap: 10px;
+      font-size: 9px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+    .action-strip .legend span::before {
+      content: '';
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 4px;
+      margin-right: 3px;
+      vertical-align: middle;
+    }
+    .action-strip .legend .l-show::before { background: #79c9ff; }
+    .action-strip .legend .l-hide::before { background: #ff799f; }
+    .action-strip .legend .l-draw::before { background: #9b8dff; }
+    .action-strip .legend .l-move::before { background: #79e1bf; }
+    .action-strip .legend .l-pulse::before { background: #ffd07a; }
+    .action-strip .legend .l-morph::before { background: #c288ff; }
+    .action-strip .legend .l-zoom::before { background: #ffb070; }
+    .action-strip .legend .l-pan::before { background: #8caaff; }
+
+    /* ── 2. Loop badge ────────────────────────────────── */
+    .loop-badge {
+      font-size: 10px;
+      font-weight: 700;
+      border-radius: 6px;
+      padding: 2px 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--muted);
+      cursor: pointer;
+      user-select: none;
+      min-width: 58px;
+      text-align: center;
+    }
+    .loop-badge.active { color: var(--accent); border-color: var(--accent); }
+
+    /* ── 3. Export button ─────────────────────────────── */
+    .recording-hint {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 11;
+      display: none;
+      border-radius: 999px;
+      padding: 6px 12px;
+      background: rgba(200, 30, 60, 0.88);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      animation: rec-pulse 1s infinite;
+    }
+    @keyframes rec-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* ── 4. Shortcut overlay ──────────────────────────── */
+    .shortcut-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none;
+      place-items: center;
+      background: rgba(6, 9, 17, 0.88);
+      backdrop-filter: blur(6px);
+    }
+    .shortcut-overlay.show { display: grid; }
+    .shortcut-overlay table {
+      border-collapse: collapse;
+      font-size: 13px;
+      color: var(--text);
+      max-width: 520px;
+    }
+    .shortcut-overlay th {
+      text-align: left;
+      padding: 4px 14px 4px 0;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .shortcut-overlay td {
+      padding: 4px 14px 4px 0;
+    }
+    .shortcut-overlay .close-hint {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    /* ── 5. Line-number gutter ────────────────────────── */
+    .editor-wrap {
+      display: flex;
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+    .line-gutter {
+      width: 40px;
+      min-width: 40px;
+      background: #0b1020;
+      color: #5a6e96;
+      font-family: "JetBrains Mono", "Fira Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      padding: 8px 4px 8px 0;
+      text-align: right;
+      overflow: hidden;
+      user-select: none;
+      white-space: pre;
+    }
+    .editor-wrap textarea {
+      border: none;
+      border-radius: 0;
+      flex: 1;
+      min-height: 250px;
+      margin: 0;
+    }
+
+    /* ── 6. Quick-Add Action builder ──────────────────── */
+    .quick-add {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .quick-add select, .quick-add input {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #1d2840;
+      color: var(--text);
+      padding: 6px 8px;
+      font-size: 11px;
+    }
+    .quick-add .full { grid-column: 1 / -1; }
+
+    /* ── 7. Onion-skin badge ──────────────────────────── */
+    .onion-badge {
+      font-size: 10px;
+      font-weight: 700;
+      border-radius: 6px;
+      padding: 2px 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--muted);
+      cursor: pointer;
+      user-select: none;
+    }
+    .onion-badge.active { color: #c288ff; border-color: #c288ff; }
+
+    /* ── 8. Valid badge ───────────────────────────────── */
+    .valid-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-left: 6px;
+      vertical-align: middle;
+      background: var(--muted);
+      transition: background 0.2s;
+    }
+    .valid-dot.ok { background: var(--good); }
+    .valid-dot.err { background: var(--danger); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <h1 class="brand">Storyboard DSL Player</h1>
+      <p class="sub">Define scenes + timeline in JSON DSL. Import Presenter Canvas JSON, then animate and record.</p>
+
+      <section class="group">
+        <h3>Playback</h3>
+        <div class="row">
+          <button id="btnValidate">Validate</button>
+          <button id="btnPlay" class="primary">Play</button>
+          <button id="btnPause">Pause</button>
+          <button id="btnReset">Reset</button>
+        </div>
+        <div class="row">
+          <span id="loopBadge" class="loop-badge" title="Cycle: Off → Loop → Bounce (L)">Loop: Off</span>
+          <span id="onionBadge" class="onion-badge" title="Onion-skin mode (O)">Onion: Off</span>
+          <button id="btnExport">Export WebM</button>
+        </div>
+        <label for="timeline">Timeline</label>
+        <input id="timeline" type="range" min="0" max="1000" step="1" value="0">
+        <div class="row">
+          <label for="speed" style="margin:0; min-width: 60px; color:var(--muted)">Speed</label>
+          <input id="speed" type="range" min="25" max="300" value="125">
+          <span id="speedValue" class="meta">1.25x</span>
+        </div>
+        <p class="sub" style="margin-top:8px">Keys: <span class="kbd">Space</span> play/pause, <span class="kbd">R</span> reset, <span class="kbd">F</span> focus, <span class="kbd">H</span> panel, <span class="kbd">?</span> shortcuts, <span class="kbd">←/→</span> step.</p>
+      </section>
+
+      <section class="group">
+        <h3>DSL <span id="validDot" class="valid-dot"></span></h3>
+        <div class="row">
+          <button id="btnLoadDsl">Load DSL</button>
+          <button id="btnSaveDsl">Save DSL</button>
+          <button id="btnSample">CKE Full Sample</button>
+        </div>
+        <div class="row">
+          <button id="btnCkeTrain" class="primary">CKE Train Preset</button>
+          <button id="btnCkeInfer">CKE Infer Preset</button>
+        </div>
+        <input id="dslLoader" type="file" accept="application/json" style="display:none">
+        <div class="editor-wrap">
+          <div id="lineGutter" class="line-gutter">1</div>
+          <textarea id="dslEditor" spellcheck="false"></textarea>
+        </div>
+        <details style="margin-top:6px">
+          <summary style="cursor:pointer; color:var(--muted); font-size:12px; font-weight:600">Quick-Add Action</summary>
+          <div class="quick-add">
+            <select id="qaAction">
+              <option value="show">show</option>
+              <option value="hide">hide</option>
+              <option value="draw">draw</option>
+              <option value="move">move</option>
+              <option value="pulse">pulse</option>
+              <option value="morph">morph</option>
+              <option value="zoom">zoom</option>
+              <option value="pan">pan</option>
+            </select>
+            <select id="qaEase">
+              <option value="easeInOutCubic">easeInOutCubic</option>
+              <option value="easeOutCubic">easeOutCubic</option>
+              <option value="easeInCubic">easeInCubic</option>
+              <option value="linear">linear</option>
+            </select>
+            <input id="qaTarget" type="text" placeholder="target (* or id)" value="*">
+            <input id="qaAt" type="number" placeholder="at (s)" step="0.1" value="0" min="0">
+            <input id="qaDur" type="number" placeholder="duration" step="0.1" value="0.5" min="0">
+            <button id="btnQuickAdd" class="primary full">+ Add to Timeline</button>
+          </div>
+        </details>
+      </section>
+
+      <section class="group">
+        <h3>Canvas Import</h3>
+        <div class="row">
+          <button id="btnLoadCanvas">Load Canvas JSON</button>
+          <button id="btnFromCanvas" class="primary">Generate DSL From Canvas</button>
+        </div>
+        <input id="canvasLoader" type="file" accept="application/json" style="display:none">
+        <p class="meta" id="canvasMeta">No presenter_canvas export loaded yet.</p>
+      </section>
+
+      <section class="group">
+        <h3>Action DSL</h3>
+        <p class="meta" style="margin:0">
+          Actions: <code>show</code>, <code>hide</code>, <code>draw</code>, <code>move</code>, <code>pulse</code>, <code>morph</code>, <code>zoom</code>, <code>pan</code>.<br>
+          Targets: exact id, <code>*</code>, or <code>type:icon</code>/<code>type:edge</code>. Morph uses <code>from</code> + <code>to</code> ids.<br>
+          Optional easing on any step: <code>ease: \"easeInOutCubic\"</code>, <code>easeOutCubic</code>, <code>easeInCubic</code>, <code>linear</code>.
+        </p>
+      </section>
+
+      <div id="status" class="status"></div>
+    </aside>
+
+    <main class="viewer" id="viewer">
+      <canvas id="stage"></canvas>
+      <div id="actionStrip" class="action-strip"></div>
+      <div id="recordHint" class="recording-hint">● REC</div>
+      <button id="focusHint" class="focus-pill">Press H to show controls</button>
+      <button id="menuHint" class="focus-pill menu-pill" style="left:10px; bottom:48px">Menu</button>
+      <div class="hud">
+        <div class="pill" id="pillState">State: Idle</div>
+        <div class="pill" id="pillTime">Time: 0.00s</div>
+        <div class="pill live" id="pillTitle">Scene: Sample</div>
+      </div>
+    </main>
+  </div>
+
+  <div id="shortcutOverlay" class="shortcut-overlay">
+    <div>
+      <table>
+        <tr><th>Key</th><th>Action</th></tr>
+        <tr><td><span class="kbd">Space</span></td><td>Play / Pause</td></tr>
+        <tr><td><span class="kbd">R</span></td><td>Reset playback</td></tr>
+        <tr><td><span class="kbd">F</span></td><td>Toggle focus mode</td></tr>
+        <tr><td><span class="kbd">H</span></td><td>Toggle sidebar / focus</td></tr>
+        <tr><td><span class="kbd">L</span></td><td>Cycle loop mode (Off → Loop → Bounce)</td></tr>
+        <tr><td><span class="kbd">O</span></td><td>Toggle onion-skin</td></tr>
+        <tr><td><span class="kbd">B</span></td><td>Set bookmark at current time</td></tr>
+        <tr><td><span class="kbd">1</span>–<span class="kbd">9</span></td><td>Jump to bookmark 1–9</td></tr>
+        <tr><td><span class="kbd">←</span> / <span class="kbd">→</span></td><td>Step ±0.1 s (hold <span class="kbd">Shift</span> for ±0.5 s)</td></tr>
+        <tr><td><span class="kbd">,</span> / <span class="kbd">.</span></td><td>Speed ±0.1×</td></tr>
+        <tr><td><span class="kbd">Ctrl+Enter</span></td><td>Validate + Play</td></tr>
+        <tr><td><span class="kbd">Ctrl+S</span></td><td>Save DSL JSON</td></tr>
+        <tr><td><span class="kbd">?</span></td><td>This overlay</td></tr>
+      </table>
+      <p class="close-hint">Press <span class="kbd">?</span> or <span class="kbd">Esc</span> to close</p>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const STORAGE_KEY = 'linuxutilities.storyboard_dsl.v1';
+      const state = {
+        parsed: null,
+        compile: null,
+        playback: {
+          playing: false,
+          time: 0,
+          duration: 8,
+          speed: 1,
+          lastFrameMs: 0
+        },
+        canvasImport: null,
+        focus: false,
+        frameHandle: 0,
+        dpr: Math.max(1, Math.min(2, window.devicePixelRatio || 1)),
+        loopMode: 0,
+        onionSkin: false,
+        bookmarks: new Array(9).fill(null),
+        recording: false,
+        liveValidateTimer: 0
+      };
+
+      const els = {
+        viewer: document.getElementById('viewer'),
+        stage: document.getElementById('stage'),
+        btnValidate: document.getElementById('btnValidate'),
+        btnPlay: document.getElementById('btnPlay'),
+        btnPause: document.getElementById('btnPause'),
+        btnReset: document.getElementById('btnReset'),
+        timeline: document.getElementById('timeline'),
+        speed: document.getElementById('speed'),
+        speedValue: document.getElementById('speedValue'),
+        btnLoadDsl: document.getElementById('btnLoadDsl'),
+        btnSaveDsl: document.getElementById('btnSaveDsl'),
+        btnSample: document.getElementById('btnSample'),
+        btnCkeTrain: document.getElementById('btnCkeTrain'),
+        btnCkeInfer: document.getElementById('btnCkeInfer'),
+        dslLoader: document.getElementById('dslLoader'),
+        dslEditor: document.getElementById('dslEditor'),
+        btnLoadCanvas: document.getElementById('btnLoadCanvas'),
+        btnFromCanvas: document.getElementById('btnFromCanvas'),
+        canvasLoader: document.getElementById('canvasLoader'),
+        canvasMeta: document.getElementById('canvasMeta'),
+        status: document.getElementById('status'),
+        focusHint: document.getElementById('focusHint'),
+        menuHint: document.getElementById('menuHint'),
+        pillState: document.getElementById('pillState'),
+        pillTime: document.getElementById('pillTime'),
+        pillTitle: document.getElementById('pillTitle'),
+        loopBadge: document.getElementById('loopBadge'),
+        onionBadge: document.getElementById('onionBadge'),
+        btnExport: document.getElementById('btnExport'),
+        actionStrip: document.getElementById('actionStrip'),
+        recordHint: document.getElementById('recordHint'),
+        shortcutOverlay: document.getElementById('shortcutOverlay'),
+        lineGutter: document.getElementById('lineGutter'),
+        validDot: document.getElementById('validDot'),
+        qaAction: document.getElementById('qaAction'),
+        qaEase: document.getElementById('qaEase'),
+        qaTarget: document.getElementById('qaTarget'),
+        qaAt: document.getElementById('qaAt'),
+        qaDur: document.getElementById('qaDur'),
+        btnQuickAdd: document.getElementById('btnQuickAdd')
+      };
+
+      const ctx = els.stage.getContext('2d');
+
+      function sampleDslObject() {
+        return {
+          version: 1,
+          meta: {
+            title: 'C-Kernel-Engine: Inference + Backprop + Quantization',
+            bg: '#050810',
+            duration: 8.6,
+            camera: { x: 0, y: 0, scale: 1 }
+          },
+          scene: {
+            primitives: [
+              { id: 'n-prompt', type: 'icon', icon: 'dataset', x: 170, y: 240, size: 90, color: '#9ad7ff' },
+              { id: 't-prompt', type: 'text', x: 230, y: 240, text: 'Prompt Tokens', size: 30, color: '#e2f4ff' },
+              { id: 'n-kv', type: 'rect', x1: 430, y1: 170, x2: 700, y2: 310, color: '#9cc5ff', width: 5, style: 'solid' },
+              { id: 't-kv', type: 'text', x: 480, y: 240, text: 'Embed + KV Cache', size: 30, color: '#e8eeff' },
+              { id: 'n-kernel', type: 'icon', icon: 'gpu', x: 930, y: 240, size: 102, color: '#97dcff' },
+              { id: 't-kernel', type: 'text', x: 995, y: 240, text: 'CKE Kernels', size: 30, color: '#e0f6ff' },
+              { id: 'n-token', type: 'icon', icon: 'check', x: 1240, y: 240, size: 90, color: '#9df0d0' },
+              { id: 't-token', type: 'text', x: 1300, y: 240, text: 'Next Token', size: 30, color: '#e6fff4' },
+
+              { id: 'n-loss', type: 'rect', x1: 850, y1: 420, x2: 1100, y2: 540, color: '#ffc186', width: 5, style: 'solid' },
+              { id: 't-loss', type: 'text', x: 905, y: 478, text: 'Loss', size: 34, color: '#fff0db' },
+              { id: 'n-back', type: 'icon', icon: 'tensor', x: 620, y: 480, size: 98, color: '#c2a6ff' },
+              { id: 't-back', type: 'text', x: 680, y: 480, text: 'Backprop', size: 30, color: '#efe5ff' },
+              { id: 'n-opt', type: 'icon', icon: 'gear', x: 400, y: 480, size: 92, color: '#8ce6c7' },
+              { id: 't-opt', type: 'text', x: 455, y: 480, text: 'Optimizer', size: 30, color: '#e3fff4' },
+
+              { id: 'n-quant', type: 'rect', x1: 1180, y1: 420, x2: 1480, y2: 540, color: '#d8b6ff', width: 5, style: 'solid' },
+              { id: 't-quant', type: 'text', x: 1240, y: 478, text: 'INT8 Quantization', size: 30, color: '#f2e8ff' },
+              { id: 'n-pack', type: 'icon', icon: 'database', x: 1650, y: 480, size: 90, color: '#d8b6ff' },
+              { id: 't-pack', type: 'text', x: 1710, y: 480, text: 'Quantized Model', size: 29, color: '#f5ecff' },
+              { id: 'n-serve', type: 'icon', icon: 'cloud', x: 1650, y: 240, size: 90, color: '#9ad7ff' },
+              { id: 't-serve', type: 'text', x: 1710, y: 240, text: 'Serve', size: 30, color: '#e2f4ff' },
+
+              { id: 'e-i1', type: 'arrow', x1: 250, y1: 240, x2: 410, y2: 240, color: '#9ad7ff', width: 6, style: 'dashed' },
+              { id: 'e-i2', type: 'arrow', x1: 700, y1: 240, x2: 860, y2: 240, color: '#97dcff', width: 6, style: 'dashed' },
+              { id: 'e-i3', type: 'arrow', x1: 1000, y1: 240, x2: 1160, y2: 240, color: '#9df0d0', width: 6, style: 'dotted' },
+              { id: 'e-b1', type: 'arrow', x1: 940, y1: 290, x2: 940, y2: 400, color: '#ffc186', width: 6, style: 'dotted' },
+              { id: 'e-b2', type: 'arrow', x1: 850, y1: 480, x2: 690, y2: 480, color: '#c2a6ff', width: 6, style: 'dotted' },
+              { id: 'e-b3', type: 'arrow', x1: 540, y1: 480, x2: 460, y2: 480, color: '#8ce6c7', width: 6, style: 'solid' },
+              { id: 'e-b4', type: 'arrow', x1: 400, y1: 430, x2: 860, y2: 280, color: '#8ce6c7', width: 6, style: 'dashed' },
+              { id: 'e-q1', type: 'arrow', x1: 1100, y1: 480, x2: 1160, y2: 480, color: '#d8b6ff', width: 6, style: 'dashed' },
+              { id: 'e-q2', type: 'arrow', x1: 1480, y1: 480, x2: 1580, y2: 480, color: '#d8b6ff', width: 6, style: 'solid' },
+              { id: 'e-s1', type: 'arrow', x1: 1650, y1: 430, x2: 1650, y2: 290, color: '#9ad7ff', width: 6, style: 'dotted' }
+            ]
+          },
+          timeline: [
+            { at: 0.0, do: 'hide', targets: '*', duration: 0 },
+            { at: 0.1, do: 'show', targets: ['n-prompt', 't-prompt', 'n-kv', 't-kv', 'n-kernel', 't-kernel'], duration: 0.45, ease: 'easeOutCubic' },
+            { at: 0.7, do: 'draw', targets: ['e-i1'], duration: 0.6, ease: 'easeInOutCubic' },
+            { at: 1.3, do: 'draw', targets: ['e-i2'], duration: 0.6, ease: 'easeInOutCubic' },
+            { at: 1.9, do: 'show', targets: ['n-token', 't-token'], duration: 0.35, ease: 'easeOutCubic' },
+            { at: 2.3, do: 'draw', targets: ['e-i3'], duration: 0.6, ease: 'easeInOutCubic' },
+            { at: 2.9, do: 'pulse', targets: ['n-kernel'], duration: 0.7, scale: 1.13, ease: 'easeInOutCubic' },
+
+            { at: 3.6, do: 'show', targets: ['n-loss', 't-loss', 'n-back', 't-back', 'n-opt', 't-opt'], duration: 0.45, ease: 'easeOutCubic' },
+            { at: 4.1, do: 'draw', targets: ['e-b1'], duration: 0.65, ease: 'easeInOutCubic' },
+            { at: 4.7, do: 'draw', targets: ['e-b2', 'e-b3'], duration: 0.75, ease: 'easeInOutCubic' },
+            { at: 5.5, do: 'draw', targets: ['e-b4'], duration: 0.75, ease: 'easeInOutCubic' },
+
+            { at: 6.3, do: 'morph', from: 'n-token', to: 'n-quant', duration: 0.8, ease: 'easeInOutCubic' },
+            { at: 6.45, do: 'hide', targets: ['t-token'], duration: 0.35, ease: 'easeInOutCubic' },
+            { at: 6.7, do: 'show', targets: ['t-quant', 'n-pack', 't-pack', 'n-serve', 't-serve'], duration: 0.45, ease: 'easeOutCubic' },
+            { at: 7.0, do: 'draw', targets: ['e-q1', 'e-q2'], duration: 0.7, ease: 'easeInOutCubic' },
+            { at: 7.7, do: 'draw', targets: ['e-s1'], duration: 0.55, ease: 'easeInOutCubic' },
+            { at: 8.1, do: 'zoom', duration: 0.55, to: 1.12, ease: 'easeInOutCubic' }
+          ]
+        };
+      }
+
+      function ckeTrainDslObject() {
+        return {
+          version: 1,
+          meta: {
+            title: 'C-Kernel-Engine: Train Step',
+            bg: '#050810',
+            duration: 9.2,
+            camera: { x: 0, y: 0, scale: 1 }
+          },
+          scene: {
+            primitives: [
+              { id: 'n-data', type: 'icon', icon: 'dataset', x: 170, y: 280, size: 92, color: '#9ad7ff' },
+              { id: 't-data', type: 'text', x: 230, y: 280, text: 'Token Stream', size: 30, color: '#e2f3ff' },
+              { id: 'n-token', type: 'rect', x1: 440, y1: 210, x2: 710, y2: 340, color: '#9cc5ff', width: 5, style: 'solid' },
+              { id: 't-token', type: 'text', x: 490, y: 275, text: 'Tokenizer + Batch', size: 30, color: '#e6ecff' },
+              { id: 'n-fwd', type: 'icon', icon: 'gpu', x: 930, y: 280, size: 102, color: '#97dcff' },
+              { id: 't-fwd', type: 'text', x: 995, y: 280, text: 'Forward (matmul)', size: 30, color: '#e0f6ff' },
+              { id: 'n-loss', type: 'rect', x1: 1260, y1: 220, x2: 1510, y2: 340, color: '#ffc186', width: 5, style: 'solid' },
+              { id: 't-loss', type: 'text', x: 1315, y: 278, text: 'Loss', size: 34, color: '#fff0db' },
+              { id: 'n-back', type: 'icon', icon: 'tensor', x: 920, y: 560, size: 102, color: '#c2a6ff' },
+              { id: 't-back', type: 'text', x: 995, y: 560, text: 'Backprop Grads', size: 30, color: '#efe5ff' },
+              { id: 'n-opt', type: 'icon', icon: 'gear', x: 610, y: 560, size: 96, color: '#8ce6c7' },
+              { id: 't-opt', type: 'text', x: 665, y: 560, text: 'Optimizer Step', size: 30, color: '#e3fff4' },
+              { id: 'n-ckpt', type: 'icon', icon: 'database', x: 1510, y: 560, size: 95, color: '#d7b3ff' },
+              { id: 't-ckpt', type: 'text', x: 1570, y: 560, text: 'Checkpoint', size: 30, color: '#f3e9ff' },
+              { id: 'e-1', type: 'arrow', x1: 250, y1: 280, x2: 430, y2: 280, color: '#9ad7ff', width: 6, style: 'dashed' },
+              { id: 'e-2', type: 'arrow', x1: 710, y1: 280, x2: 860, y2: 280, color: '#97dcff', width: 6, style: 'dashed' },
+              { id: 'e-3', type: 'arrow', x1: 1000, y1: 280, x2: 1240, y2: 280, color: '#ffc186', width: 6, style: 'dotted' },
+              { id: 'e-4', type: 'arrow', x1: 1360, y1: 340, x2: 1000, y2: 545, color: '#c2a6ff', width: 6, style: 'dotted' },
+              { id: 'e-5', type: 'arrow', x1: 850, y1: 560, x2: 660, y2: 560, color: '#8ce6c7', width: 6, style: 'solid' },
+              { id: 'e-6', type: 'arrow', x1: 610, y1: 510, x2: 910, y2: 340, color: '#8ce6c7', width: 6, style: 'dashed' },
+              { id: 'e-7', type: 'arrow', x1: 660, y1: 560, x2: 1425, y2: 560, color: '#d7b3ff', width: 6, style: 'solid' }
+            ]
+          },
+          timeline: [
+            { at: 0.0, do: 'hide', targets: '*', duration: 0 },
+            { at: 0.1, do: 'show', targets: ['n-data', 't-data', 'n-token', 't-token'], duration: 0.4, ease: 'easeOutCubic' },
+            { at: 0.6, do: 'draw', targets: ['e-1'], duration: 0.65, ease: 'easeInOutCubic' },
+            { at: 1.3, do: 'show', targets: ['n-fwd', 't-fwd'], duration: 0.35, ease: 'easeOutCubic' },
+            { at: 1.7, do: 'draw', targets: ['e-2'], duration: 0.6, ease: 'easeInOutCubic' },
+            { at: 2.3, do: 'show', targets: ['n-loss', 't-loss'], duration: 0.35, ease: 'easeOutCubic' },
+            { at: 2.7, do: 'draw', targets: ['e-3'], duration: 0.6, ease: 'easeInOutCubic' },
+            { at: 3.6, do: 'show', targets: ['n-back', 't-back'], duration: 0.35, ease: 'easeOutCubic' },
+            { at: 3.9, do: 'draw', targets: ['e-4'], duration: 0.75, ease: 'easeInOutCubic' },
+            { at: 4.7, do: 'show', targets: ['n-opt', 't-opt'], duration: 0.3, ease: 'easeOutCubic' },
+            { at: 5.0, do: 'draw', targets: ['e-5', 'e-6'], duration: 0.85, ease: 'easeInOutCubic' },
+            { at: 5.9, do: 'show', targets: ['n-ckpt', 't-ckpt'], duration: 0.3, ease: 'easeOutCubic' },
+            { at: 6.2, do: 'draw', targets: ['e-7'], duration: 0.85, ease: 'easeInOutCubic' },
+            { at: 7.1, do: 'pulse', targets: ['n-fwd', 'n-back', 'n-opt'], duration: 0.8, scale: 1.12, ease: 'easeInOutCubic' },
+            { at: 8.0, do: 'zoom', duration: 0.65, to: 1.16, ease: 'easeInOutCubic' },
+            { at: 8.7, do: 'pan', duration: 0.5, x: -140, y: -40, ease: 'easeInOutCubic' }
+          ]
+        };
+      }
+
+      function ckeInferenceDslObject() {
+        return {
+          version: 1,
+          meta: {
+            title: 'CKE Inference: Autoregressive Decode',
+            bg: '#040710',
+            duration: 18,
+            camera: { x: 0, y: 0, scale: 1 }
+          },
+          scene: {
+            primitives: [
+              // ── Section headers (BBG-style numbered phases) ──
+              { id: 'sec-in',   type: 'text', x: 100, y: 88,  text: '❶  INPUT PIPELINE', size: 20, color: '#5a7aaa' },
+              { id: 'sec-xfmr', type: 'text', x: 100, y: 278, text: '❷  TRANSFORMER BLOCK  ×N', size: 20, color: '#7a6aaa' },
+              { id: 'sec-out',  type: 'text', x: 100, y: 628, text: '❸  OUTPUT DECODE', size: 20, color: '#aa8a5a' },
+
+              // ── Input row  (y ≈ 165) ──
+              { id: 'n-user',  type: 'icon', icon: 'user',    x: 145, y: 165, size: 76, color: '#8fd8ff' },
+              { id: 't-user',  type: 'text', x: 108, y: 215, text: 'User Prompt', size: 22, color: '#b8ddff' },
+              { id: 'n-bpe',   type: 'rect', x1: 305, y1: 128, x2: 530, y2: 202, color: '#8bb8ff', width: 4, style: 'solid' },
+              { id: 't-bpe',   type: 'text', x: 333, y: 163, text: 'BPE Tokenizer', size: 24, color: '#d4e6ff' },
+              { id: 'n-embed', type: 'rect', x1: 645, y1: 118, x2: 975, y2: 212, color: '#9cc5ff', width: 4, style: 'solid' },
+              { id: 't-embed', type: 'text', x: 668, y: 157, text: 'Token Embed + Pos Enc', size: 22, color: '#dfe9ff' },
+              { id: 'e-u2b',   type: 'arrow', x1: 210, y1: 165, x2: 300, y2: 165, color: '#8fd8ff', width: 5, style: 'dashed' },
+              { id: 'e-b2e',   type: 'arrow', x1: 535, y1: 165, x2: 640, y2: 165, color: '#9cc5ff', width: 5, style: 'dashed' },
+
+              // ── Transformer block background ──
+              { id: 'xfmr-bg', type: 'rect', x1: 82, y1: 298, x2: 1710, y2: 595, color: '#18132e', width: 2, style: 'dotted' },
+
+              // ── Attention sub-row  (y ≈ 380) ──
+              { id: 'n-ln1',   type: 'rect', x1: 115, y1: 342, x2: 275, y2: 418, color: '#a094d9', width: 4, style: 'solid' },
+              { id: 't-ln1',   type: 'text', x: 137, y: 380, text: 'LayerNorm', size: 22, color: '#ddd4ff' },
+              { id: 'n-qkv',   type: 'rect', x1: 380, y1: 328, x2: 640, y2: 432, color: '#b88dff', width: 5, style: 'solid' },
+              { id: 't-qkv',   type: 'text', x: 413, y: 363, text: 'Q · Kᵀ · V', size: 26, color: '#e8d8ff' },
+              { id: 't-qkvsub',type: 'text', x: 400, y: 400, text: 'Multi-Head Attention', size: 16, color: '#a898d0' },
+              { id: 'n-an1',   type: 'rect', x1: 745, y1: 342, x2: 940, y2: 418, color: '#a094d9', width: 4, style: 'solid' },
+              { id: 't-an1',   type: 'text', x: 772, y: 380, text: 'Add & Norm', size: 22, color: '#ddd4ff' },
+              { id: 'e-e2ln',  type: 'arrow', x1: 810, y1: 216, x2: 195, y2: 337, color: '#9cc5ff', width: 4, style: 'dashed' },
+              { id: 'e-ln2qk', type: 'arrow', x1: 280, y1: 380, x2: 375, y2: 380, color: '#b88dff', width: 5, style: 'dashed' },
+              { id: 'e-qk2an', type: 'arrow', x1: 645, y1: 380, x2: 740, y2: 380, color: '#a094d9', width: 5, style: 'dashed' },
+
+              // ── KV Cache (branching off attention) ──
+              { id: 'n-kv',    type: 'icon', icon: 'database', x: 510, y: 510, size: 76, color: '#7de0bf' },
+              { id: 't-kv',    type: 'text', x: 442, y: 555, text: 'KV Cache (ring buf)', size: 20, color: '#b8ffe0' },
+              { id: 'e-kv',    type: 'arrow', x1: 510, y1: 436, x2: 510, y2: 478, color: '#7de0bf', width: 4, style: 'dotted' },
+
+              // ── FFN sub-row  (continues across y ≈ 380) ──
+              { id: 'n-ln2',   type: 'rect', x1: 1005, y1: 342, x2: 1168, y2: 418, color: '#a094d9', width: 4, style: 'solid' },
+              { id: 't-ln2',   type: 'text', x: 1028, y: 380, text: 'LayerNorm', size: 22, color: '#ddd4ff' },
+              { id: 'n-ffn',   type: 'icon', icon: 'gpu',  x: 1310, y: 380, size: 84, color: '#97dcff' },
+              { id: 't-ffn',   type: 'text', x: 1245, y: 430, text: 'FFN (matmul)', size: 22, color: '#caf1ff' },
+              { id: 'n-gelu',  type: 'rect', x1: 1440, y1: 342, x2: 1620, y2: 418, color: '#8abcda', width: 4, style: 'solid' },
+              { id: 't-gelu',  type: 'text', x: 1464, y: 380, text: 'GELU + Proj', size: 22, color: '#d0efff' },
+              { id: 'e-an2ln', type: 'arrow', x1: 945, y1: 380, x2: 1000, y2: 380, color: '#a094d9', width: 5, style: 'dashed' },
+              { id: 'e-ln2ff', type: 'arrow', x1: 1173, y1: 380, x2: 1260, y2: 380, color: '#97dcff', width: 5, style: 'dashed' },
+              { id: 'e-ff2gl', type: 'arrow', x1: 1365, y1: 380, x2: 1435, y2: 380, color: '#8abcda', width: 5, style: 'dashed' },
+
+              // ── Residual / skip connections (BBG-style dotted) ──
+              { id: 'e-skip1', type: 'arrow', x1: 978, y1: 168, x2: 843, y2: 337, color: '#4a5480', width: 3, style: 'dotted' },
+              { id: 'e-skip2', type: 'line',  x1: 843, y1: 422, x2: 843, y2: 575, color: '#4a5480', width: 3, style: 'dotted' },
+
+              // ── Output row  (y ≈ 710) ──
+              { id: 'n-proj',  type: 'rect', x1: 295, y1: 668, x2: 530, y2: 748, color: '#e0a860', width: 4, style: 'solid' },
+              { id: 't-proj',  type: 'text', x: 320, y: 708, text: 'Logit Projection', size: 22, color: '#fff0d4' },
+              { id: 'n-soft',  type: 'rect', x1: 660, y1: 668, x2: 862, y2: 748, color: '#dab068', width: 4, style: 'solid' },
+              { id: 't-soft',  type: 'text', x: 702, y: 708, text: 'Softmax', size: 26, color: '#fff4dc' },
+              { id: 'n-samp',  type: 'icon', icon: 'gear',  x: 1030, y: 708, size: 80, color: '#c8e08a' },
+              { id: 't-samp',  type: 'text', x: 970, y: 758, text: 'Top-k / Nucleus', size: 20, color: '#e8ffc8' },
+              { id: 'n-tok',   type: 'icon', icon: 'check', x: 1310, y: 708, size: 86, color: '#ffc070' },
+              { id: 't-tok',   type: 'text', x: 1255, y: 760, text: 'Next Token', size: 24, color: '#ffe4b0' },
+              { id: 'e-gl2pr', type: 'arrow', x1: 1530, y1: 422, x2: 413, y2: 663, color: '#d8a050', width: 5, style: 'dashed' },
+              { id: 'e-pr2sf', type: 'arrow', x1: 535, y1: 708, x2: 655, y2: 708, color: '#dab068', width: 5, style: 'dashed' },
+              { id: 'e-sf2sa', type: 'arrow', x1: 867, y1: 708, x2: 978, y2: 708, color: '#c8e08a', width: 5, style: 'dashed' },
+              { id: 'e-sa2tk', type: 'arrow', x1: 1080, y1: 708, x2: 1255, y2: 708, color: '#ffc070', width: 5, style: 'solid' },
+
+              // ── Autoregressive loop ──
+              { id: 'e-loop',  type: 'arrow', x1: 1370, y1: 738, x2: 148, y2: 218, color: '#6888ff', width: 5, style: 'dotted' },
+              { id: 't-loop',  type: 'text', x: 730, y: 810, text: '↺  Autoregressive Decode Loop', size: 24, color: '#88a8ff' },
+
+              // ── Quantization badge (CKE-specific detail) ──
+              { id: 'n-quant', type: 'rect', x1: 1100, y1: 510, x2: 1350, y2: 570, color: '#5a8c70', width: 3, style: 'solid' },
+              { id: 't-quant', type: 'text', x: 1118, y: 540, text: 'INT8 / FP16 quantised', size: 18, color: '#90deb8' }
+            ]
+          },
+          timeline: [
+            // ── Phase 0: hide all ──
+            { at: 0.0,  do: 'hide', targets: '*', duration: 0 },
+
+            // ── Phase 1: Section headers fade in ──
+            { at: 0.15, do: 'show', targets: ['sec-in', 'sec-xfmr', 'sec-out'], duration: 0.55, ease: 'easeOutCubic' },
+
+            // ── Phase 2: Input pipeline (BBG left-to-right reveal) ──
+            { at: 0.8,  do: 'show', targets: ['n-user', 't-user'], duration: 0.4, ease: 'easeOutCubic' },
+            { at: 1.2,  do: 'show', targets: ['n-bpe', 't-bpe'],   duration: 0.35, ease: 'easeOutCubic' },
+            { at: 1.35, do: 'draw', targets: ['e-u2b'],             duration: 0.45, ease: 'easeInOutCubic' },
+            { at: 1.85, do: 'show', targets: ['n-embed', 't-embed'], duration: 0.35, ease: 'easeOutCubic' },
+            { at: 2.0,  do: 'draw', targets: ['e-b2e'],             duration: 0.45, ease: 'easeInOutCubic' },
+
+            // ── Phase 3: Morph — Tokenizer dissolves into Embedding ──
+            { at: 2.5,  do: 'morph', from: 'n-bpe', to: 'n-embed', duration: 0.9, ease: 'easeInOutCubic' },
+            { at: 2.6,  do: 'hide',  targets: ['t-bpe'], duration: 0.4, ease: 'easeInOutCubic' },
+
+            // ── Phase 4: Transformer block background ──
+            { at: 3.2,  do: 'show', targets: ['xfmr-bg'],          duration: 0.5, ease: 'easeOutCubic' },
+            { at: 3.3,  do: 'draw', targets: ['e-e2ln', 'e-skip1'], duration: 0.7, ease: 'easeInOutCubic' },
+
+            // ── Phase 5: Attention path ──
+            { at: 3.7,  do: 'show', targets: ['n-ln1', 't-ln1'],   duration: 0.3, ease: 'easeOutCubic' },
+            { at: 4.0,  do: 'draw', targets: ['e-ln2qk'],          duration: 0.4, ease: 'easeInOutCubic' },
+            { at: 4.2,  do: 'show', targets: ['n-qkv', 't-qkv', 't-qkvsub'], duration: 0.45, ease: 'easeOutCubic' },
+            { at: 4.7,  do: 'pulse', targets: ['n-qkv'],           duration: 0.65, scale: 1.08, ease: 'easeInOutCubic' },
+
+            // ── Phase 6: KV Cache branch ──
+            { at: 5.0,  do: 'show', targets: ['n-kv', 't-kv'],     duration: 0.35, ease: 'easeOutCubic' },
+            { at: 5.15, do: 'draw', targets: ['e-kv'],              duration: 0.4, ease: 'easeInOutCubic' },
+            { at: 5.4,  do: 'pulse', targets: ['n-kv'],             duration: 0.5, scale: 1.1, ease: 'easeInOutCubic' },
+
+            // ── Phase 7: Add & Norm → FFN path ──
+            { at: 5.7,  do: 'draw', targets: ['e-qk2an'],          duration: 0.4, ease: 'easeInOutCubic' },
+            { at: 5.9,  do: 'show', targets: ['n-an1', 't-an1'],   duration: 0.3, ease: 'easeOutCubic' },
+            { at: 6.2,  do: 'draw', targets: ['e-an2ln'],           duration: 0.35, ease: 'easeInOutCubic' },
+            { at: 6.4,  do: 'show', targets: ['n-ln2', 't-ln2'],   duration: 0.25, ease: 'easeOutCubic' },
+            { at: 6.6,  do: 'draw', targets: ['e-ln2ff'],           duration: 0.4, ease: 'easeInOutCubic' },
+            { at: 6.8,  do: 'show', targets: ['n-ffn', 't-ffn'],   duration: 0.35, ease: 'easeOutCubic' },
+            { at: 7.1,  do: 'pulse', targets: ['n-ffn'],            duration: 0.65, scale: 1.1, ease: 'easeInOutCubic' },
+            { at: 7.5,  do: 'draw', targets: ['e-ff2gl'],           duration: 0.35, ease: 'easeInOutCubic' },
+            { at: 7.7,  do: 'show', targets: ['n-gelu', 't-gelu'], duration: 0.3, ease: 'easeOutCubic' },
+
+            // ── Residual skip + Quant badge ──
+            { at: 8.0,  do: 'draw', targets: ['e-skip2'],           duration: 0.4, ease: 'easeInOutCubic' },
+            { at: 8.2,  do: 'show', targets: ['n-quant', 't-quant'], duration: 0.35, ease: 'easeOutCubic' },
+
+            // ── Phase 8: Morph — Attention morphs through FFN ──
+            { at: 8.5,  do: 'morph', from: 'n-qkv', to: 'n-ffn',  duration: 0.9, ease: 'easeInOutCubic' },
+            { at: 8.6,  do: 'hide',  targets: ['t-qkv', 't-qkvsub'], duration: 0.4, ease: 'easeInOutCubic' },
+
+            // ── Phase 9: Output pipeline ──
+            { at: 9.5,  do: 'draw', targets: ['e-gl2pr'],           duration: 0.6, ease: 'easeInOutCubic' },
+            { at: 9.9,  do: 'show', targets: ['n-proj', 't-proj'], duration: 0.3, ease: 'easeOutCubic' },
+            { at: 10.2, do: 'draw', targets: ['e-pr2sf'],           duration: 0.4, ease: 'easeInOutCubic' },
+            { at: 10.4, do: 'show', targets: ['n-soft', 't-soft'], duration: 0.3, ease: 'easeOutCubic' },
+            { at: 10.7, do: 'draw', targets: ['e-sf2sa'],           duration: 0.4, ease: 'easeInOutCubic' },
+            { at: 10.9, do: 'show', targets: ['n-samp', 't-samp'], duration: 0.3, ease: 'easeOutCubic' },
+            { at: 11.2, do: 'draw', targets: ['e-sa2tk'],           duration: 0.45, ease: 'easeInOutCubic' },
+            { at: 11.5, do: 'show', targets: ['n-tok', 't-tok'],   duration: 0.35, ease: 'easeOutCubic' },
+            { at: 11.8, do: 'pulse', targets: ['n-tok'],            duration: 0.6, scale: 1.12, ease: 'easeInOutCubic' },
+
+            // ── Phase 10: Morph — Softmax morphs into final token ──
+            { at: 12.2, do: 'morph', from: 'n-soft', to: 'n-tok',  duration: 0.85, ease: 'easeInOutCubic' },
+            { at: 12.3, do: 'hide',  targets: ['t-soft'],           duration: 0.4, ease: 'easeInOutCubic' },
+
+            // ── Phase 11: Autoregressive loop reveal ──
+            { at: 13.0, do: 'draw', targets: ['e-loop'],            duration: 1.2, ease: 'easeInOutCubic' },
+            { at: 13.8, do: 'show', targets: ['t-loop'],            duration: 0.6, ease: 'easeOutCubic' },
+
+            // ── Phase 12: Cinematic zoom into transformer block ──
+            { at: 14.5, do: 'zoom', duration: 0.9, to: 1.55, ease: 'easeInOutCubic' },
+            { at: 14.5, do: 'pan',  duration: 0.9, x: -420, y: -240, ease: 'easeInOutCubic' },
+            { at: 15.5, do: 'pulse', targets: ['n-qkv', 'n-ffn', 'n-kv'], duration: 0.8, scale: 1.08, ease: 'easeInOutCubic' },
+
+            // ── Phase 13: Zoom back out ──
+            { at: 16.3, do: 'zoom', duration: 0.95, from: 1.55, to: 1.0, ease: 'easeInOutCubic' },
+            { at: 16.3, do: 'pan',  duration: 0.95, fromX: -420, fromY: -240, x: -60, y: -15, ease: 'easeInOutCubic' },
+
+            // ── Phase 14: Final pulse on loop endpoints ──
+            { at: 17.4, do: 'pulse', targets: ['n-tok', 'n-user'], duration: 0.6, scale: 1.1, ease: 'easeInOutCubic' }
+          ]
+        };
+      }
+
+      function setStatus(msg, cls) {
+        els.status.textContent = msg;
+        els.status.classList.remove('ok', 'err', 'warn');
+        if (cls) {
+          els.status.classList.add(cls);
+        }
+      }
+
+      function clamp(v, min, max) {
+        return Math.max(min, Math.min(max, v));
+      }
+
+      function lerp(a, b, t) {
+        return a + (b - a) * t;
+      }
+
+      function easeValue(t, name) {
+        const x = clamp(t, 0, 1);
+        switch (String(name || 'easeInOutCubic')) {
+          case 'linear':
+            return x;
+          case 'easeInCubic':
+            return x * x * x;
+          case 'easeOutCubic':
+            return 1 - Math.pow(1 - x, 3);
+          case 'easeInOutCubic':
+          default:
+            return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+        }
+      }
+
+      function normalizeNumber(v, fallback) {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : fallback;
+      }
+
+      function deepClone(v) {
+        return JSON.parse(JSON.stringify(v));
+      }
+
+      function resizeCanvas() {
+        const rect = els.viewer.getBoundingClientRect();
+        els.stage.width = Math.max(1, Math.floor(rect.width * state.dpr));
+        els.stage.height = Math.max(1, Math.floor(rect.height * state.dpr));
+        ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+        renderFrame(state.playback.time);
+      }
+
+      function toArray(value) {
+        if (Array.isArray(value)) {
+          return value;
+        }
+        if (typeof value === 'string' && value.trim()) {
+          return [value.trim()];
+        }
+        return [];
+      }
+
+      function primitiveCategory(type) {
+        if (type === 'line' || type === 'arrow' || type === 'pen') {
+          return 'edge';
+        }
+        if (type === 'icon') {
+          return 'icon';
+        }
+        if (type === 'rect' || type === 'ellipse' || type === 'text') {
+          return 'node';
+        }
+        return type;
+      }
+
+      function resolveTargets(targetDef, primitives) {
+        const ids = [];
+        const seen = new Set();
+        const patterns = toArray(targetDef);
+
+        function push(id) {
+          if (!seen.has(id)) {
+            seen.add(id);
+            ids.push(id);
+          }
+        }
+
+        for (const pattern of patterns) {
+          if (pattern === '*') {
+            for (const p of primitives) {
+              push(p.id);
+            }
+            continue;
+          }
+          if (pattern.startsWith('type:')) {
+            const q = pattern.slice(5).toLowerCase();
+            for (const p of primitives) {
+              const type = String(p.type || '').toLowerCase();
+              if (type === q || primitiveCategory(type) === q) {
+                push(p.id);
+              }
+            }
+            continue;
+          }
+          const found = primitives.find((p) => p.id === pattern);
+          if (found) {
+            push(found.id);
+          }
+        }
+        return ids;
+      }
+
+      function validatePrimitive(p, index) {
+        if (!p || typeof p !== 'object') {
+          return `scene.primitives[${index}] must be an object`;
+        }
+        if (!p.id || typeof p.id !== 'string') {
+          return `scene.primitives[${index}] missing string id`;
+        }
+        if (!p.type || typeof p.type !== 'string') {
+          return `scene.primitives[${index}] missing string type`;
+        }
+        return null;
+      }
+
+      function validateAction(a, index) {
+        if (!a || typeof a !== 'object') {
+          return `timeline[${index}] must be an object`;
+        }
+        const actions = new Set(['show', 'hide', 'draw', 'move', 'pulse', 'morph', 'zoom', 'pan']);
+        if (!actions.has(a.do)) {
+          return `timeline[${index}].do must be one of show/hide/draw/move/pulse/morph/zoom/pan`;
+        }
+        if (!Number.isFinite(Number(a.at))) {
+          return `timeline[${index}].at must be numeric`;
+        }
+        if (a.duration != null && !Number.isFinite(Number(a.duration))) {
+          return `timeline[${index}].duration must be numeric when provided`;
+        }
+        if (a.do === 'morph') {
+          if (typeof a.from !== 'string' || !a.from.trim()) {
+            return `timeline[${index}].from must be a primitive id for morph`;
+          }
+          if (typeof a.to !== 'string' || !a.to.trim()) {
+            return `timeline[${index}].to must be a primitive id for morph`;
+          }
+        }
+        return null;
+      }
+
+      function parseDsl(rawText) {
+        let parsed;
+        try {
+          parsed = JSON.parse(rawText);
+        } catch (err) {
+          throw new Error(`JSON parse error: ${err.message}`);
+        }
+
+        const dsl = {
+          version: normalizeNumber(parsed.version, 1),
+          meta: {
+            title: String((parsed.meta && parsed.meta.title) || 'Untitled Scene'),
+            bg: String((parsed.meta && parsed.meta.bg) || '#06080f'),
+            duration: normalizeNumber(parsed.meta && parsed.meta.duration, NaN),
+            camera: {
+              x: normalizeNumber(parsed.meta && parsed.meta.camera && parsed.meta.camera.x, 0),
+              y: normalizeNumber(parsed.meta && parsed.meta.camera && parsed.meta.camera.y, 0),
+              scale: clamp(normalizeNumber(parsed.meta && parsed.meta.camera && parsed.meta.camera.scale, 1), 0.1, 8)
+            }
+          },
+          scene: {
+            primitives: []
+          },
+          timeline: Array.isArray(parsed.timeline) ? parsed.timeline.slice() : []
+        };
+
+        const primitives = parsed.scene && Array.isArray(parsed.scene.primitives)
+          ? parsed.scene.primitives
+          : (Array.isArray(parsed.primitives) ? parsed.primitives : null);
+
+        if (!primitives) {
+          throw new Error('Missing scene.primitives array (or root primitives array).');
+        }
+
+        const ids = new Set();
+        for (let i = 0; i < primitives.length; i += 1) {
+          const err = validatePrimitive(primitives[i], i);
+          if (err) {
+            throw new Error(err);
+          }
+          if (ids.has(primitives[i].id)) {
+            throw new Error(`Duplicate primitive id: ${primitives[i].id}`);
+          }
+          ids.add(primitives[i].id);
+          dsl.scene.primitives.push(deepClone(primitives[i]));
+        }
+
+        for (let i = 0; i < dsl.timeline.length; i += 1) {
+          const err = validateAction(dsl.timeline[i], i);
+          if (err) {
+            throw new Error(err);
+          }
+        }
+
+        dsl.timeline.sort((a, b) => Number(a.at) - Number(b.at));
+
+        const maxEnd = dsl.timeline.reduce((m, a) => {
+          const at = normalizeNumber(a.at, 0);
+          const dur = Math.max(0, normalizeNumber(a.duration, 0));
+          return Math.max(m, at + dur);
+        }, 0);
+
+        const duration = Number.isFinite(dsl.meta.duration)
+          ? Math.max(dsl.meta.duration, maxEnd)
+          : Math.max(maxEnd, 4);
+
+        dsl.meta.duration = Math.max(0.25, duration);
+
+        const compiled = {
+          dsl,
+          primitives: dsl.scene.primitives,
+          primitiveById: {},
+          runtimeTemplate: {},
+          actions: []
+        };
+
+        for (const p of compiled.primitives) {
+          compiled.primitiveById[p.id] = p;
+          compiled.runtimeTemplate[p.id] = {
+            visible: true,
+            alpha: 1,
+            progress: 1,
+            offsetX: 0,
+            offsetY: 0,
+            scale: 1,
+            morphToId: null,
+            morphT: 0
+          };
+        }
+
+        for (let i = 0; i < dsl.timeline.length; i += 1) {
+          const action = deepClone(dsl.timeline[i]);
+          action.at = normalizeNumber(action.at, 0);
+          action.duration = Math.max(0, normalizeNumber(action.duration, 0));
+          if (action.do === 'morph') {
+            if (!compiled.primitiveById[action.from]) {
+              throw new Error(`timeline[${i}] morph source id not found: ${action.from}`);
+            }
+            if (!compiled.primitiveById[action.to]) {
+              throw new Error(`timeline[${i}] morph target id not found: ${action.to}`);
+            }
+            action.__fromId = action.from;
+            action.__toId = action.to;
+            action.__targets = [action.__fromId, action.__toId];
+          } else {
+            action.__targets = resolveTargets(action.targets, compiled.primitives);
+            if (action.do !== 'zoom' && action.do !== 'pan' && action.__targets.length === 0) {
+              throw new Error(`timeline[${i}] targets did not match any primitive.`);
+            }
+          }
+          compiled.actions.push(action);
+        }
+
+        return compiled;
+      }
+
+      function getBounds(shape) {
+        if (shape.type === 'pen') {
+          const pts = shape.points || [];
+          if (!pts.length) {
+            return null;
+          }
+          let minX = pts[0].x;
+          let minY = pts[0].y;
+          let maxX = pts[0].x;
+          let maxY = pts[0].y;
+          for (const pt of pts) {
+            minX = Math.min(minX, pt.x);
+            minY = Math.min(minY, pt.y);
+            maxX = Math.max(maxX, pt.x);
+            maxY = Math.max(maxY, pt.y);
+          }
+          return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+        }
+        if (shape.type === 'text') {
+          const size = Math.max(12, normalizeNumber(shape.size, 28));
+          ctx.save();
+          ctx.font = `${size}px "Fira Sans", "Noto Sans", sans-serif`;
+          const lines = String(shape.text || '').split('\n');
+          let width = 0;
+          for (const line of lines) {
+            width = Math.max(width, ctx.measureText(line).width);
+          }
+          ctx.restore();
+          return { x: shape.x, y: shape.y - size * 0.6, w: width, h: lines.length * size * 1.24 };
+        }
+        if (shape.type === 'icon') {
+          const size = Math.max(20, normalizeNumber(shape.size, 80));
+          return { x: shape.x - size / 2, y: shape.y - size / 2, w: size, h: size };
+        }
+        if (shape.type === 'line' || shape.type === 'arrow' || shape.type === 'rect' || shape.type === 'ellipse') {
+          const minX = Math.min(shape.x1, shape.x2);
+          const minY = Math.min(shape.y1, shape.y2);
+          return { x: minX, y: minY, w: Math.abs(shape.x2 - shape.x1), h: Math.abs(shape.y2 - shape.y1) };
+        }
+        return null;
+      }
+
+      function centerOf(shape) {
+        const b = getBounds(shape);
+        if (!b) {
+          return { x: 0, y: 0 };
+        }
+        return { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+      }
+
+      function areaOf(shape) {
+        const b = getBounds(shape);
+        if (!b) {
+          return 1;
+        }
+        return Math.max(1, b.w * b.h);
+      }
+
+      function morphScaleFor(fromShape, toShape) {
+        const a = areaOf(fromShape);
+        const b = areaOf(toShape);
+        return clamp(Math.sqrt(b / a), 0.2, 5);
+      }
+
+      function hexToRgb(color) {
+        if (typeof color !== 'string') {
+          return null;
+        }
+        const s = color.trim();
+        const m3 = s.match(/^#([0-9a-fA-F]{3})$/);
+        if (m3) {
+          return {
+            r: parseInt(m3[1][0] + m3[1][0], 16),
+            g: parseInt(m3[1][1] + m3[1][1], 16),
+            b: parseInt(m3[1][2] + m3[1][2], 16)
+          };
+        }
+        const m6 = s.match(/^#([0-9a-fA-F]{6})$/);
+        if (m6) {
+          return {
+            r: parseInt(m6[1].slice(0, 2), 16),
+            g: parseInt(m6[1].slice(2, 4), 16),
+            b: parseInt(m6[1].slice(4, 6), 16)
+          };
+        }
+        return null;
+      }
+
+      function rgbToHex(r, g, b) {
+        const rr = clamp(Math.round(r), 0, 255).toString(16).padStart(2, '0');
+        const gg = clamp(Math.round(g), 0, 255).toString(16).padStart(2, '0');
+        const bb = clamp(Math.round(b), 0, 255).toString(16).padStart(2, '0');
+        return `#${rr}${gg}${bb}`;
+      }
+
+      function blendColor(fromColor, toColor, t) {
+        const a = hexToRgb(fromColor);
+        const b = hexToRgb(toColor);
+        if (!a || !b) {
+          return fromColor || toColor || '#8ecfff';
+        }
+        return rgbToHex(lerp(a.r, b.r, t), lerp(a.g, b.g, t), lerp(a.b, b.b, t));
+      }
+
+      function dashPattern(shape) {
+        const style = String(shape.style || 'solid');
+        const width = Math.max(1, normalizeNumber(shape.width, 3));
+        if (style === 'dashed') {
+          return [width * 2.5, width * 1.6];
+        }
+        if (style === 'dotted') {
+          return [width * 0.45, width * 1.5];
+        }
+        return [];
+      }
+
+      function roundRect(x, y, w, h, r, fill, stroke) {
+        const radius = Math.min(r, w / 2, h / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.arcTo(x + w, y, x + w, y + h, radius);
+        ctx.arcTo(x + w, y + h, x, y + h, radius);
+        ctx.arcTo(x, y + h, x, y, radius);
+        ctx.arcTo(x, y, x + w, y, radius);
+        ctx.closePath();
+        if (fill) {
+          ctx.fill();
+        }
+        if (stroke) {
+          ctx.stroke();
+        }
+      }
+
+      function drawArrowHead(x1, y1, x2, y2, color, width) {
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        const size = Math.max(10, width * 3.4);
+        const spread = Math.PI / 7;
+        ctx.save();
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - size * Math.cos(angle - spread), y2 - size * Math.sin(angle - spread));
+        ctx.lineTo(x2 - size * Math.cos(angle + spread), y2 - size * Math.sin(angle + spread));
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawIcon(icon, x, y, size, color) {
+        const w = size;
+        const h = size;
+        const sx = x - w / 2;
+        const sy = y - h / 2;
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.fillStyle = 'rgba(126, 186, 255, 0.12)';
+        ctx.lineWidth = Math.max(2, size / 18);
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        switch (icon) {
+          case 'server': {
+            const unitH = h / 3.3;
+            for (let i = 0; i < 3; i += 1) {
+              const yy = sy + i * (unitH + h * 0.045);
+              roundRect(sx + w * 0.12, yy, w * 0.76, unitH, w * 0.08, true, true);
+              ctx.fillStyle = color;
+              ctx.beginPath();
+              ctx.arc(sx + w * 0.22, yy + unitH / 2, Math.max(2, size / 25), 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = 'rgba(126, 186, 255, 0.12)';
+            }
+            break;
+          }
+          case 'database': {
+            const rx = w * 0.34;
+            const ry = h * 0.11;
+            const cx = x;
+            let cy = sy + h * 0.22;
+            for (let i = 0; i < 3; i += 1) {
+              ctx.beginPath();
+              ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.moveTo(cx - rx, cy);
+              ctx.lineTo(cx - rx, cy + h * 0.18);
+              ctx.moveTo(cx + rx, cy);
+              ctx.lineTo(cx + rx, cy + h * 0.18);
+              ctx.stroke();
+              cy += h * 0.2;
+            }
+            ctx.beginPath();
+            ctx.ellipse(cx, sy + h * 0.82, rx, ry, 0, 0, Math.PI);
+            ctx.stroke();
+            break;
+          }
+          case 'cloud': {
+            ctx.beginPath();
+            ctx.arc(x - w * 0.16, y + h * 0.03, w * 0.16, Math.PI * 0.9, Math.PI * 1.95);
+            ctx.arc(x + w * 0.05, y - h * 0.06, w * 0.2, Math.PI, Math.PI * 2.02);
+            ctx.arc(x + w * 0.27, y + h * 0.05, w * 0.14, Math.PI * 1.15, Math.PI * 2.02);
+            ctx.lineTo(x + w * 0.3, y + h * 0.23);
+            ctx.lineTo(x - w * 0.31, y + h * 0.23);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            break;
+          }
+          case 'user': {
+            ctx.beginPath();
+            ctx.arc(x, y - h * 0.17, w * 0.15, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(x, y + h * 0.2, w * 0.28, Math.PI, 0);
+            ctx.stroke();
+            break;
+          }
+          case 'api': {
+            roundRect(sx + w * 0.08, sy + h * 0.12, w * 0.84, h * 0.72, w * 0.08, true, true);
+            ctx.fillStyle = color;
+            ctx.font = `${Math.max(12, Math.floor(size * 0.22))}px "JetBrains Mono", monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('API', x, y);
+            break;
+          }
+          case 'check': {
+            ctx.beginPath();
+            ctx.moveTo(sx + w * 0.2, sy + h * 0.56);
+            ctx.lineTo(sx + w * 0.44, sy + h * 0.76);
+            ctx.lineTo(sx + w * 0.82, sy + h * 0.28);
+            ctx.stroke();
+            break;
+          }
+          case 'dataset': {
+            for (let i = 0; i < 3; i += 1) {
+              const yy = sy + h * (0.18 + i * 0.18);
+              roundRect(sx + w * 0.18, yy, w * 0.64, h * 0.15, w * 0.04, true, true);
+            }
+            break;
+          }
+          case 'gpu': {
+            roundRect(sx + w * 0.16, sy + h * 0.16, w * 0.68, h * 0.68, w * 0.07, true, true);
+            for (let i = 0; i < 5; i += 1) {
+              const xx = sx + w * (0.1 + i * 0.16);
+              ctx.beginPath();
+              ctx.moveTo(xx, sy + h * 0.09);
+              ctx.lineTo(xx, sy + h * 0.16);
+              ctx.moveTo(xx, sy + h * 0.84);
+              ctx.lineTo(xx, sy + h * 0.91);
+              ctx.stroke();
+            }
+            ctx.fillStyle = color;
+            ctx.font = `${Math.max(10, Math.floor(size * 0.17))}px "JetBrains Mono", monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('GPU', x, y);
+            break;
+          }
+          case 'tensor': {
+            roundRect(sx + w * 0.18, sy + h * 0.18, w * 0.64, h * 0.64, w * 0.06, false, true);
+            for (let i = 1; i <= 3; i += 1) {
+              const xx = sx + w * (0.18 + i * 0.16);
+              const yy = sy + h * (0.18 + i * 0.16);
+              ctx.beginPath();
+              ctx.moveTo(xx, sy + h * 0.18);
+              ctx.lineTo(xx, sy + h * 0.82);
+              ctx.moveTo(sx + w * 0.18, yy);
+              ctx.lineTo(sx + w * 0.82, yy);
+              ctx.stroke();
+            }
+            break;
+          }
+          case 'gear': {
+            const cx = x;
+            const cy = y;
+            const r1 = w * 0.2;
+            const r2 = w * 0.34;
+            const teeth = 10;
+            ctx.beginPath();
+            for (let i = 0; i < teeth * 2; i += 1) {
+              const a = (Math.PI * i) / teeth;
+              const r = i % 2 === 0 ? r2 : r1;
+              const px = cx + Math.cos(a) * r;
+              const py = cy + Math.sin(a) * r;
+              if (i === 0) {
+                ctx.moveTo(px, py);
+              } else {
+                ctx.lineTo(px, py);
+              }
+            }
+            ctx.closePath();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(cx, cy, w * 0.1, 0, Math.PI * 2);
+            ctx.stroke();
+            break;
+          }
+          default:
+            roundRect(sx + w * 0.12, sy + h * 0.12, w * 0.76, h * 0.76, w * 0.06, true, true);
+        }
+        ctx.restore();
+      }
+
+      function transformPoint(x, y, center, scale, dx, dy) {
+        return {
+          x: center.x + (x - center.x) * scale + dx,
+          y: center.y + (y - center.y) * scale + dy
+        };
+      }
+
+      function drawPrimitive(base, runtime, dashTick, primitiveById) {
+        if (!runtime.visible || runtime.alpha <= 0.001) {
+          return;
+        }
+
+        let color = String(base.color || '#8ecfff');
+        const width = Math.max(1, normalizeNumber(base.width, 3));
+        const center = centerOf(base);
+        const scale = Math.max(0.02, runtime.scale || 1);
+        const dx = runtime.offsetX || 0;
+        const dy = runtime.offsetY || 0;
+        const progress = clamp(runtime.progress == null ? 1 : runtime.progress, 0, 1);
+
+        if (runtime.morphToId && primitiveById && primitiveById[runtime.morphToId]) {
+          const t = clamp(runtime.morphT || 0, 0, 1);
+          color = blendColor(color, String(primitiveById[runtime.morphToId].color || color), t);
+        }
+
+        ctx.save();
+        ctx.globalAlpha = clamp(runtime.alpha, 0, 1);
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = width;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        const dash = dashPattern(base);
+        ctx.setLineDash(dash);
+        if (dash.length) {
+          ctx.lineDashOffset = -dashTick;
+        }
+
+        if (base.type === 'pen') {
+          const pts = Array.isArray(base.points) ? base.points : [];
+          if (pts.length > 1 && progress > 0) {
+            const total = pts.length;
+            const stop = Math.max(2, Math.min(total, Math.floor(progress * total)));
+            ctx.beginPath();
+            const p0 = transformPoint(pts[0].x, pts[0].y, center, scale, dx, dy);
+            ctx.moveTo(p0.x, p0.y);
+            for (let i = 1; i < stop; i += 1) {
+              const p = transformPoint(pts[i].x, pts[i].y, center, scale, dx, dy);
+              ctx.lineTo(p.x, p.y);
+            }
+            ctx.stroke();
+          }
+        } else if (base.type === 'line' || base.type === 'arrow') {
+          const a = transformPoint(base.x1, base.y1, center, scale, dx, dy);
+          const bFull = transformPoint(base.x2, base.y2, center, scale, dx, dy);
+          const b = {
+            x: a.x + (bFull.x - a.x) * progress,
+            y: a.y + (bFull.y - a.y) * progress
+          };
+          if (progress > 0.001) {
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+            if (base.type === 'arrow') {
+              drawArrowHead(a.x, a.y, b.x, b.y, color, width);
+            }
+          }
+        } else if (base.type === 'rect') {
+          const p1 = transformPoint(base.x1, base.y1, center, scale, dx, dy);
+          const p2 = transformPoint(base.x2, base.y2, center, scale, dx, dy);
+          const x = Math.min(p1.x, p2.x);
+          const y = Math.min(p1.y, p2.y);
+          const w = Math.abs(p2.x - p1.x);
+          const h = Math.abs(p2.y - p1.y);
+          ctx.globalAlpha *= progress;
+          ctx.strokeRect(x, y, w, h);
+        } else if (base.type === 'ellipse') {
+          const p1 = transformPoint(base.x1, base.y1, center, scale, dx, dy);
+          const p2 = transformPoint(base.x2, base.y2, center, scale, dx, dy);
+          const cx = (p1.x + p2.x) / 2;
+          const cy = (p1.y + p2.y) / 2;
+          const rx = Math.abs(p2.x - p1.x) / 2;
+          const ry = Math.abs(p2.y - p1.y) / 2;
+          ctx.globalAlpha *= progress;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (base.type === 'text') {
+          const pos = transformPoint(base.x, base.y, center, scale, dx, dy);
+          const size = Math.max(12, normalizeNumber(base.size, 28) * scale);
+          ctx.globalAlpha *= progress;
+          ctx.font = `${size}px "Fira Sans", "Noto Sans", sans-serif`;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          const lines = String(base.text || 'Text').split('\n');
+          const step = Math.max(14, size * 1.24);
+          for (let i = 0; i < lines.length; i += 1) {
+            ctx.fillText(lines[i], pos.x, pos.y + i * step);
+          }
+        } else if (base.type === 'icon') {
+          const pos = transformPoint(base.x, base.y, center, scale, dx, dy);
+          const size = Math.max(20, normalizeNumber(base.size, 84) * scale);
+          ctx.globalAlpha *= progress;
+          drawIcon(String(base.icon || 'box'), pos.x, pos.y, size, color);
+        }
+
+        ctx.restore();
+      }
+
+      function evaluateRuntime(timeSec) {
+        if (!state.compile) {
+          return null;
+        }
+
+        const runtime = deepClone(state.compile.runtimeTemplate);
+        const camera = deepClone(state.compile.dsl.meta.camera || { x: 0, y: 0, scale: 1 });
+
+        for (const action of state.compile.actions) {
+          if (timeSec < action.at) {
+            continue;
+          }
+          const dur = Math.max(0, normalizeNumber(action.duration, 0));
+          const rawP = dur === 0 ? 1 : clamp((timeSec - action.at) / dur, 0, 1);
+          const p = easeValue(rawP, action.ease);
+
+          if (action.do === 'zoom') {
+            const from = normalizeNumber(action.from, camera.scale);
+            const to = normalizeNumber(action.to, normalizeNumber(action.scale, camera.scale));
+            camera.scale = lerp(from, to, p);
+            continue;
+          }
+
+          if (action.do === 'pan') {
+            const fromX = normalizeNumber(action.fromX, camera.x);
+            const fromY = normalizeNumber(action.fromY, camera.y);
+            const toX = normalizeNumber(action.x, camera.x);
+            const toY = normalizeNumber(action.y, camera.y);
+            camera.x = lerp(fromX, toX, p);
+            camera.y = lerp(fromY, toY, p);
+            continue;
+          }
+
+          if (action.do === 'morph') {
+            const fromId = action.__fromId;
+            const toId = action.__toId;
+            const fromRuntime = runtime[fromId];
+            const toRuntime = runtime[toId];
+            const fromShape = state.compile.primitiveById[fromId];
+            const toShape = state.compile.primitiveById[toId];
+
+            if (!fromRuntime || !toRuntime || !fromShape || !toShape) {
+              continue;
+            }
+
+            const fromCenter = centerOf(fromShape);
+            const toCenter = centerOf(toShape);
+            const dx = toCenter.x - fromCenter.x;
+            const dy = toCenter.y - fromCenter.y;
+            const scaleTarget = morphScaleFor(fromShape, toShape);
+
+            fromRuntime.visible = true;
+            fromRuntime.offsetX += dx * p;
+            fromRuntime.offsetY += dy * p;
+            fromRuntime.scale *= lerp(1, scaleTarget, p);
+            fromRuntime.alpha *= (1 - p);
+            fromRuntime.morphToId = toId;
+            fromRuntime.morphT = Math.max(fromRuntime.morphT, p);
+
+            toRuntime.visible = true;
+            toRuntime.alpha = Math.max(toRuntime.alpha, p);
+            toRuntime.scale *= lerp(1.08, 1.0, p);
+
+            if (rawP >= 1) {
+              fromRuntime.visible = false;
+              fromRuntime.alpha = 0;
+              fromRuntime.morphToId = null;
+              fromRuntime.morphT = 0;
+            }
+            continue;
+          }
+
+          for (const id of action.__targets) {
+            const target = runtime[id];
+            if (!target) {
+              continue;
+            }
+
+            switch (action.do) {
+              case 'show': {
+                const from = normalizeNumber(action.from, 0);
+                const to = normalizeNumber(action.to, 1);
+                target.visible = true;
+                target.alpha = lerp(from, to, p);
+                target.progress = Math.max(target.progress, 1);
+                break;
+              }
+              case 'hide': {
+                const from = normalizeNumber(action.from, 1);
+                const to = normalizeNumber(action.to, 0);
+                target.alpha = lerp(from, to, p);
+                if (p >= 1 && target.alpha <= 0.001) {
+                  target.visible = false;
+                }
+                break;
+              }
+              case 'draw': {
+                const from = normalizeNumber(action.from, 0);
+                const to = normalizeNumber(action.to, 1);
+                const alphaFrom = normalizeNumber(action.alphaFrom, 0);
+                const alphaTo = normalizeNumber(action.alphaTo, 1);
+                target.visible = true;
+                target.progress = lerp(from, to, p);
+                target.alpha = Math.max(target.alpha, lerp(alphaFrom, alphaTo, p));
+                break;
+              }
+              case 'move': {
+                const dx = normalizeNumber(action.dx, 0);
+                const dy = normalizeNumber(action.dy, 0);
+                target.offsetX += dx * p;
+                target.offsetY += dy * p;
+                break;
+              }
+              case 'pulse': {
+                const peak = normalizeNumber(action.scale, 1.1);
+                const amp = Math.max(0, peak - 1);
+                const pulse = 1 + amp * Math.sin(Math.PI * p);
+                target.scale *= pulse;
+                break;
+              }
+              default:
+                break;
+            }
+          }
+        }
+
+        return { runtime, camera };
+      }
+
+      function renderFrame(timeSec) {
+        const width = els.stage.width / state.dpr;
+        const height = els.stage.height / state.dpr;
+        ctx.save();
+        ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+
+        if (!state.compile) {
+          ctx.clearRect(0, 0, width, height);
+          ctx.fillStyle = '#060911';
+          ctx.fillRect(0, 0, width, height);
+          ctx.fillStyle = '#cfd8f5';
+          ctx.font = '600 20px "Fira Sans", sans-serif';
+          ctx.fillText('Validate a DSL scene to preview animation.', 28, 44);
+          ctx.restore();
+          els.pillTitle.textContent = 'Scene: None';
+          els.pillTime.textContent = 'Time: 0.00s';
+          return;
+        }
+
+        const evalOut = evaluateRuntime(timeSec);
+        const runtime = evalOut.runtime;
+        const camera = evalOut.camera;
+
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = state.compile.dsl.meta.bg;
+        ctx.fillRect(0, 0, width, height);
+
+        // ── Onion-skin: render a ghost frame 0.3s in the past ──
+        if (state.onionSkin && timeSec > 0.3) {
+          const ghostOut = evaluateRuntime(timeSec - 0.3);
+          ctx.save();
+          ctx.globalAlpha = 0.22;
+          ctx.translate(-ghostOut.camera.x, -ghostOut.camera.y);
+          ctx.scale(ghostOut.camera.scale, ghostOut.camera.scale);
+          const ghostDash = (timeSec - 0.3) * 140;
+          for (const primitive of state.compile.primitives) {
+            drawPrimitive(primitive, ghostOut.runtime[primitive.id], ghostDash, state.compile.primitiveById);
+          }
+          ctx.restore();
+          ctx.save();
+          ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+        }
+
+        ctx.translate(-camera.x, -camera.y);
+        ctx.scale(camera.scale, camera.scale);
+
+        const dashTick = timeSec * 140;
+        for (const primitive of state.compile.primitives) {
+          drawPrimitive(primitive, runtime[primitive.id], dashTick, state.compile.primitiveById);
+        }
+
+        ctx.restore();
+
+        els.pillTitle.textContent = `Scene: ${state.compile.dsl.meta.title}`;
+        els.pillTime.textContent = `Time: ${timeSec.toFixed(2)}s / ${state.playback.duration.toFixed(2)}s`;
+      }
+
+      function syncTimelineUi() {
+        const ratio = state.playback.duration <= 0 ? 0 : state.playback.time / state.playback.duration;
+        els.timeline.value = String(Math.round(clamp(ratio, 0, 1) * 1000));
+      }
+
+      function setPlaybackStateLabel() {
+        els.pillState.textContent = `State: ${state.playback.playing ? 'Playing' : 'Paused'}`;
+      }
+
+      function tick(nowMs) {
+        if (!state.playback.lastFrameMs) {
+          state.playback.lastFrameMs = nowMs;
+        }
+
+        if (state.playback.playing && state.compile) {
+          const dt = Math.min((nowMs - state.playback.lastFrameMs) / 1000, 0.05);
+          state.playback.time += dt * state.playback.speed;
+          if (state.playback.time >= state.playback.duration) {
+            if (state.loopMode === 1) {
+              // Loop mode: restart from 0
+              state.playback.time = 0;
+              setStatus('Looping…', 'ok');
+            } else if (state.loopMode === 2) {
+              // Bounce mode: reverse direction
+              state.playback.speed = -Math.abs(state.playback.speed);
+              state.playback.time = state.playback.duration;
+              setStatus('Bouncing…', 'ok');
+            } else {
+              state.playback.time = state.playback.duration;
+              state.playback.playing = false;
+              setPlaybackStateLabel();
+              setStatus('Playback reached end.', 'ok');
+            }
+          } else if (state.playback.time <= 0 && state.loopMode === 2) {
+            // Bounce back forward
+            state.playback.speed = Math.abs(state.playback.speed);
+            state.playback.time = 0;
+          }
+          syncTimelineUi();
+        }
+
+        state.playback.lastFrameMs = nowMs;
+        renderFrame(state.playback.time);
+        updateStripPlayhead();
+        state.frameHandle = requestAnimationFrame(tick);
+      }
+
+      function validateCurrentDsl(showOkStatus) {
+        const text = els.dslEditor.value;
+        try {
+          const compiled = parseDsl(text);
+          state.parsed = compiled.dsl;
+          state.compile = compiled;
+          state.playback.duration = compiled.dsl.meta.duration;
+          state.playback.time = clamp(state.playback.time, 0, state.playback.duration);
+          state.playback.playing = false;
+          syncTimelineUi();
+          setPlaybackStateLabel();
+          persistEditor();
+          els.validDot.className = 'valid-dot ok';
+          renderActionStrip();
+          if (showOkStatus) {
+            setStatus(`DSL valid. ${compiled.primitives.length} primitives, ${compiled.actions.length} actions.`, 'ok');
+          }
+          return true;
+        } catch (err) {
+          state.compile = null;
+          setPlaybackStateLabel();
+          els.validDot.className = 'valid-dot err';
+          setStatus(String(err.message || err), 'err');
+          return false;
+        }
+      }
+
+      function play() {
+        if (!validateCurrentDsl(false)) {
+          return;
+        }
+        if (state.playback.time >= state.playback.duration) {
+          state.playback.time = 0;
+        }
+        // Ensure positive speed (bounce mode may have reversed it)
+        state.playback.speed = Math.abs(state.playback.speed);
+        state.playback.playing = true;
+        setPlaybackStateLabel();
+        setStatus('Playback started.', 'ok');
+      }
+
+      function pause() {
+        state.playback.playing = false;
+        setPlaybackStateLabel();
+        setStatus('Playback paused.', 'warn');
+      }
+
+      function resetPlayback() {
+        state.playback.playing = false;
+        state.playback.time = 0;
+        syncTimelineUi();
+        setPlaybackStateLabel();
+        renderFrame(0);
+        setStatus('Playback reset to 0s.', 'ok');
+      }
+
+      function saveDslFile() {
+        const text = els.dslEditor.value;
+        const blob = new Blob([text], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `storyboard-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        setStatus('Saved DSL JSON.', 'ok');
+      }
+
+      function loadDslFile(file) {
+        if (!file) {
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          els.dslEditor.value = String(reader.result || '').trim();
+          if (validateCurrentDsl(true)) {
+            resetPlayback();
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      function loadCanvasJson(file) {
+        if (!file) {
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const parsed = JSON.parse(String(reader.result || '{}'));
+            if (!Array.isArray(parsed.shapes)) {
+              throw new Error('Canvas JSON missing shapes[]');
+            }
+            state.canvasImport = parsed;
+            els.canvasMeta.textContent = `Loaded canvas JSON: ${parsed.shapes.length} shapes.`;
+            setStatus('Canvas JSON loaded. Use "Generate DSL From Canvas".', 'ok');
+          } catch (err) {
+            setStatus(`Invalid canvas JSON: ${err.message}`, 'err');
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      function ensureShapeId(shape, index) {
+        if (shape.id && typeof shape.id === 'string') {
+          return shape.id;
+        }
+        return `shape-${index + 1}`;
+      }
+
+      function generateDslFromCanvas() {
+        if (!state.canvasImport || !Array.isArray(state.canvasImport.shapes)) {
+          setStatus('Load presenter_canvas JSON first.', 'warn');
+          return;
+        }
+
+        const primitives = state.canvasImport.shapes.map((shape, idx) => {
+          const p = deepClone(shape);
+          p.id = ensureShapeId(p, idx);
+          return p;
+        });
+
+        const bg = state.canvasImport.bgColor || '#06080f';
+        const camera = state.canvasImport.camera || { x: 0, y: 0, scale: 1 };
+        const hasEdges = primitives.some((p) => ['line', 'arrow', 'pen'].includes(p.type));
+        const hasIcons = primitives.some((p) => p.type === 'icon');
+
+        const timeline = [
+          { at: 0.0, do: 'hide', targets: '*', duration: 0 },
+          { at: 0.1, do: 'show', targets: ['type:node', 'type:icon'], duration: 0.55, ease: 'easeOutCubic' }
+        ];
+
+        if (hasEdges) {
+          timeline.push({ at: 0.85, do: 'draw', targets: 'type:edge', duration: 0.95, ease: 'easeInOutCubic' });
+        }
+        if (hasIcons) {
+          timeline.push({ at: 2.0, do: 'pulse', targets: 'type:icon', duration: 0.75, scale: 1.12, ease: 'easeInOutCubic' });
+        }
+
+        timeline.push({ at: 3.0, do: 'zoom', duration: 0.65, to: 1.15, ease: 'easeInOutCubic' });
+        timeline.push({ at: 3.8, do: 'pan', duration: 0.65, x: normalizeNumber(camera.x, 0) - 80, y: normalizeNumber(camera.y, 0) - 20, ease: 'easeInOutCubic' });
+
+        const dsl = {
+          version: 1,
+          meta: {
+            title: 'Canvas Storyboard',
+            bg,
+            duration: 5.5,
+            camera: {
+              x: normalizeNumber(camera.x, 0),
+              y: normalizeNumber(camera.y, 0),
+              scale: clamp(normalizeNumber(camera.scale, 1), 0.1, 8)
+            }
+          },
+          scene: { primitives },
+          timeline
+        };
+
+        els.dslEditor.value = JSON.stringify(dsl, null, 2);
+        if (validateCurrentDsl(true)) {
+          resetPlayback();
+          setStatus('Generated DSL from canvas JSON. Edit timeline and press Play.', 'ok');
+        }
+      }
+
+      function persistEditor() {
+        try {
+          localStorage.setItem(STORAGE_KEY, els.dslEditor.value);
+        } catch (_err) {
+        }
+      }
+
+      function restoreEditor() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved && saved.trim()) {
+            els.dslEditor.value = saved;
+            return true;
+          }
+        } catch (_err) {
+        }
+        return false;
+      }
+
+      function toggleFocus(force) {
+        const next = typeof force === 'boolean' ? force : !document.body.classList.contains('focus');
+        document.body.classList.toggle('focus', next);
+        state.focus = next;
+        if (!next) {
+          document.body.classList.remove('menu-open');
+        }
+      }
+
+      /* ── Feature 1: Step-through ──────────────────── */
+      function stepTime(delta) {
+        if (!state.compile) return;
+        state.playback.playing = false;
+        state.playback.time = clamp(state.playback.time + delta, 0, state.playback.duration);
+        setPlaybackStateLabel();
+        syncTimelineUi();
+        renderFrame(state.playback.time);
+      }
+
+      /* ── Feature 2: Loop / Bounce toggle ──────────── */
+      const LOOP_LABELS = ['Loop: Off', 'Loop', 'Bounce'];
+      function cycleLoop() {
+        state.loopMode = (state.loopMode + 1) % 3;
+        els.loopBadge.textContent = LOOP_LABELS[state.loopMode];
+        els.loopBadge.classList.toggle('active', state.loopMode > 0);
+      }
+
+      /* ── Feature 3: Action strip rendering ────────── */
+      function renderActionStrip() {
+        const strip = els.actionStrip;
+        strip.innerHTML = '';
+        if (!state.compile) return;
+        const dur = state.playback.duration;
+        if (dur <= 0) return;
+        const w = strip.clientWidth;
+        const rows = {};
+        const TYPES = ['show','hide','draw','move','pulse','morph','zoom','pan'];
+        for (const a of state.compile.actions) {
+          const at = normalizeNumber(a.at, 0);
+          const d = Math.max(0.02, normalizeNumber(a.duration, 0));
+          const row = TYPES.indexOf(a.do);
+          if (row < 0) continue;
+          const bar = document.createElement('div');
+          bar.className = `bar ${a.do}`;
+          bar.style.left = `${(at / dur) * 100}%`;
+          bar.style.width = `${Math.max(2, (d / dur) * w)}px`;
+          bar.style.top = `${4 + row * 3.5}px`;
+          strip.appendChild(bar);
+        }
+        // bookmarks
+        for (let i = 0; i < 9; i++) {
+          if (state.bookmarks[i] != null) {
+            const mark = document.createElement('div');
+            mark.className = 'bookmark-mark';
+            mark.style.left = `${(state.bookmarks[i] / dur) * 100}%`;
+            strip.appendChild(mark);
+          }
+        }
+        // playhead
+        const ph = document.createElement('div');
+        ph.className = 'playhead';
+        ph.id = 'stripPlayhead';
+        strip.appendChild(ph);
+        // legend
+        const legend = document.createElement('div');
+        legend.className = 'legend';
+        for (const t of TYPES) {
+          const sp = document.createElement('span');
+          sp.className = `l-${t}`;
+          sp.textContent = t;
+          legend.appendChild(sp);
+        }
+        strip.appendChild(legend);
+      }
+      function updateStripPlayhead() {
+        const ph = document.getElementById('stripPlayhead');
+        if (!ph || !state.compile) return;
+        const ratio = state.playback.duration > 0 ? state.playback.time / state.playback.duration : 0;
+        ph.style.left = `${clamp(ratio, 0, 1) * 100}%`;
+      }
+
+      /* ── Feature 4: Export to WebM ────────────────── */
+      function exportWebM() {
+        if (!state.compile) { setStatus('Validate DSL before export.', 'warn'); return; }
+        const stream = els.stage.captureStream(30);
+        const chunks = [];
+        const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+          ? 'video/webm;codecs=vp9' : 'video/webm';
+        const recorder = new MediaRecorder(stream, { mimeType: mime });
+        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+        recorder.onstop = () => {
+          state.recording = false;
+          els.recordHint.style.display = 'none';
+          const blob = new Blob(chunks, { type: mime });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `storyboard-${Date.now()}.webm`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          setStatus('WebM exported.', 'ok');
+        };
+        // reset and play
+        state.playback.time = 0;
+        state.playback.playing = true;
+        state.recording = true;
+        els.recordHint.style.display = 'block';
+        setPlaybackStateLabel();
+        recorder.start();
+        setStatus('Recording…', 'warn');
+        // stop when done
+        const checkDone = setInterval(() => {
+          if (!state.playback.playing || state.playback.time >= state.playback.duration) {
+            clearInterval(checkDone);
+            recorder.stop();
+          }
+        }, 100);
+      }
+
+      /* ── Feature 5: Shortcut overlay ──────────────── */
+      function toggleShortcutOverlay() {
+        els.shortcutOverlay.classList.toggle('show');
+      }
+
+      /* ── Feature 6: Line-number gutter ────────────── */
+      function syncGutter() {
+        const text = els.dslEditor.value;
+        const lines = text.split('\n').length;
+        let gutter = '';
+        for (let i = 1; i <= lines; i++) gutter += i + '\n';
+        els.lineGutter.textContent = gutter;
+      }
+      function syncGutterScroll() {
+        els.lineGutter.scrollTop = els.dslEditor.scrollTop;
+      }
+
+      /* ── Feature 7: Quick-Add Action builder ──────── */
+      function quickAddAction() {
+        const actionType = els.qaAction.value;
+        const ease = els.qaEase.value;
+        const target = els.qaTarget.value.trim() || '*';
+        const at = normalizeNumber(els.qaAt.value, 0);
+        const dur = normalizeNumber(els.qaDur.value, 0.5);
+        let text = els.dslEditor.value.trim();
+        let dsl;
+        try { dsl = JSON.parse(text); } catch (_e) { setStatus('Fix JSON before adding.', 'err'); return; }
+        if (!Array.isArray(dsl.timeline)) dsl.timeline = [];
+        const entry = { at, do: actionType, duration: dur, ease };
+        if (actionType === 'zoom') { entry.to = 1.2; }
+        else if (actionType === 'pan') { entry.x = 0; entry.y = 0; }
+        else if (actionType === 'morph') { entry.from = target; entry.to = target; }
+        else { entry.targets = target; }
+        dsl.timeline.push(entry);
+        dsl.timeline.sort((a, b) => Number(a.at) - Number(b.at));
+        els.dslEditor.value = JSON.stringify(dsl, null, 2);
+        syncGutter();
+        persistEditor();
+        validateCurrentDsl(true);
+        renderActionStrip();
+        setStatus(`Added ${actionType} at ${at}s.`, 'ok');
+      }
+
+      /* ── Feature 8: Onion-skin ────────────────────── */
+      function toggleOnionSkin() {
+        state.onionSkin = !state.onionSkin;
+        els.onionBadge.textContent = state.onionSkin ? 'Onion: On' : 'Onion: Off';
+        els.onionBadge.classList.toggle('active', state.onionSkin);
+      }
+
+      /* ── Feature 9: Bookmarks ─────────────────────── */
+      function setBookmark() {
+        for (let i = 0; i < 9; i++) {
+          if (state.bookmarks[i] == null) {
+            state.bookmarks[i] = state.playback.time;
+            setStatus(`Bookmark ${i + 1} set at ${state.playback.time.toFixed(2)}s.`, 'ok');
+            renderActionStrip();
+            return;
+          }
+        }
+        // overwrite oldest (slot 0) if all full
+        state.bookmarks.shift();
+        state.bookmarks.push(state.playback.time);
+        setStatus(`Bookmark 9 (overwrite) at ${state.playback.time.toFixed(2)}s.`, 'ok');
+        renderActionStrip();
+      }
+      function jumpBookmark(n) {
+        const idx = n - 1;
+        if (idx < 0 || idx > 8) return;
+        if (state.bookmarks[idx] == null) { setStatus(`Bookmark ${n} not set. Press B to set.`, 'warn'); return; }
+        state.playback.time = clamp(state.bookmarks[idx], 0, state.playback.duration);
+        state.playback.playing = false;
+        syncTimelineUi();
+        setPlaybackStateLabel();
+        renderFrame(state.playback.time);
+        setStatus(`Jumped to bookmark ${n} (${state.bookmarks[idx].toFixed(2)}s).`, 'ok');
+      }
+
+      /* ── Feature 10: Live validation on keyup ─────── */
+      function liveValidate() {
+        clearTimeout(state.liveValidateTimer);
+        state.liveValidateTimer = setTimeout(() => {
+          const text = els.dslEditor.value;
+          try {
+            JSON.parse(text);
+            els.validDot.className = 'valid-dot ok';
+          } catch (_e) {
+            els.validDot.className = 'valid-dot err';
+          }
+        }, 400);
+      }
+
+      function bindUi() {
+        els.btnValidate.addEventListener('click', () => {
+          validateCurrentDsl(true);
+        });
+        els.btnPlay.addEventListener('click', play);
+        els.btnPause.addEventListener('click', pause);
+        els.btnReset.addEventListener('click', resetPlayback);
+
+        els.timeline.addEventListener('input', () => {
+          const ratio = normalizeNumber(els.timeline.value, 0) / 1000;
+          state.playback.time = clamp(ratio, 0, 1) * state.playback.duration;
+          state.playback.playing = false;
+          setPlaybackStateLabel();
+          renderFrame(state.playback.time);
+        });
+
+        els.speed.addEventListener('input', () => {
+          const v = normalizeNumber(els.speed.value, 100) / 100;
+          state.playback.speed = clamp(v, 0.25, 3);
+          els.speedValue.textContent = `${state.playback.speed.toFixed(2)}x`;
+        });
+
+        els.btnLoadDsl.addEventListener('click', () => els.dslLoader.click());
+        els.dslLoader.addEventListener('change', () => {
+          loadDslFile(els.dslLoader.files[0]);
+          els.dslLoader.value = '';
+        });
+
+        els.btnSaveDsl.addEventListener('click', saveDslFile);
+        els.btnSample.addEventListener('click', () => {
+          els.dslEditor.value = JSON.stringify(sampleDslObject(), null, 2);
+          validateCurrentDsl(true);
+          resetPlayback();
+          persistEditor();
+        });
+        els.btnCkeTrain.addEventListener('click', () => {
+          els.dslEditor.value = JSON.stringify(ckeTrainDslObject(), null, 2);
+          validateCurrentDsl(true);
+          resetPlayback();
+          persistEditor();
+          setStatus('Loaded C-Kernel-Engine train preset.', 'ok');
+        });
+        els.btnCkeInfer.addEventListener('click', () => {
+          els.dslEditor.value = JSON.stringify(ckeInferenceDslObject(), null, 2);
+          validateCurrentDsl(true);
+          resetPlayback();
+          persistEditor();
+          setStatus('Loaded C-Kernel-Engine inference preset.', 'ok');
+        });
+
+        els.dslEditor.addEventListener('change', () => { persistEditor(); syncGutter(); });
+        els.dslEditor.addEventListener('input', () => { liveValidate(); syncGutter(); });
+        els.dslEditor.addEventListener('scroll', syncGutterScroll);
+
+        els.loopBadge.addEventListener('click', cycleLoop);
+        els.onionBadge.addEventListener('click', toggleOnionSkin);
+        els.btnExport.addEventListener('click', exportWebM);
+        els.btnQuickAdd.addEventListener('click', quickAddAction);
+        els.actionStrip.addEventListener('click', (e) => {
+          if (!state.compile) return;
+          const rect = els.actionStrip.getBoundingClientRect();
+          const ratio = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+          state.playback.time = ratio * state.playback.duration;
+          state.playback.playing = false;
+          syncTimelineUi();
+          setPlaybackStateLabel();
+          renderFrame(state.playback.time);
+        });
+
+        els.btnLoadCanvas.addEventListener('click', () => els.canvasLoader.click());
+        els.canvasLoader.addEventListener('change', () => {
+          loadCanvasJson(els.canvasLoader.files[0]);
+          els.canvasLoader.value = '';
+        });
+        els.btnFromCanvas.addEventListener('click', generateDslFromCanvas);
+
+        window.addEventListener('resize', () => { resizeCanvas(); renderActionStrip(); });
+        els.focusHint.addEventListener('click', () => toggleFocus(false));
+        els.menuHint.addEventListener('click', () => document.body.classList.toggle('menu-open'));
+
+        window.addEventListener('keydown', (event) => {
+          const isEditor = event.target && (event.target.tagName === 'TEXTAREA' || event.target.tagName === 'INPUT');
+
+          if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+            event.preventDefault();
+            if (validateCurrentDsl(true)) {
+              play();
+            }
+            return;
+          }
+
+          if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+            event.preventDefault();
+            saveDslFile();
+            return;
+          }
+
+          if (event.key === ' ') {
+            if (isEditor) {
+              return;
+            }
+            event.preventDefault();
+            if (state.playback.playing) {
+              pause();
+            } else {
+              play();
+            }
+            return;
+          }
+
+          if (event.key.toLowerCase() === 'r') {
+            if (isEditor) {
+              return;
+            }
+            event.preventDefault();
+            resetPlayback();
+            return;
+          }
+
+          if (event.key.toLowerCase() === 'f') {
+            if (isEditor) {
+              return;
+            }
+            event.preventDefault();
+            toggleFocus();
+            return;
+          }
+
+          if (event.key.toLowerCase() === 'h') {
+            if (isEditor) {
+              return;
+            }
+            event.preventDefault();
+            if (window.matchMedia('(max-width: 1200px)').matches) {
+              document.body.classList.toggle('menu-open');
+            } else {
+              toggleFocus();
+            }
+            return;
+          }
+
+          if (event.key === '?' || (event.shiftKey && event.key === '/')) {
+            if (isEditor) return;
+            event.preventDefault();
+            toggleShortcutOverlay();
+            return;
+          }
+
+          if (event.key === 'Escape') {
+            if (els.shortcutOverlay.classList.contains('show')) {
+              els.shortcutOverlay.classList.remove('show');
+              return;
+            }
+          }
+
+          if (event.key === 'ArrowLeft') {
+            if (isEditor) return;
+            event.preventDefault();
+            stepTime(event.shiftKey ? -0.5 : -0.1);
+            return;
+          }
+          if (event.key === 'ArrowRight') {
+            if (isEditor) return;
+            event.preventDefault();
+            stepTime(event.shiftKey ? 0.5 : 0.1);
+            return;
+          }
+
+          if (event.key.toLowerCase() === 'l') {
+            if (isEditor) return;
+            event.preventDefault();
+            cycleLoop();
+            return;
+          }
+
+          if (event.key.toLowerCase() === 'o') {
+            if (isEditor) return;
+            event.preventDefault();
+            toggleOnionSkin();
+            return;
+          }
+
+          if (event.key.toLowerCase() === 'b') {
+            if (isEditor) return;
+            event.preventDefault();
+            setBookmark();
+            return;
+          }
+
+          if (event.key >= '1' && event.key <= '9') {
+            if (isEditor) return;
+            event.preventDefault();
+            jumpBookmark(parseInt(event.key, 10));
+            return;
+          }
+
+          if (event.key === '.' || event.key === '>') {
+            if (isEditor) {
+              return;
+            }
+            state.playback.speed = clamp(state.playback.speed + 0.1, 0.25, 3);
+            els.speed.value = String(Math.round(state.playback.speed * 100));
+            els.speedValue.textContent = `${state.playback.speed.toFixed(2)}x`;
+            return;
+          }
+
+          if (event.key === ',' || event.key === '<') {
+            if (isEditor) {
+              return;
+            }
+            state.playback.speed = clamp(state.playback.speed - 0.1, 0.25, 3);
+            els.speed.value = String(Math.round(state.playback.speed * 100));
+            els.speedValue.textContent = `${state.playback.speed.toFixed(2)}x`;
+          }
+        });
+      }
+
+      function init() {
+        const restored = restoreEditor();
+        if (!restored) {
+          els.dslEditor.value = JSON.stringify(ckeTrainDslObject(), null, 2);
+        }
+
+        state.playback.speed = 1.25;
+        els.speed.value = '125';
+        els.speedValue.textContent = '1.25x';
+        validateCurrentDsl(true);
+        syncGutter();
+        renderActionStrip();
+        resizeCanvas();
+        bindUi();
+        state.frameHandle = requestAnimationFrame(tick);
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>

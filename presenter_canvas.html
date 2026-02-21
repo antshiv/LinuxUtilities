@@ -137,6 +137,39 @@
     .row > * { flex: 1; }
     .row.tight > * { flex: initial; }
 
+    .artboard-tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .art-tab {
+      border: 1px solid var(--border);
+      background: #1a2440;
+      color: var(--text);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .art-tab.active {
+      background: linear-gradient(120deg, #2a5276, #3a4d8e);
+      border-color: #84b8ff;
+    }
+
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .mini-grid.cols-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     label {
       font-size: 12px;
       color: var(--muted);
@@ -247,6 +280,74 @@
     }
 
     .menu-btn { display: none; }
+
+    /* ── Color palette ── */
+    .palette { display: flex; gap: 4px; flex-wrap: wrap; margin: 6px 0; }
+    .swatch {
+      width: 26px; height: 26px; border-radius: 6px; border: 2px solid transparent;
+      cursor: pointer; transition: border-color 0.15s, transform 0.1s;
+    }
+    .swatch:hover { transform: scale(1.15); }
+    .swatch.active { border-color: #fff; }
+
+    /* ── Recent colors ── */
+    .recent-row { display: flex; gap: 3px; margin-top: 4px; }
+    .recent-swatch {
+      width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--border);
+      cursor: pointer; transition: border-color 0.15s;
+    }
+    .recent-swatch:hover { border-color: #8ebfff; }
+
+    /* ── Laser pointer ── */
+    .laser-dot {
+      position: absolute; pointer-events: none; z-index: 8;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: radial-gradient(circle, #ff3b3b 0%, rgba(255,60,60,0.6) 40%, transparent 70%);
+      box-shadow: 0 0 16px 6px rgba(255,50,50,0.45), 0 0 40px 12px rgba(255,50,50,0.18);
+      transform: translate(-50%, -50%);
+      opacity: 0; transition: opacity 0.12s;
+    }
+    .laser-dot.visible { opacity: 1; }
+    .laser-trail {
+      position: absolute; pointer-events: none; z-index: 7;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,80,80,0.35), transparent 70%);
+      transform: translate(-50%, -50%);
+    }
+
+    /* ── Shortcut overlay ── */
+    .shortcut-overlay {
+      position: fixed; inset: 0; z-index: 50;
+      background: rgba(8,12,22,0.88); backdrop-filter: blur(6px);
+      display: none; align-items: center; justify-content: center;
+    }
+    .shortcut-overlay.open { display: flex; }
+    .shortcut-card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+      padding: 24px 30px; max-width: 480px; width: 90vw;
+      max-height: 80vh; overflow-y: auto;
+    }
+    .shortcut-card h2 { margin: 0 0 14px; font-size: 16px; color: var(--accent); }
+    .shortcut-card table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .shortcut-card td { padding: 4px 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .shortcut-card td:first-child { color: var(--muted); white-space: nowrap; }
+    .shortcut-card .kbd {
+      border: 1px solid var(--border); border-radius: 5px; background: #10172a;
+      padding: 1px 5px; font-family: "JetBrains Mono", monospace; font-size: 11px; color: #d5defd;
+    }
+
+    /* ── Extra HUD pills ── */
+    .pill-sm { font-size: 11px; padding: 4px 8px; }
+
+    /* ── Snap indicator ── */
+    .snap-badge {
+      position: absolute; top: 10px; left: 10px; z-index: 9;
+      font-size: 11px; font-weight: 700; color: var(--accent-2);
+      background: rgba(9,12,20,0.82); border: 1px solid var(--border);
+      border-radius: 999px; padding: 4px 10px; backdrop-filter: blur(4px);
+      display: none;
+    }
+    .snap-badge.on { display: block; }
   </style>
 </head>
 <body>
@@ -256,9 +357,20 @@
       <p class="sub">Live whiteboard for recording. Draw, drop icons, animate flow lines, and save/load JSON.</p>
 
       <section class="group">
+        <h3>Artboards</h3>
+        <div class="artboard-tabs" id="artboardTabs"></div>
+        <div class="row">
+          <button id="btnArtboardAdd">Add</button>
+          <button id="btnArtboardDup">Duplicate</button>
+          <button id="btnArtboardRename">Rename</button>
+          <button id="btnArtboardDelete" class="warn">Delete</button>
+        </div>
+      </section>
+
+      <section class="group">
         <h3>Tools</h3>
         <div class="tool-grid" id="toolGrid"></div>
-        <p class="sub" style="margin:8px 0 0">Quick keys: <span class="kbd">1..9</span> tools, <span class="kbd">Del</span> delete, <span class="kbd">Ctrl+Z/Y</span>, <span class="kbd">F</span> focus, <span class="kbd">H</span> hide/show panel.</p>
+        <p class="sub" style="margin:8px 0 0">Quick keys: <span class="kbd">1..9</span> tools, <span class="kbd">Shift</span> lock axis/ratio, <span class="kbd">Del</span> delete, <span class="kbd">Ctrl+Z/Y</span>, <span class="kbd">F</span> focus, <span class="kbd">H</span> hide/show panel.</p>
       </section>
 
       <section class="group">
@@ -269,9 +381,14 @@
           <label for="bgColor" style="margin:0">Canvas</label>
           <input id="bgColor" type="color" value="#06080f" style="flex:initial;width:72px;padding:2px;height:34px">
         </div>
+        <div class="palette" id="palette"></div>
+        <div class="recent-row" id="recentColors"></div>
 
         <label for="lineWidth">Line Width <span id="lineWidthValue"></span></label>
         <input id="lineWidth" type="range" min="1" max="24" value="4">
+
+        <label for="opacity">Opacity <span id="opacityValue">1.00</span></label>
+        <input id="opacity" type="range" min="0.1" max="1" step="0.05" value="1">
 
         <label for="lineStyle">Line Style</label>
         <select id="lineStyle">
@@ -282,7 +399,7 @@
 
         <div class="row tight" style="margin-top:9px">
           <input id="animated" type="checkbox">
-          <label for="animated" style="margin:0">Animated stroke</label>
+          <label for="animated" style="margin:0">Animated stroke (flow + reveal)</label>
         </div>
 
         <label for="textSize">Text Size</label>
@@ -298,6 +415,10 @@
           <option value="cloud">Cloud</option>
           <option value="user">User</option>
           <option value="api">API</option>
+          <option value="dataset">Dataset</option>
+          <option value="gpu">GPU</option>
+          <option value="tensor">Tensor</option>
+          <option value="gear">Gear</option>
           <option value="box">Box</option>
           <option value="check">Check</option>
         </select>
@@ -314,15 +435,61 @@
           <button id="btnDelete" class="warn">Delete</button>
         </div>
         <div class="row">
+          <button id="btnDuplicate">Duplicate</button>
+          <button id="btnBringFwd">Bring Fwd</button>
+          <button id="btnSendBack">Send Back</button>
+        </div>
+        <div class="row">
           <button id="btnClear" class="warn">Clear</button>
           <button id="btnCenter">Center View</button>
           <button id="btnFit">Fit Content</button>
         </div>
         <div class="row">
           <button id="btnGrid">Toggle Grid</button>
+          <button id="btnSnap">Snap: Off</button>
           <button id="btnFocus">Focus Mode</button>
           <button id="btnFullscreen">Fullscreen</button>
         </div>
+      </section>
+
+      <section class="group">
+        <h3>Selected Shape</h3>
+        <div class="mini-grid">
+          <button id="btnLineSolid">Solid</button>
+          <button id="btnLineDashed">Dashed</button>
+          <button id="btnLineDotted">Dotted</button>
+        </div>
+        <div class="row">
+          <button id="btnToggleArrow">Line ↔ Arrow</button>
+          <button id="btnRectRadius">Set Rect Radius</button>
+        </div>
+        <p class="sub" style="margin:8px 0 0">Tip: Shift+Click to multi-select. Double-click a rectangle to edit corner radius.</p>
+      </section>
+
+      <section class="group">
+        <h3>Align</h3>
+        <div class="mini-grid">
+          <button id="btnAlignLeft">Left</button>
+          <button id="btnAlignCenter">Center</button>
+          <button id="btnAlignRight">Right</button>
+          <button id="btnAlignTop">Top</button>
+          <button id="btnAlignMiddle">Middle</button>
+          <button id="btnAlignBottom">Bottom</button>
+        </div>
+        <div class="mini-grid cols-2" style="margin-top:6px">
+          <button id="btnDistH">Distribute H</button>
+          <button id="btnDistV">Distribute V</button>
+        </div>
+      </section>
+
+      <section class="group">
+        <h3>Pathfinder (Rectangles)</h3>
+        <div class="mini-grid cols-2">
+          <button id="btnPathUnion">Union</button>
+          <button id="btnPathIntersect">Intersect</button>
+          <button id="btnPathSubtract">Subtract</button>
+        </div>
+        <p class="sub" style="margin:8px 0 0">Select two overlapping rectangles. Subtract uses the last selected rectangle as the primary shape.</p>
       </section>
 
       <section class="group">
@@ -330,10 +497,11 @@
         <div class="row">
           <button id="btnSaveJson" class="primary">Save JSON</button>
           <button id="btnLoadJson">Load JSON</button>
+          <button id="btnExportDsl">Export DSL Starter</button>
           <button id="btnExportPng">Export PNG</button>
         </div>
         <input id="fileLoader" type="file" accept="application/json" style="display:none">
-        <p class="sub" style="margin:8px 0 0">You can keep each episode as JSON and reopen to continue live drawing later.</p>
+        <p class="sub" style="margin:8px 0 0">Save canvas JSON for edits, or export a storyboard DSL starter for timeline animation in the Storyboard Player.</p>
       </section>
 
       <section class="group">
@@ -351,9 +519,44 @@
       <div class="hud">
         <div class="pill" id="toolPill">Tool: Pen</div>
         <div class="pill" id="zoomPill">Zoom: 100%</div>
+        <div class="pill pill-sm" id="shapesPill">0 shapes</div>
+        <div class="pill pill-sm" id="undoPill">Undo: 0</div>
         <div class="pill live" id="animPill">Animation: Off</div>
       </div>
+      <div class="snap-badge" id="snapBadge">▦ Snap to Grid</div>
+      <div class="laser-dot" id="laserDot"></div>
     </main>
+  </div>
+
+  <!-- Shortcut overlay -->
+  <div class="shortcut-overlay" id="shortcutOverlay">
+    <div class="shortcut-card">
+      <h2>Keyboard Shortcuts</h2>
+      <table>
+        <tr><td><span class="kbd">1</span>–<span class="kbd">9</span></td><td>Select tool (Select, Pen, Line…)</td></tr>
+        <tr><td><span class="kbd">0</span></td><td>Pan tool</td></tr>
+        <tr><td><span class="kbd">L</span></td><td>Laser pointer</td></tr>
+        <tr><td><span class="kbd">Space</span> hold</td><td>Temporary pan</td></tr>
+        <tr><td><span class="kbd">Del</span> / <span class="kbd">Backspace</span></td><td>Delete selected</td></tr>
+        <tr><td><span class="kbd">Ctrl+D</span></td><td>Duplicate selected</td></tr>
+        <tr><td><span class="kbd">Ctrl+Z</span></td><td>Undo</td></tr>
+        <tr><td><span class="kbd">Ctrl+Shift+Z</span> / <span class="kbd">Ctrl+Y</span></td><td>Redo</td></tr>
+        <tr><td><span class="kbd">Ctrl+S</span></td><td>Save JSON</td></tr>
+        <tr><td><span class="kbd">Ctrl+Shift+S</span></td><td>Export DSL Starter</td></tr>
+        <tr><td><span class="kbd">Ctrl+O</span></td><td>Load JSON</td></tr>
+        <tr><td><span class="kbd">Shift+Click</span></td><td>Add/remove shape from selection</td></tr>
+        <tr><td>Double-click rect</td><td>Set rectangle corner radius</td></tr>
+        <tr><td><span class="kbd">F</span></td><td>Focus mode</td></tr>
+        <tr><td><span class="kbd">H</span></td><td>Toggle sidebar</td></tr>
+        <tr><td><span class="kbd">G</span></td><td>Toggle grid</td></tr>
+        <tr><td><span class="kbd">S</span></td><td>Toggle snap-to-grid</td></tr>
+        <tr><td><span class="kbd">+</span> / <span class="kbd">–</span></td><td>Zoom in / out</td></tr>
+        <tr><td>Scroll wheel</td><td>Zoom at cursor</td></tr>
+        <tr><td>Pinch gesture</td><td>Zoom (touch/trackpad)</td></tr>
+        <tr><td><span class="kbd">?</span></td><td>This overlay</td></tr>
+      </table>
+      <p style="margin:12px 0 0;font-size:11px;color:var(--muted)">Press <span class="kbd">?</span> or click outside to close.</p>
+    </div>
   </div>
 
   <script>
@@ -370,15 +573,44 @@
         { id: 'text', label: 'Text', hotkey: '7' },
         { id: 'icon', label: 'Icon', hotkey: '8' },
         { id: 'eraser', label: 'Eraser', hotkey: '9' },
+        { id: 'laser', label: 'Laser', hotkey: 'L' },
         { id: 'pan', label: 'Pan', hotkey: '0' }
       ];
 
       const STORAGE_KEY = 'linuxutilities.presenter_canvas.v1';
+
+      const PALETTE = [
+        '#6ec8ff', '#9a87ff', '#ff7b9c', '#76e8c6',
+        '#ffb86c', '#f1fa8c', '#ffffff', '#99a9cd'
+      ];
+
+      const DEFAULT_BG = '#06080f';
+
+      function makeArtboard(name, base) {
+        const fallback = {
+          name: name || 'Artboard',
+          bgColor: DEFAULT_BG,
+          camera: { x: 0, y: 0, scale: 1 },
+          shapes: []
+        };
+        const source = base || fallback;
+        return {
+          id: uid(),
+          name: source.name || name || 'Artboard',
+          bgColor: source.bgColor || DEFAULT_BG,
+          camera: source.camera ? {
+            x: Number(source.camera.x) || 0,
+            y: Number(source.camera.y) || 0,
+            scale: clamp(Number(source.camera.scale) || 1, 0.15, 8)
+          } : { x: 0, y: 0, scale: 1 },
+          shapes: Array.isArray(source.shapes) ? JSON.parse(JSON.stringify(source.shapes)) : []
+        };
+      }
+
       const state = {
         tool: 'pen',
         lineWidth: 4,
         strokeColor: '#6ec8ff',
-        bgColor: '#06080f',
         lineStyle: 'solid',
         animated: false,
         textSize: 34,
@@ -386,18 +618,29 @@
         iconType: 'server',
         iconSize: 88,
         grid: true,
-        camera: { x: 0, y: 0, scale: 1 },
-        shapes: [],
+        artboards: [makeArtboard('Artboard 1')],
+        activeArtboardId: null,
         selectedId: null,
+        selectedIds: [],
         pointer: { down: false, drawing: false, start: null, current: null, temp: null },
         history: [],
         historyIndex: -1,
-        dashTick: 0
+        dashTick: 0,
+        drawAnimDurationMs: 420,
+        opacity: 1,
+        snapGrid: false,
+        recentColors: [],
+        laserTrails: []
       };
 
       const els = {
         stage: document.getElementById('stage'),
         canvasWrap: document.getElementById('canvasWrap'),
+        artboardTabs: document.getElementById('artboardTabs'),
+        btnArtboardAdd: document.getElementById('btnArtboardAdd'),
+        btnArtboardDup: document.getElementById('btnArtboardDup'),
+        btnArtboardRename: document.getElementById('btnArtboardRename'),
+        btnArtboardDelete: document.getElementById('btnArtboardDelete'),
         toolGrid: document.getElementById('toolGrid'),
         strokeColor: document.getElementById('strokeColor'),
         bgColor: document.getElementById('bgColor'),
@@ -420,18 +663,100 @@
         btnFullscreen: document.getElementById('btnFullscreen'),
         btnSaveJson: document.getElementById('btnSaveJson'),
         btnLoadJson: document.getElementById('btnLoadJson'),
+        btnExportDsl: document.getElementById('btnExportDsl'),
         btnExportPng: document.getElementById('btnExportPng'),
         fileLoader: document.getElementById('fileLoader'),
         status: document.getElementById('status'),
         toolPill: document.getElementById('toolPill'),
         zoomPill: document.getElementById('zoomPill'),
         animPill: document.getElementById('animPill'),
+        shapesPill: document.getElementById('shapesPill'),
+        undoPill: document.getElementById('undoPill'),
+        snapBadge: document.getElementById('snapBadge'),
+        laserDot: document.getElementById('laserDot'),
+        palette: document.getElementById('palette'),
+        recentColors: document.getElementById('recentColors'),
+        opacity: document.getElementById('opacity'),
+        opacityValue: document.getElementById('opacityValue'),
+        btnDuplicate: document.getElementById('btnDuplicate'),
+        btnBringFwd: document.getElementById('btnBringFwd'),
+        btnSendBack: document.getElementById('btnSendBack'),
+        btnSnap: document.getElementById('btnSnap'),
+        btnLineSolid: document.getElementById('btnLineSolid'),
+        btnLineDashed: document.getElementById('btnLineDashed'),
+        btnLineDotted: document.getElementById('btnLineDotted'),
+        btnToggleArrow: document.getElementById('btnToggleArrow'),
+        btnRectRadius: document.getElementById('btnRectRadius'),
+        btnAlignLeft: document.getElementById('btnAlignLeft'),
+        btnAlignCenter: document.getElementById('btnAlignCenter'),
+        btnAlignRight: document.getElementById('btnAlignRight'),
+        btnAlignTop: document.getElementById('btnAlignTop'),
+        btnAlignMiddle: document.getElementById('btnAlignMiddle'),
+        btnAlignBottom: document.getElementById('btnAlignBottom'),
+        btnDistH: document.getElementById('btnDistH'),
+        btnDistV: document.getElementById('btnDistV'),
+        btnPathUnion: document.getElementById('btnPathUnion'),
+        btnPathIntersect: document.getElementById('btnPathIntersect'),
+        btnPathSubtract: document.getElementById('btnPathSubtract'),
+        shortcutOverlay: document.getElementById('shortcutOverlay'),
         focusToggleBtn: document.getElementById('focusToggleBtn'),
         menuBtn: document.getElementById('menuBtn')
       };
 
       const ctx = els.stage.getContext('2d');
       const DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+
+      state.activeArtboardId = state.artboards[0].id;
+
+      function currentArtboard() {
+        let board = state.artboards.find((a) => a.id === state.activeArtboardId);
+        if (!board) {
+          if (!state.artboards.length) {
+            state.artboards.push(makeArtboard('Artboard 1'));
+          }
+          board = state.artboards[0];
+          state.activeArtboardId = board.id;
+        }
+        return board;
+      }
+
+      Object.defineProperty(state, 'shapes', {
+        configurable: true,
+        enumerable: true,
+        get() {
+          return currentArtboard().shapes;
+        },
+        set(value) {
+          currentArtboard().shapes = Array.isArray(value) ? value : [];
+        }
+      });
+
+      Object.defineProperty(state, 'bgColor', {
+        configurable: true,
+        enumerable: true,
+        get() {
+          return currentArtboard().bgColor;
+        },
+        set(value) {
+          currentArtboard().bgColor = value || DEFAULT_BG;
+        }
+      });
+
+      Object.defineProperty(state, 'camera', {
+        configurable: true,
+        enumerable: true,
+        get() {
+          return currentArtboard().camera;
+        },
+        set(value) {
+          const next = value || {};
+          currentArtboard().camera = {
+            x: Number(next.x) || 0,
+            y: Number(next.y) || 0,
+            scale: clamp(Number(next.scale) || 1, 0.15, 8)
+          };
+        }
+      });
 
       function setStatus(msg) {
         els.status.textContent = msg;
@@ -443,6 +768,163 @@
 
       function uid() {
         return `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+      }
+
+      const GRID_SNAP = 48;
+
+      function sanitizeArtboards(raw, fallback) {
+        if (!Array.isArray(raw) || !raw.length) {
+          return [makeArtboard('Artboard 1', fallback)];
+        }
+        const list = [];
+        for (let i = 0; i < raw.length; i += 1) {
+          const candidate = raw[i] || {};
+          list.push({
+            id: candidate.id || uid(),
+            name: candidate.name || `Artboard ${i + 1}`,
+            bgColor: candidate.bgColor || DEFAULT_BG,
+            camera: {
+              x: Number(candidate.camera && candidate.camera.x) || 0,
+              y: Number(candidate.camera && candidate.camera.y) || 0,
+              scale: clamp(Number(candidate.camera && candidate.camera.scale) || 1, 0.15, 8)
+            },
+            shapes: Array.isArray(candidate.shapes) ? candidate.shapes : []
+          });
+        }
+        return list;
+      }
+
+      function setSelection(ids) {
+        const safeIds = [];
+        for (const id of ids || []) {
+          if (!id || safeIds.includes(id)) continue;
+          if (state.shapes.some((s) => s.id === id)) {
+            safeIds.push(id);
+          }
+        }
+        state.selectedIds = safeIds;
+        state.selectedId = safeIds.length ? safeIds[safeIds.length - 1] : null;
+      }
+
+      function clearSelection() {
+        state.selectedId = null;
+        state.selectedIds = [];
+      }
+
+      function selectedShapeIds() {
+        if (state.selectedIds && state.selectedIds.length) {
+          return state.selectedIds.slice();
+        }
+        return state.selectedId ? [state.selectedId] : [];
+      }
+
+      function selectedShapes() {
+        const ids = selectedShapeIds();
+        return ids.map((id) => state.shapes.find((s) => s.id === id)).filter(Boolean);
+      }
+
+      function renderArtboardTabs() {
+        if (!els.artboardTabs) return;
+        els.artboardTabs.innerHTML = '';
+        for (const board of state.artboards) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'art-tab';
+          btn.classList.toggle('active', board.id === state.activeArtboardId);
+          btn.textContent = `${board.name} (${board.shapes.length})`;
+          btn.addEventListener('click', () => switchArtboard(board.id));
+          els.artboardTabs.appendChild(btn);
+        }
+      }
+
+      function switchArtboard(id) {
+        if (!id || id === state.activeArtboardId) {
+          return;
+        }
+        const exists = state.artboards.some((a) => a.id === id);
+        if (!exists) {
+          return;
+        }
+        state.activeArtboardId = id;
+        clearSelection();
+        syncControls();
+        renderArtboardTabs();
+        render();
+        saveToLocalStorage();
+        setStatus(`Switched to ${currentArtboard().name}.`);
+      }
+
+      function addArtboard() {
+        const nextNum = state.artboards.length + 1;
+        const board = makeArtboard(`Artboard ${nextNum}`);
+        state.artboards.push(board);
+        state.activeArtboardId = board.id;
+        clearSelection();
+        pushHistory();
+        syncControls();
+        renderArtboardTabs();
+        render();
+        setStatus(`Added ${board.name}.`);
+      }
+
+      function duplicateArtboard() {
+        const src = currentArtboard();
+        const copy = makeArtboard(`${src.name} Copy`, src);
+        copy.shapes = copy.shapes.map((shape) => {
+          const next = JSON.parse(JSON.stringify(shape));
+          next.id = uid();
+          return next;
+        });
+        state.artboards.push(copy);
+        state.activeArtboardId = copy.id;
+        clearSelection();
+        pushHistory();
+        syncControls();
+        renderArtboardTabs();
+        render();
+        setStatus(`Duplicated ${src.name}.`);
+      }
+
+      function renameArtboard() {
+        const board = currentArtboard();
+        const raw = window.prompt('Artboard name:', board.name);
+        if (raw === null) return;
+        const name = raw.trim();
+        if (!name) {
+          setStatus('Artboard name cannot be empty.');
+          return;
+        }
+        board.name = name;
+        pushHistory();
+        renderArtboardTabs();
+        setStatus('Artboard renamed.');
+      }
+
+      function deleteArtboard() {
+        if (state.artboards.length <= 1) {
+          setStatus('At least one artboard is required.');
+          return;
+        }
+        const idx = state.artboards.findIndex((a) => a.id === state.activeArtboardId);
+        if (idx < 0) return;
+        const removed = state.artboards[idx];
+        state.artboards.splice(idx, 1);
+        const nextIdx = Math.max(0, idx - 1);
+        state.activeArtboardId = state.artboards[nextIdx].id;
+        clearSelection();
+        pushHistory();
+        syncControls();
+        renderArtboardTabs();
+        render();
+        setStatus(`Deleted ${removed.name}.`);
+      }
+
+      function snapPoint(p) {
+        if (!state.snapGrid) return p;
+        return {
+          x: Math.round(p.x / GRID_SNAP) * GRID_SNAP,
+          y: Math.round(p.y / GRID_SNAP) * GRID_SNAP
+        };
       }
 
       function toWorld(px, py) {
@@ -464,7 +946,8 @@
           color: state.strokeColor,
           width: state.lineWidth,
           style: state.lineStyle,
-          animated: state.animated
+          animated: state.animated,
+          opacity: state.opacity
         };
       }
 
@@ -480,11 +963,66 @@
         return [];
       }
 
+      function getRevealProgress(shape) {
+        if (!shape || !shape.animated) {
+          return 1;
+        }
+        if (typeof shape.revealStartMs !== 'number' || typeof shape.revealDurationMs !== 'number' || shape.revealDurationMs <= 0) {
+          return 1;
+        }
+        const progress = clamp((Date.now() - shape.revealStartMs) / shape.revealDurationMs, 0, 1);
+        if (progress >= 1) {
+          delete shape.revealStartMs;
+          delete shape.revealDurationMs;
+          return 1;
+        }
+        return progress;
+      }
+
+      function constrainEndpoint(tempShape, world, shiftKey) {
+        let x = world.x;
+        let y = world.y;
+        if (!shiftKey || !tempShape) {
+          return { x, y };
+        }
+
+        const dx = x - tempShape.x1;
+        const dy = y - tempShape.y1;
+        if (tempShape.type === 'line' || tempShape.type === 'arrow') {
+          if (Math.abs(dx) >= Math.abs(dy)) {
+            y = tempShape.y1;
+          } else {
+            x = tempShape.x1;
+          }
+          return { x, y };
+        }
+
+        if (tempShape.type === 'rect' || tempShape.type === 'ellipse') {
+          const prevX2 = typeof tempShape.x2 === 'number' ? tempShape.x2 : tempShape.x1;
+          const prevY2 = typeof tempShape.y2 === 'number' ? tempShape.y2 : tempShape.y1;
+          const prevDx = prevX2 - tempShape.x1;
+          const prevDy = prevY2 - tempShape.y1;
+          const size = Math.max(Math.abs(dx), Math.abs(dy));
+          const sx = Math.sign(dx) || Math.sign(prevDx) || 1;
+          const sy = Math.sign(dy) || Math.sign(prevDy) || 1;
+          x = tempShape.x1 + size * sx;
+          y = tempShape.y1 + size * sy;
+          return { x, y };
+        }
+        return { x, y };
+      }
+
+      function shouldRevealShape(shape) {
+        if (!shape || !shape.animated) {
+          return false;
+        }
+        return shape.type === 'line' || shape.type === 'arrow' || shape.type === 'rect' || shape.type === 'ellipse';
+      }
+
       function pushHistory() {
         const snapshot = JSON.stringify({
-          shapes: state.shapes,
-          camera: state.camera,
-          bgColor: state.bgColor,
+          artboards: state.artboards,
+          activeArtboardId: state.activeArtboardId,
           grid: state.grid
         });
         state.history = state.history.slice(0, state.historyIndex + 1);
@@ -493,6 +1031,7 @@
           state.history.shift();
         }
         state.historyIndex = state.history.length - 1;
+        renderArtboardTabs();
         saveToLocalStorage();
       }
 
@@ -503,11 +1042,21 @@
         }
         try {
           const parsed = JSON.parse(snap);
-          state.shapes = Array.isArray(parsed.shapes) ? parsed.shapes : [];
-          state.camera = parsed.camera || { x: 0, y: 0, scale: 1 };
-          state.bgColor = parsed.bgColor || state.bgColor;
-          state.grid = !!parsed.grid;
-          state.selectedId = null;
+          if (Array.isArray(parsed.artboards)) {
+            state.artboards = sanitizeArtboards(parsed.artboards);
+            state.activeArtboardId = parsed.activeArtboardId || state.artboards[0].id;
+          } else {
+            state.artboards = sanitizeArtboards(null, {
+              name: 'Artboard 1',
+              bgColor: parsed.bgColor || DEFAULT_BG,
+              camera: parsed.camera || { x: 0, y: 0, scale: 1 },
+              shapes: Array.isArray(parsed.shapes) ? parsed.shapes : []
+            });
+            state.activeArtboardId = state.artboards[0].id;
+          }
+          state.grid = parsed.grid !== false;
+          clearSelection();
+          renderArtboardTabs();
           render();
           syncControls();
           saveToLocalStorage();
@@ -666,6 +1215,70 @@
             ctx.fillText('API', x, y);
             break;
           }
+          case 'dataset': {
+            for (let i = 0; i < 3; i += 1) {
+              const yy = sy + h * (0.18 + i * 0.18);
+              roundRect(sx + w * 0.18, yy, w * 0.64, h * 0.15, w * 0.04, true, true);
+            }
+            break;
+          }
+          case 'gpu': {
+            roundRect(sx + w * 0.16, sy + h * 0.16, w * 0.68, h * 0.68, w * 0.07, true, true);
+            for (let i = 0; i < 5; i += 1) {
+              const xx = sx + w * (0.1 + i * 0.16);
+              ctx.beginPath();
+              ctx.moveTo(xx, sy + h * 0.09);
+              ctx.lineTo(xx, sy + h * 0.16);
+              ctx.moveTo(xx, sy + h * 0.84);
+              ctx.lineTo(xx, sy + h * 0.91);
+              ctx.stroke();
+            }
+            ctx.fillStyle = color;
+            ctx.font = `${Math.max(10, Math.floor(size * 0.17))}px "JetBrains Mono", monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('GPU', x, y);
+            break;
+          }
+          case 'tensor': {
+            roundRect(sx + w * 0.18, sy + h * 0.18, w * 0.64, h * 0.64, w * 0.06, false, true);
+            for (let i = 1; i <= 3; i += 1) {
+              const xx = sx + w * (0.18 + i * 0.16);
+              const yy = sy + h * (0.18 + i * 0.16);
+              ctx.beginPath();
+              ctx.moveTo(xx, sy + h * 0.18);
+              ctx.lineTo(xx, sy + h * 0.82);
+              ctx.moveTo(sx + w * 0.18, yy);
+              ctx.lineTo(sx + w * 0.82, yy);
+              ctx.stroke();
+            }
+            break;
+          }
+          case 'gear': {
+            const cx = x;
+            const cy = y;
+            const r1 = w * 0.2;
+            const r2 = w * 0.34;
+            const teeth = 10;
+            ctx.beginPath();
+            for (let i = 0; i < teeth * 2; i += 1) {
+              const a = (Math.PI * i) / teeth;
+              const r = i % 2 === 0 ? r2 : r1;
+              const px = cx + Math.cos(a) * r;
+              const py = cy + Math.sin(a) * r;
+              if (i === 0) {
+                ctx.moveTo(px, py);
+              } else {
+                ctx.lineTo(px, py);
+              }
+            }
+            ctx.closePath();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(cx, cy, w * 0.1, 0, Math.PI * 2);
+            ctx.stroke();
+            break;
+          }
           case 'box': {
             roundRect(sx + w * 0.12, sy + h * 0.12, w * 0.76, h * 0.76, w * 0.06, true, true);
             break;
@@ -705,10 +1318,12 @@
         ctx.save();
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
+        ctx.globalAlpha = typeof shape.opacity === 'number' ? shape.opacity : 1;
         const color = shape.color || '#7ec8ff';
         const width = Math.max(1, shape.width || 2);
         const dash = getDashPattern(shape);
         const animated = !!shape.animated && dash.length > 0;
+        const revealProgress = getRevealProgress(shape);
 
         ctx.strokeStyle = color;
         ctx.fillStyle = color;
@@ -729,24 +1344,35 @@
             ctx.stroke();
           }
         } else if (shape.type === 'line' || shape.type === 'arrow') {
+          const ex = shape.x1 + (shape.x2 - shape.x1) * revealProgress;
+          const ey = shape.y1 + (shape.y2 - shape.y1) * revealProgress;
           ctx.beginPath();
           ctx.moveTo(shape.x1, shape.y1);
-          ctx.lineTo(shape.x2, shape.y2);
+          ctx.lineTo(ex, ey);
           ctx.stroke();
-          if (shape.type === 'arrow') {
-            drawArrowHead(shape.x1, shape.y1, shape.x2, shape.y2, color, width);
+          if (shape.type === 'arrow' && Math.hypot(ex - shape.x1, ey - shape.y1) > 0.5 / state.camera.scale) {
+            drawArrowHead(shape.x1, shape.y1, ex, ey, color, width);
           }
         } else if (shape.type === 'rect') {
-          const x = Math.min(shape.x1, shape.x2);
-          const y = Math.min(shape.y1, shape.y2);
-          const w = Math.abs(shape.x2 - shape.x1);
-          const h = Math.abs(shape.y2 - shape.y1);
-          ctx.strokeRect(x, y, w, h);
+          const x2 = shape.x1 + (shape.x2 - shape.x1) * revealProgress;
+          const y2 = shape.y1 + (shape.y2 - shape.y1) * revealProgress;
+          const x = Math.min(shape.x1, x2);
+          const y = Math.min(shape.y1, y2);
+          const w = Math.abs(x2 - shape.x1);
+          const h = Math.abs(y2 - shape.y1);
+          const radius = Math.max(0, Number(shape.radius) || 0);
+          if (radius > 0.1 && w > 0.5 && h > 0.5) {
+            roundRect(x, y, w, h, radius, false, true);
+          } else {
+            ctx.strokeRect(x, y, w, h);
+          }
         } else if (shape.type === 'ellipse') {
-          const cx = (shape.x1 + shape.x2) / 2;
-          const cy = (shape.y1 + shape.y2) / 2;
-          const rx = Math.abs(shape.x2 - shape.x1) / 2;
-          const ry = Math.abs(shape.y2 - shape.y1) / 2;
+          const x2 = shape.x1 + (shape.x2 - shape.x1) * revealProgress;
+          const y2 = shape.y1 + (shape.y2 - shape.y1) * revealProgress;
+          const cx = (shape.x1 + x2) / 2;
+          const cy = (shape.y1 + y2) / 2;
+          const rx = Math.abs(x2 - shape.x1) / 2;
+          const ry = Math.abs(y2 - shape.y1) / 2;
           ctx.beginPath();
           ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
           ctx.stroke();
@@ -903,34 +1529,46 @@
         const style = styleFromControls();
         const tool = state.tool;
         state.pointer.temp = null;
+        const w = snapPoint(world);
+
+        if (tool === 'laser') {
+          state.pointer.drawing = false;
+          return;
+        }
 
         if (tool === 'pen') {
           state.pointer.temp = {
             id: uid(),
             type: 'pen',
-            points: [{ x: world.x, y: world.y }],
+            points: [{ x: w.x, y: w.y }],
             color: style.color,
             width: style.width,
             style: style.style,
-            animated: style.animated
+            animated: style.animated,
+            opacity: style.opacity
           };
           state.pointer.drawing = true;
           return;
         }
 
         if (tool === 'line' || tool === 'arrow' || tool === 'rect' || tool === 'ellipse') {
-          state.pointer.temp = {
+          const temp = {
             id: uid(),
             type: tool,
-            x1: world.x,
-            y1: world.y,
-            x2: world.x,
-            y2: world.y,
+            x1: w.x,
+            y1: w.y,
+            x2: w.x,
+            y2: w.y,
             color: style.color,
             width: style.width,
             style: style.style,
-            animated: style.animated
+            animated: style.animated,
+            opacity: style.opacity
           };
+          if (tool === 'rect') {
+            temp.radius = 0;
+          }
+          state.pointer.temp = temp;
           state.pointer.drawing = true;
           return;
         }
@@ -938,33 +1576,39 @@
         if (tool === 'text') {
           const rawText = (state.textContent || 'Text').trim();
           const payload = rawText ? rawText : 'Text';
+          const id = uid();
           state.shapes.push({
-            id: uid(),
+            id,
             type: 'text',
-            x: world.x,
-            y: world.y,
+            x: w.x,
+            y: w.y,
             text: payload,
             size: state.textSize,
-            color: style.color
+            color: style.color,
+            opacity: style.opacity
           });
+          trackRecentColor(style.color);
           pushHistory();
-          state.selectedId = state.shapes[state.shapes.length - 1].id;
+          setSelection([id]);
           setStatus('Text placed.');
           return;
         }
 
         if (tool === 'icon') {
+          const id = uid();
           state.shapes.push({
-            id: uid(),
+            id,
             type: 'icon',
-            x: world.x,
-            y: world.y,
+            x: w.x,
+            y: w.y,
             size: state.iconSize,
             icon: state.iconType,
-            color: style.color
+            color: style.color,
+            opacity: style.opacity
           });
+          trackRecentColor(style.color);
           pushHistory();
-          state.selectedId = state.shapes[state.shapes.length - 1].id;
+          setSelection([id]);
           setStatus('Icon placed.');
           return;
         }
@@ -973,7 +1617,7 @@
           const hit = findShapeAt(world.x, world.y);
           if (hit) {
             state.shapes = state.shapes.filter((s) => s.id !== hit.id);
-            state.selectedId = null;
+            clearSelection();
             pushHistory();
             setStatus('Shape erased.');
           }
@@ -982,7 +1626,7 @@
 
         if (tool === 'select') {
           const hit = findShapeAt(world.x, world.y);
-          state.selectedId = hit ? hit.id : null;
+          setSelection(hit ? [hit.id] : []);
           state.pointer.drawing = false;
           setStatus(hit ? 'Shape selected. Drag to move.' : 'Selection cleared.');
           return;
@@ -994,7 +1638,7 @@
         }
       }
 
-      function continueDraw(world) {
+      function continueDraw(world, shiftKey) {
         if (!state.pointer.temp) {
           return;
         }
@@ -1008,8 +1652,10 @@
           }
           return;
         }
-        t.x2 = world.x;
-        t.y2 = world.y;
+        const snapped = snapPoint(world);
+        const constrained = constrainEndpoint(t, snapped, shiftKey);
+        t.x2 = constrained.x;
+        t.y2 = constrained.y;
       }
 
       function finishDraw() {
@@ -1029,49 +1675,58 @@
           return;
         }
 
+        if (shouldRevealShape(t)) {
+          t.revealStartMs = Date.now();
+          t.revealDurationMs = state.drawAnimDurationMs;
+        }
+
         state.shapes.push(t);
-        state.selectedId = t.id;
+        setSelection([t.id]);
+        trackRecentColor(t.color);
         pushHistory();
       }
 
       function deleteSelected() {
-        if (!state.selectedId) {
+        const ids = selectedShapeIds();
+        if (!ids.length) {
           return;
         }
         const countBefore = state.shapes.length;
-        state.shapes = state.shapes.filter((s) => s.id !== state.selectedId);
-        state.selectedId = null;
+        state.shapes = state.shapes.filter((s) => !ids.includes(s.id));
+        clearSelection();
         if (state.shapes.length !== countBefore) {
           pushHistory();
-          setStatus('Deleted selected shape.');
+          setStatus('Deleted selected shape(s).');
         }
       }
 
       function clearAll() {
         state.shapes = [];
-        state.selectedId = null;
+        clearSelection();
         pushHistory();
-        setStatus('Canvas cleared.');
+        setStatus('Artboard cleared.');
       }
 
       function saveToLocalStorage() {
         try {
           const payload = {
-            version: 1,
-            shapes: state.shapes,
-            camera: state.camera,
-            bgColor: state.bgColor,
+            version: 2,
+            artboards: state.artboards,
+            activeArtboardId: state.activeArtboardId,
             grid: state.grid,
             ui: {
               lineWidth: state.lineWidth,
               strokeColor: state.strokeColor,
               lineStyle: state.lineStyle,
               animated: state.animated,
+              opacity: state.opacity,
               textSize: state.textSize,
               textContent: state.textContent,
               iconType: state.iconType,
               iconSize: state.iconSize,
-              tool: state.tool
+              tool: state.tool,
+              snapGrid: state.snapGrid,
+              recentColors: state.recentColors
             }
           };
           localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -1086,9 +1741,18 @@
             return false;
           }
           const payload = JSON.parse(raw);
-          state.shapes = Array.isArray(payload.shapes) ? payload.shapes : [];
-          state.camera = payload.camera || state.camera;
-          state.bgColor = payload.bgColor || state.bgColor;
+          if (Array.isArray(payload.artboards) && payload.artboards.length) {
+            state.artboards = sanitizeArtboards(payload.artboards);
+            state.activeArtboardId = payload.activeArtboardId || state.artboards[0].id;
+          } else {
+            state.artboards = sanitizeArtboards(null, {
+              name: 'Artboard 1',
+              bgColor: payload.bgColor || DEFAULT_BG,
+              camera: payload.camera || { x: 0, y: 0, scale: 1 },
+              shapes: Array.isArray(payload.shapes) ? payload.shapes : []
+            });
+            state.activeArtboardId = state.artboards[0].id;
+          }
           state.grid = payload.grid !== false;
           if (payload.ui) {
             state.lineWidth = payload.ui.lineWidth || state.lineWidth;
@@ -1100,8 +1764,12 @@
             state.iconType = payload.ui.iconType || state.iconType;
             state.iconSize = payload.ui.iconSize || state.iconSize;
             state.tool = payload.ui.tool || state.tool;
+            state.opacity = typeof payload.ui.opacity === 'number' ? payload.ui.opacity : 1;
+            state.snapGrid = !!payload.ui.snapGrid;
+            state.recentColors = Array.isArray(payload.ui.recentColors) ? payload.ui.recentColors : [];
           }
-          state.selectedId = null;
+          clearSelection();
+          renderArtboardTabs();
           pushHistory();
           setStatus('Restored autosaved canvas.');
           return true;
@@ -1111,13 +1779,16 @@
       }
 
       function exportJson() {
+        const board = currentArtboard();
         const payload = {
-          version: 1,
+          version: 2,
           createdAt: new Date().toISOString(),
-          bgColor: state.bgColor,
+          activeArtboardId: state.activeArtboardId,
+          artboards: state.artboards,
+          bgColor: board.bgColor,
           grid: state.grid,
-          camera: state.camera,
-          shapes: state.shapes
+          camera: board.camera,
+          shapes: board.shapes
         };
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -1131,6 +1802,61 @@
         setStatus('Saved JSON.');
       }
 
+      function exportDslStarter() {
+        const primitives = state.shapes.map((shape, idx) => {
+          const copy = JSON.parse(JSON.stringify(shape));
+          if (!copy.id) {
+            copy.id = `shape-${idx + 1}`;
+          }
+          return copy;
+        });
+
+        const hasEdges = primitives.some((p) => p.type === 'line' || p.type === 'arrow' || p.type === 'pen');
+        const hasIcons = primitives.some((p) => p.type === 'icon');
+
+        const timeline = [
+          { at: 0.0, do: 'hide', targets: '*', duration: 0 },
+          { at: 0.1, do: 'show', targets: ['type:node', 'type:icon'], duration: 0.55, ease: 'easeOutCubic' }
+        ];
+
+        if (hasEdges) {
+          timeline.push({ at: 0.85, do: 'draw', targets: 'type:edge', duration: 0.95, ease: 'easeInOutCubic' });
+        }
+        if (hasIcons) {
+          timeline.push({ at: 2.0, do: 'pulse', targets: 'type:icon', duration: 0.75, scale: 1.12, ease: 'easeInOutCubic' });
+        }
+
+        timeline.push({ at: 3.0, do: 'zoom', duration: 0.65, to: 1.15, ease: 'easeInOutCubic' });
+        timeline.push({ at: 3.8, do: 'pan', duration: 0.65, x: state.camera.x - 80, y: state.camera.y - 20, ease: 'easeInOutCubic' });
+
+        const payload = {
+          version: 1,
+          meta: {
+            title: `${currentArtboard().name} Storyboard`,
+            bg: state.bgColor,
+            duration: 5.5,
+            camera: {
+              x: state.camera.x,
+              y: state.camera.y,
+              scale: state.camera.scale
+            }
+          },
+          scene: { primitives },
+          timeline
+        };
+
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `storyboard-starter-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        setStatus('Exported DSL starter JSON.');
+      }
+
       function importJson(file) {
         if (!file) {
           return;
@@ -1139,17 +1865,26 @@
         reader.onload = () => {
           try {
             const payload = JSON.parse(String(reader.result || '{}'));
-            if (!Array.isArray(payload.shapes)) {
-              throw new Error('Missing shapes array');
+            if (Array.isArray(payload.artboards) && payload.artboards.length) {
+              state.artboards = sanitizeArtboards(payload.artboards);
+              state.activeArtboardId = payload.activeArtboardId || state.artboards[0].id;
+            } else if (Array.isArray(payload.shapes)) {
+              state.artboards = sanitizeArtboards(null, {
+                name: 'Artboard 1',
+                bgColor: payload.bgColor || DEFAULT_BG,
+                camera: payload.camera || { x: 0, y: 0, scale: 1 },
+                shapes: payload.shapes
+              });
+              state.activeArtboardId = state.artboards[0].id;
+            } else {
+              throw new Error('Missing shapes/artboards');
             }
-            state.shapes = payload.shapes;
-            state.bgColor = payload.bgColor || state.bgColor;
             state.grid = payload.grid !== false;
-            state.camera = payload.camera || state.camera;
-            state.selectedId = null;
+            clearSelection();
             pushHistory();
+            renderArtboardTabs();
             syncControls();
-            setStatus(`Loaded ${state.shapes.length} shapes.`);
+            setStatus(`Loaded ${state.shapes.length} shapes in ${currentArtboard().name}.`);
           } catch (err) {
             setStatus('Invalid JSON file.');
           }
@@ -1158,8 +1893,8 @@
       }
 
       function exportPng() {
-        const previous = state.selectedId;
-        state.selectedId = null;
+        const previousIds = selectedShapeIds();
+        clearSelection();
         render();
         const url = els.stage.toDataURL('image/png');
         const a = document.createElement('a');
@@ -1168,7 +1903,7 @@
         document.body.appendChild(a);
         a.click();
         a.remove();
-        state.selectedId = previous;
+        setSelection(previousIds);
         render();
         setStatus('Exported PNG.');
       }
@@ -1241,8 +1976,17 @@
 
         if (state.tool === 'select' && !shouldPan) {
           const hit = findShapeAt(world.x, world.y);
-          state.selectedId = hit ? hit.id : null;
-          if (hit) {
+          const shift = !!event.shiftKey;
+          if (hit && shift) {
+            if (state.selectedIds.includes(hit.id)) {
+              setSelection(state.selectedIds.filter((id) => id !== hit.id));
+            } else {
+              setSelection(state.selectedIds.concat(hit.id));
+            }
+          } else {
+            setSelection(hit ? [hit.id] : []);
+          }
+          if (hit && selectedShapeIds().includes(hit.id)) {
             state.draggingSelected = true;
             state.pointer.lastWorld = world;
           } else {
@@ -1263,6 +2007,11 @@
       }
 
       function applyPointerMove(event) {
+        // Laser pointer: always track, even when not "down"
+        if (state.tool === 'laser') {
+          showLaser(event.clientX, event.clientY);
+        }
+
         if (!state.pointer.down) {
           return;
         }
@@ -1280,19 +2029,21 @@
 
         const world = toWorld(event.clientX, event.clientY);
 
-        if (state.draggingSelected && state.selectedId) {
-          const selected = state.shapes.find((s) => s.id === state.selectedId);
-          if (selected && state.pointer.lastWorld) {
+        if (state.draggingSelected && selectedShapeIds().length) {
+          const selected = selectedShapes();
+          if (selected.length && state.pointer.lastWorld) {
             const dx = world.x - state.pointer.lastWorld.x;
             const dy = world.y - state.pointer.lastWorld.y;
-            moveShape(selected, dx, dy);
+            for (const shape of selected) {
+              moveShape(shape, dx, dy);
+            }
             state.pointer.lastWorld = world;
             render();
             return;
           }
         }
 
-        continueDraw(world);
+        continueDraw(world, event.shiftKey);
         render();
       }
 
@@ -1301,10 +2052,10 @@
           return;
         }
 
-        if (state.draggingSelected && state.selectedId) {
+        if (state.draggingSelected && selectedShapeIds().length) {
           state.draggingSelected = false;
           pushHistory();
-          setStatus('Moved shape.');
+          setStatus('Moved selected shape(s).');
         }
 
         finishDraw();
@@ -1315,7 +2066,17 @@
         state.pointer.start = null;
         state.pointer.current = null;
         state.pointer.lastWorld = null;
-        els.stage.style.cursor = state.tool === 'pan' ? 'grab' : 'crosshair';
+        if (state.tool === 'pan') {
+          els.stage.style.cursor = 'grab';
+        } else if (state.tool === 'select') {
+          els.stage.style.cursor = 'default';
+        } else if (state.tool === 'eraser') {
+          els.stage.style.cursor = 'not-allowed';
+        } else if (state.tool === 'laser') {
+          els.stage.style.cursor = 'none';
+        } else {
+          els.stage.style.cursor = 'crosshair';
+        }
         render();
       }
 
@@ -1342,8 +2103,9 @@
 
         drawGrid();
 
+        const selected = new Set(selectedShapeIds());
         for (const shape of state.shapes) {
-          drawShape(shape, shape.id === state.selectedId);
+          drawShape(shape, selected.has(shape.id));
         }
         if (state.pointer.temp) {
           drawShape(state.pointer.temp, false);
@@ -1352,9 +2114,13 @@
         ctx.restore();
 
         const activeTool = TOOLS.find((t) => t.id === state.tool);
+        const board = currentArtboard();
         els.toolPill.textContent = `Tool: ${activeTool ? activeTool.label : state.tool}`;
         els.zoomPill.textContent = `Zoom: ${Math.round(state.camera.scale * 100)}%`;
         els.animPill.textContent = `Animation: ${state.animated ? 'On' : 'Off'}`;
+        els.shapesPill.textContent = `${board.name}: ${state.shapes.length}`;
+        els.undoPill.textContent = `Undo: ${state.historyIndex}/${state.history.length - 1}`;
+        els.snapBadge.classList.toggle('on', state.snapGrid);
       }
 
       function setTool(tool) {
@@ -1365,8 +2131,15 @@
           els.stage.style.cursor = 'default';
         } else if (tool === 'eraser') {
           els.stage.style.cursor = 'not-allowed';
+        } else if (tool === 'laser') {
+          els.stage.style.cursor = 'none';
         } else {
           els.stage.style.cursor = 'crosshair';
+        }
+
+        // Hide laser dot when switching away from laser
+        if (tool !== 'laser' && els.laserDot) {
+          els.laserDot.classList.remove('visible');
         }
 
         for (const btn of els.toolGrid.querySelectorAll('button.tool')) {
@@ -1411,10 +2184,16 @@
         els.lineWidthValue.textContent = `${state.lineWidth}px`;
         els.lineStyle.value = state.lineStyle;
         els.animated.checked = state.animated;
+        els.opacity.value = String(state.opacity);
+        els.opacityValue.textContent = state.opacity.toFixed(2);
         els.textSize.value = String(state.textSize);
         els.textContent.value = state.textContent;
         els.iconType.value = state.iconType;
         els.iconSize.value = String(state.iconSize);
+        els.btnSnap.textContent = state.snapGrid ? 'Snap: On' : 'Snap: Off';
+        renderArtboardTabs();
+        updatePalette();
+        renderRecentColors();
         setTool(state.tool);
       }
 
@@ -1473,6 +2252,10 @@
         els.btnClear.addEventListener('click', clearAll);
         els.btnCenter.addEventListener('click', centerView);
         els.btnFit.addEventListener('click', fitContent);
+        els.btnArtboardAdd.addEventListener('click', addArtboard);
+        els.btnArtboardDup.addEventListener('click', duplicateArtboard);
+        els.btnArtboardRename.addEventListener('click', renameArtboard);
+        els.btnArtboardDelete.addEventListener('click', deleteArtboard);
         els.btnGrid.addEventListener('click', () => {
           state.grid = !state.grid;
           saveToLocalStorage();
@@ -1492,7 +2275,58 @@
           importJson(els.fileLoader.files[0]);
           els.fileLoader.value = '';
         });
+        els.btnExportDsl.addEventListener('click', exportDslStarter);
         els.btnExportPng.addEventListener('click', exportPng);
+
+        // Opacity slider
+        els.opacity.addEventListener('input', () => {
+          state.opacity = parseFloat(els.opacity.value) || 1;
+          els.opacityValue.textContent = state.opacity.toFixed(2);
+          saveToLocalStorage();
+        });
+
+        // Duplicate
+        els.btnDuplicate.addEventListener('click', duplicateSelected);
+
+        // Z-order
+        els.btnBringFwd.addEventListener('click', bringForward);
+        els.btnSendBack.addEventListener('click', sendBackward);
+
+        // Selected-shape quick style edits
+        els.btnLineSolid.addEventListener('click', () => setSelectedLineStyle('solid'));
+        els.btnLineDashed.addEventListener('click', () => setSelectedLineStyle('dashed'));
+        els.btnLineDotted.addEventListener('click', () => setSelectedLineStyle('dotted'));
+        els.btnToggleArrow.addEventListener('click', toggleLineArrowSelection);
+        els.btnRectRadius.addEventListener('click', editSelectedRectRadius);
+
+        // Alignment
+        els.btnAlignLeft.addEventListener('click', () => alignSelected('left'));
+        els.btnAlignCenter.addEventListener('click', () => alignSelected('center'));
+        els.btnAlignRight.addEventListener('click', () => alignSelected('right'));
+        els.btnAlignTop.addEventListener('click', () => alignSelected('top'));
+        els.btnAlignMiddle.addEventListener('click', () => alignSelected('middle'));
+        els.btnAlignBottom.addEventListener('click', () => alignSelected('bottom'));
+        els.btnDistH.addEventListener('click', () => distributeSelected('x'));
+        els.btnDistV.addEventListener('click', () => distributeSelected('y'));
+
+        // Pathfinder
+        els.btnPathUnion.addEventListener('click', () => applyPathfinder('union'));
+        els.btnPathIntersect.addEventListener('click', () => applyPathfinder('intersect'));
+        els.btnPathSubtract.addEventListener('click', () => applyPathfinder('subtract'));
+
+        // Snap toggle
+        els.btnSnap.addEventListener('click', () => {
+          state.snapGrid = !state.snapGrid;
+          els.btnSnap.textContent = state.snapGrid ? 'Snap: On' : 'Snap: Off';
+          saveToLocalStorage();
+          render();
+          setStatus(state.snapGrid ? 'Snap to grid enabled.' : 'Snap to grid disabled.');
+        });
+
+        // Shortcut overlay
+        els.shortcutOverlay.addEventListener('click', (e) => {
+          if (e.target === els.shortcutOverlay) toggleShortcutOverlay(false);
+        });
 
         els.stage.addEventListener('pointerdown', (event) => {
           event.preventDefault();
@@ -1511,6 +2345,15 @@
           }
         });
         els.stage.addEventListener('pointercancel', applyPointerUp);
+        els.stage.addEventListener('dblclick', (event) => {
+          const world = toWorld(event.clientX, event.clientY);
+          const hit = findShapeAt(world.x, world.y);
+          if (!hit || hit.type !== 'rect') {
+            return;
+          }
+          setSelection([hit.id]);
+          editRectRadiusForShape(hit);
+        });
 
         els.stage.addEventListener('wheel', (event) => {
           event.preventDefault();
@@ -1546,6 +2389,11 @@
             redo();
             return;
           }
+          if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 's') {
+            event.preventDefault();
+            exportDslStarter();
+            return;
+          }
           if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
             event.preventDefault();
             exportJson();
@@ -1554,6 +2402,11 @@
           if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'o') {
             event.preventDefault();
             els.fileLoader.click();
+            return;
+          }
+          if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
+            event.preventDefault();
+            duplicateSelected();
             return;
           }
 
@@ -1606,6 +2459,30 @@
             return;
           }
 
+          if (event.key.toLowerCase() === 's') {
+            if (event.target && (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.tagName === 'SELECT')) return;
+            event.preventDefault();
+            state.snapGrid = !state.snapGrid;
+            els.btnSnap.textContent = state.snapGrid ? 'Snap: On' : 'Snap: Off';
+            saveToLocalStorage();
+            render();
+            setStatus(state.snapGrid ? 'Snap enabled.' : 'Snap disabled.');
+            return;
+          }
+
+          if (event.key.toLowerCase() === 'l') {
+            if (event.target && (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.tagName === 'SELECT')) return;
+            event.preventDefault();
+            setTool('laser');
+            return;
+          }
+
+          if (event.key === '?') {
+            event.preventDefault();
+            toggleShortcutOverlay();
+            return;
+          }
+
           if (event.key === '+' || event.key === '=') {
             state.camera.scale = clamp(state.camera.scale * 1.1, 0.15, 8);
             render();
@@ -1642,9 +2519,427 @@
             }
           }
         });
+
+        // Pinch-to-zoom (trackpad / touch)
+        let lastPinchDist = 0;
+        els.stage.addEventListener('touchstart', (e) => {
+          if (e.touches.length === 2) {
+            lastPinchDist = Math.hypot(
+              e.touches[0].clientX - e.touches[1].clientX,
+              e.touches[0].clientY - e.touches[1].clientY
+            );
+          }
+        }, { passive: true });
+        els.stage.addEventListener('touchmove', (e) => {
+          if (e.touches.length === 2) {
+            e.preventDefault();
+            const dist = Math.hypot(
+              e.touches[0].clientX - e.touches[1].clientX,
+              e.touches[0].clientY - e.touches[1].clientY
+            );
+            if (lastPinchDist > 0) {
+              const factor = dist / lastPinchDist;
+              const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+              const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+              const worldBefore = toWorld(midX, midY);
+              state.camera.scale = clamp(state.camera.scale * factor, 0.15, 8);
+              const worldAfter = toWorld(midX, midY);
+              state.camera.x += worldBefore.x - worldAfter.x;
+              state.camera.y += worldBefore.y - worldAfter.y;
+              render();
+            }
+            lastPinchDist = dist;
+          }
+        }, { passive: false });
+        els.stage.addEventListener('touchend', () => { lastPinchDist = 0; }, { passive: true });
+
+        // Canvas leave — hide laser
+        els.canvasWrap.addEventListener('mouseleave', () => {
+          if (els.laserDot) els.laserDot.classList.remove('visible');
+        });
+      }
+
+      /* ═══════════════════════════════
+         New feature functions
+         ═══════════════════════════════ */
+
+      // ── Color palette ──
+      function initPalette() {
+        els.palette.innerHTML = '';
+        PALETTE.forEach((c) => {
+          const s = document.createElement('div');
+          s.className = 'swatch';
+          s.style.background = c;
+          s.dataset.color = c;
+          if (c === state.strokeColor) s.classList.add('active');
+          s.addEventListener('click', () => {
+            state.strokeColor = c;
+            els.strokeColor.value = c;
+            updatePalette();
+            saveToLocalStorage();
+          });
+          els.palette.appendChild(s);
+        });
+      }
+
+      function updatePalette() {
+        els.palette.querySelectorAll('.swatch').forEach((s) => {
+          s.classList.toggle('active', s.dataset.color === state.strokeColor);
+        });
+      }
+
+      // ── Recent colors ──
+      function initRecentColors() {
+        renderRecentColors();
+      }
+
+      function trackRecentColor(color) {
+        if (!color) return;
+        state.recentColors = state.recentColors.filter((c) => c !== color);
+        state.recentColors.unshift(color);
+        if (state.recentColors.length > 6) state.recentColors.length = 6;
+        renderRecentColors();
+        saveToLocalStorage();
+      }
+
+      function renderRecentColors() {
+        if (!els.recentColors) return;
+        els.recentColors.innerHTML = '';
+        if (!state.recentColors.length) {
+          els.recentColors.innerHTML = '<span style="font-size:10px;color:var(--muted)">Recent colors appear here</span>';
+          return;
+        }
+        state.recentColors.forEach((c) => {
+          const s = document.createElement('div');
+          s.className = 'recent-swatch';
+          s.style.background = c;
+          s.title = c;
+          s.addEventListener('click', () => {
+            state.strokeColor = c;
+            els.strokeColor.value = c;
+            updatePalette();
+            saveToLocalStorage();
+          });
+          els.recentColors.appendChild(s);
+        });
+      }
+
+      function setSelectedLineStyle(style) {
+        const targets = selectedShapes().filter((shape) => shape.type === 'line' || shape.type === 'arrow');
+        if (!targets.length) {
+          setStatus('Select at least one line/arrow first.');
+          return;
+        }
+        for (const shape of targets) {
+          shape.style = style;
+        }
+        pushHistory();
+        render();
+        setStatus(`Applied ${style} style.`);
+      }
+
+      function toggleLineArrowSelection() {
+        const targets = selectedShapes().filter((shape) => shape.type === 'line' || shape.type === 'arrow');
+        if (!targets.length) {
+          setStatus('Select at least one line/arrow first.');
+          return;
+        }
+        for (const shape of targets) {
+          shape.type = shape.type === 'line' ? 'arrow' : 'line';
+        }
+        pushHistory();
+        render();
+        setStatus('Toggled line/arrow style.');
+      }
+
+      function editRectRadiusForShape(shape) {
+        if (!shape || shape.type !== 'rect') {
+          setStatus('Select a rectangle first.');
+          return;
+        }
+        const current = Math.max(0, Number(shape.radius) || 0);
+        const raw = window.prompt('Rectangle corner radius (px):', String(Math.round(current)));
+        if (raw === null) {
+          return;
+        }
+        const value = Number(raw);
+        if (!Number.isFinite(value) || value < 0) {
+          setStatus('Radius must be a number >= 0.');
+          return;
+        }
+        shape.radius = clamp(value, 0, 2000);
+        pushHistory();
+        render();
+        setStatus(`Rectangle radius set to ${Math.round(shape.radius)}px.`);
+      }
+
+      function editSelectedRectRadius() {
+        const rect = selectedShapes().find((shape) => shape.type === 'rect');
+        editRectRadiusForShape(rect || null);
+      }
+
+      function alignSelected(mode) {
+        const items = selectedShapes();
+        if (items.length < 2) {
+          setStatus('Select at least two shapes to align.');
+          return;
+        }
+
+        const records = items.map((shape) => ({ shape, bounds: getBounds(shape) })).filter((r) => r.bounds);
+        if (records.length < 2) {
+          setStatus('Selected shapes are not alignable.');
+          return;
+        }
+
+        const minX = Math.min(...records.map((r) => r.bounds.x));
+        const minY = Math.min(...records.map((r) => r.bounds.y));
+        const maxX = Math.max(...records.map((r) => r.bounds.x + r.bounds.w));
+        const maxY = Math.max(...records.map((r) => r.bounds.y + r.bounds.h));
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+
+        for (const rec of records) {
+          let dx = 0;
+          let dy = 0;
+          if (mode === 'left') dx = minX - rec.bounds.x;
+          if (mode === 'center') dx = centerX - (rec.bounds.x + rec.bounds.w / 2);
+          if (mode === 'right') dx = maxX - (rec.bounds.x + rec.bounds.w);
+          if (mode === 'top') dy = minY - rec.bounds.y;
+          if (mode === 'middle') dy = centerY - (rec.bounds.y + rec.bounds.h / 2);
+          if (mode === 'bottom') dy = maxY - (rec.bounds.y + rec.bounds.h);
+          moveShape(rec.shape, dx, dy);
+        }
+
+        pushHistory();
+        render();
+        setStatus(`Aligned ${records.length} shapes (${mode}).`);
+      }
+
+      function distributeSelected(axis) {
+        const items = selectedShapes();
+        if (items.length < 3) {
+          setStatus('Select at least three shapes to distribute.');
+          return;
+        }
+
+        const records = items.map((shape) => ({ shape, bounds: getBounds(shape) })).filter((r) => r.bounds);
+        if (records.length < 3) {
+          setStatus('Selected shapes are not distributable.');
+          return;
+        }
+
+        if (axis === 'x') {
+          records.sort((a, b) => (a.bounds.x + a.bounds.w / 2) - (b.bounds.x + b.bounds.w / 2));
+        } else {
+          records.sort((a, b) => (a.bounds.y + a.bounds.h / 2) - (b.bounds.y + b.bounds.h / 2));
+        }
+
+        const first = records[0].bounds;
+        const last = records[records.length - 1].bounds;
+        const firstCenter = axis === 'x' ? first.x + first.w / 2 : first.y + first.h / 2;
+        const lastCenter = axis === 'x' ? last.x + last.w / 2 : last.y + last.h / 2;
+        const step = (lastCenter - firstCenter) / (records.length - 1);
+
+        for (let i = 1; i < records.length - 1; i += 1) {
+          const rec = records[i];
+          const center = axis === 'x' ? rec.bounds.x + rec.bounds.w / 2 : rec.bounds.y + rec.bounds.h / 2;
+          const target = firstCenter + step * i;
+          const delta = target - center;
+          moveShape(rec.shape, axis === 'x' ? delta : 0, axis === 'y' ? delta : 0);
+        }
+
+        pushHistory();
+        render();
+        setStatus(axis === 'x' ? 'Distributed horizontally.' : 'Distributed vertically.');
+      }
+
+      function normalizeRectFromShape(shape) {
+        if (!shape || shape.type !== 'rect') return null;
+        const x1 = Math.min(shape.x1, shape.x2);
+        const y1 = Math.min(shape.y1, shape.y2);
+        const x2 = Math.max(shape.x1, shape.x2);
+        const y2 = Math.max(shape.y1, shape.y2);
+        return { x1, y1, x2, y2 };
+      }
+
+      function rectArea(box) {
+        return Math.max(0, box.x2 - box.x1) * Math.max(0, box.y2 - box.y1);
+      }
+
+      function makeRectFromBox(box, styleSource) {
+        return {
+          id: uid(),
+          type: 'rect',
+          x1: box.x1,
+          y1: box.y1,
+          x2: box.x2,
+          y2: box.y2,
+          color: styleSource.color || state.strokeColor,
+          width: styleSource.width || state.lineWidth,
+          style: styleSource.style || state.lineStyle,
+          animated: !!styleSource.animated,
+          opacity: typeof styleSource.opacity === 'number' ? styleSource.opacity : 1,
+          radius: Number(styleSource.radius) || 0
+        };
+      }
+
+      function selectedRectPair() {
+        const ids = selectedShapeIds();
+        if (ids.length !== 2) {
+          return null;
+        }
+        const a = state.shapes.find((s) => s.id === ids[0]);
+        const b = state.shapes.find((s) => s.id === ids[1]);
+        if (!a || !b || a.type !== 'rect' || b.type !== 'rect') {
+          return null;
+        }
+        return [a, b];
+      }
+
+      function applyPathfinder(mode) {
+        const pair = selectedRectPair();
+        if (!pair) {
+          setStatus('Select exactly two rectangles first.');
+          return;
+        }
+        const [shapeA, shapeB] = pair;
+        const topShape = state.selectedId === shapeA.id ? shapeA : shapeB;
+        const other = topShape === shapeA ? shapeB : shapeA;
+        const a = normalizeRectFromShape(topShape);
+        const b = normalizeRectFromShape(other);
+        const overlap = {
+          x1: Math.max(a.x1, b.x1),
+          y1: Math.max(a.y1, b.y1),
+          x2: Math.min(a.x2, b.x2),
+          y2: Math.min(a.y2, b.y2)
+        };
+        const hasOverlap = rectArea(overlap) > 0.0001;
+
+        const toAdd = [];
+        if (mode === 'union') {
+          toAdd.push(makeRectFromBox({
+            x1: Math.min(a.x1, b.x1),
+            y1: Math.min(a.y1, b.y1),
+            x2: Math.max(a.x2, b.x2),
+            y2: Math.max(a.y2, b.y2)
+          }, topShape));
+        } else if (mode === 'intersect') {
+          if (!hasOverlap) {
+            setStatus('No overlap to intersect.');
+            return;
+          }
+          toAdd.push(makeRectFromBox(overlap, topShape));
+        } else if (mode === 'subtract') {
+          if (!hasOverlap) {
+            setStatus('No overlap to subtract.');
+            return;
+          }
+          const parts = [
+            { x1: a.x1, y1: a.y1, x2: a.x2, y2: overlap.y1 },
+            { x1: a.x1, y1: overlap.y2, x2: a.x2, y2: a.y2 },
+            { x1: a.x1, y1: overlap.y1, x2: overlap.x1, y2: overlap.y2 },
+            { x1: overlap.x2, y1: overlap.y1, x2: a.x2, y2: overlap.y2 }
+          ].filter((box) => rectArea(box) > 0.0001);
+          if (!parts.length) {
+            setStatus('Subtract removed the primary rectangle completely.');
+            return;
+          }
+          for (const box of parts) {
+            toAdd.push(makeRectFromBox(box, topShape));
+          }
+        }
+
+        state.shapes = state.shapes.filter((shape) => shape.id !== shapeA.id && shape.id !== shapeB.id);
+        state.shapes.push(...toAdd);
+        setSelection(toAdd.map((shape) => shape.id));
+        pushHistory();
+        render();
+        setStatus(`Pathfinder ${mode} complete.`);
+      }
+
+      // ── Duplicate selected ──
+      function duplicateSelected() {
+        const originals = selectedShapes();
+        if (!originals.length) {
+          setStatus('Nothing selected to duplicate.');
+          return;
+        }
+        const selectedCloneIds = [];
+        const offset = 24 / state.camera.scale;
+        for (const original of originals) {
+          const clone = JSON.parse(JSON.stringify(original));
+          clone.id = uid();
+          if (clone.type === 'pen') {
+            for (const p of clone.points || []) { p.x += offset; p.y += offset; }
+          } else if (typeof clone.x1 === 'number') {
+            clone.x1 += offset; clone.y1 += offset;
+            clone.x2 += offset; clone.y2 += offset;
+          } else if (typeof clone.x === 'number') {
+            clone.x += offset; clone.y += offset;
+          }
+          state.shapes.push(clone);
+          selectedCloneIds.push(clone.id);
+        }
+        setSelection(selectedCloneIds);
+        pushHistory();
+        setStatus(`Duplicated ${selectedCloneIds.length} shape(s).`);
+      }
+
+      // ── Z-order ──
+      function bringForward() {
+        if (!state.selectedId) return;
+        const idx = state.shapes.findIndex((s) => s.id === state.selectedId);
+        if (idx < 0 || idx >= state.shapes.length - 1) return;
+        [state.shapes[idx], state.shapes[idx + 1]] = [state.shapes[idx + 1], state.shapes[idx]];
+        pushHistory();
+        render();
+        setStatus('Brought forward.');
+      }
+
+      function sendBackward() {
+        if (!state.selectedId) return;
+        const idx = state.shapes.findIndex((s) => s.id === state.selectedId);
+        if (idx <= 0) return;
+        [state.shapes[idx], state.shapes[idx - 1]] = [state.shapes[idx - 1], state.shapes[idx]];
+        pushHistory();
+        render();
+        setStatus('Sent backward.');
+      }
+
+      // ── Laser pointer ──
+      function showLaser(clientX, clientY) {
+        const rect = els.canvasWrap.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        els.laserDot.style.left = x + 'px';
+        els.laserDot.style.top = y + 'px';
+        els.laserDot.classList.add('visible');
+
+        // Spawn a fading trail dot
+        const trail = document.createElement('div');
+        trail.className = 'laser-trail';
+        trail.style.left = x + 'px';
+        trail.style.top = y + 'px';
+        trail.style.width = '12px';
+        trail.style.height = '12px';
+        trail.style.opacity = '0.6';
+        els.canvasWrap.appendChild(trail);
+        requestAnimationFrame(() => {
+          trail.style.transition = 'opacity 0.5s ease-out';
+          trail.style.opacity = '0';
+        });
+        setTimeout(() => { trail.remove(); }, 550);
+      }
+
+      // ── Shortcut overlay ──
+      function toggleShortcutOverlay(force) {
+        const open = typeof force === 'boolean' ? force : !els.shortcutOverlay.classList.contains('open');
+        els.shortcutOverlay.classList.toggle('open', open);
       }
 
       function init() {
+        initPalette();
+        initRecentColors();
         initTools();
         const restored = loadFromLocalStorage();
         if (!restored) {

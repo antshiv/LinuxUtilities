@@ -147,6 +147,7 @@ In-app keys:
 | --- | --- |
 | `1..9` and `0` | Tool select (select/pen/line/arrow/rect/ellipse/text/icon/eraser/pan) |
 | `Ctrl+S` / `Ctrl+O` | Save JSON / Load JSON |
+| `Ctrl+Shift+S` | Export DSL starter JSON |
 | `Ctrl+Z` / `Ctrl+Y` | Undo / Redo |
 | `Delete` | Delete selected shape |
 | `F` | Focus mode |
@@ -160,6 +161,35 @@ Wacom quick map (example to HDMI recording output):
 ```bash
 xsetwacom set "Wacom Intuos S 2 Pen stylus" MapToOutput HDMI-1
 ```
+
+### Storyboard DSL Player (timeline parser/player)
+
+Launch:
+
+```bash
+./launch_presenter_storyboard.sh
+```
+
+In-app keys:
+
+| Key | Action |
+| --- | --- |
+| `Space` | Play / Pause |
+| `R` | Reset timeline |
+| `Ctrl+Enter` | Validate DSL + Play |
+| `Ctrl+S` | Save DSL JSON |
+| `F` | Focus mode |
+| `H` | Toggle side panel |
+| `.` / `,` | Speed up / slow down |
+
+Preset buttons:
+- `CKE Train Preset` -> LLM training step storyboard template
+- `CKE Infer Preset` -> decode/inference storyboard template
+
+Common DSL actions:
+- `show`, `hide`, `draw`, `move`, `pulse`, `zoom`, `pan`
+- `morph` (scene transition by `from` + `to` ids)
+- targets: exact id, `*`, `type:edge`, `type:icon`
 
 ## Mouse Shortcuts (AwesomeWM)
 
@@ -335,3 +365,4 @@ Buttons available:
 - Shortcut Cheat Sheet
 - Teleprompter
 - Presenter Canvas
+- Storyboard DSL

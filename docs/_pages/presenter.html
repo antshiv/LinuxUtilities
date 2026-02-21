@@ -87,3 +87,22 @@
 ./presenter_dash.sh undo     # Undo last stroke
 ./presenter_dash.sh redo     # Redo stroke
 ./presenter_dash.sh reset    # Remove anchor point</code></pre>
+
+<h2>Presenter Canvas + Storyboard DSL</h2>
+
+<p>For slide-like scene animation (instead of drawing over existing apps), use the browser canvas + timeline pair:</p>
+
+<pre><code>./launch_presenter_canvas.sh
+./launch_presenter_storyboard.sh</code></pre>
+
+<p>The Storyboard player includes ready-made <strong>CKE Train Preset</strong> and <strong>CKE Infer Preset</strong> templates to accelerate LLM training/inference video production.</p>
+
+<div class="card">
+    <h3>Pipeline</h3>
+    <div class="diagram"><span class="wrn">1.</span> Draw your scene in <strong>Presenter Canvas</strong>
+<span class="wrn">2.</span> Export starter DSL with <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>
+<span class="wrn">3.</span> Open <strong>Storyboard DSL Player</strong>, load/edit timeline actions
+<span class="wrn">4.</span> Press <kbd>Space</kbd> to play and record narration in one take</div>
+</div>
+
+<p>Supported DSL actions: <code>show</code>, <code>hide</code>, <code>draw</code>, <code>move</code>, <code>pulse</code>, <code>zoom</code>, <code>pan</code>. Targets can be exact ids, <code>*</code>, or selectors such as <code>type:edge</code>.</p>

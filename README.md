@@ -48,6 +48,7 @@ The `Utilities` tab now includes:
 - `Cursor Spotlight` (toggle)
 - `Build Spotlight` (compile helper)
 - `Presenter Canvas` (live whiteboard with shape/icon tools + JSON save/load)
+- `Storyboard DSL` (timeline parser/player for scripted animations)
 - `Teleprompter` (local script reader window)
 
 ## Presenter Drawing (Epic Pen Style)
@@ -80,6 +81,7 @@ AwesomeWM hotkeys in `rc.lua`:
 - `Dash Anchor`, `Dash Segment`, `Dot Segment`, `Arrow Segment` (real-time flow overlays)
 - `Install Gromit Profile` (installs `config/gromit-mpx.cfg` to `~/.config/gromit-mpx.cfg`)
 - `Presenter Canvas` (opens `presenter_canvas.html` via `launch_presenter_canvas.sh`)
+- `Storyboard DSL` (opens `presenter_storyboard.html` via `launch_presenter_storyboard.sh`)
 - `Teleprompter` (opens `teleprompter.html` via `launch_teleprompter.sh`)
 - `Shortcut Cheat Sheet` (open complete keyboard/mouse/shell mapping)
 
@@ -132,6 +134,7 @@ Launch:
 Core controls inside the canvas:
 - `1..9` and `0`: switch tools (select, pen, line, arrow, rect, ellipse, text, icon, eraser, pan)
 - `Ctrl+S` / `Ctrl+O`: save/load canvas JSON
+- `Ctrl+Shift+S`: export DSL starter JSON for storyboard timeline player
 - `Ctrl+Z` / `Ctrl+Y`: undo/redo
 - `Delete`: delete selected shape
 - `F` / `H`: focus mode and show/hide controls
@@ -143,6 +146,37 @@ For Wacom on X11, map stylus to your recording output (example HDMI):
 ```bash
 xsetwacom set "Wacom Intuos S 2 Pen stylus" MapToOutput HDMI-1
 ```
+
+## Storyboard DSL Player (Timeline + Parser)
+
+Launch:
+
+```bash
+./launch_presenter_storyboard.sh
+```
+
+Workflow:
+1. Draw scene in Presenter Canvas.
+2. Export with `Ctrl+Shift+S` (or `Export DSL Starter` button).
+3. Open Storyboard DSL Player and load/edit the generated DSL.
+4. Press play and record voiceover.
+
+Built-in presets for your core content:
+- `CKE Train Preset`: data -> tokenizer/batch -> forward -> loss -> backprop -> optimizer -> checkpoint
+- `CKE Infer Preset`: prompt -> embed/KV -> CKE kernels -> sampler -> next-token loop
+
+Core controls inside the storyboard player:
+- `Space`: play/pause
+- `R`: reset timeline to 0s
+- `Ctrl+Enter`: validate DSL + play
+- `Ctrl+S`: save DSL JSON
+- `F` / `H`: focus mode / toggle side panel
+- `.` / `,`: playback speed up/down
+
+Supported timeline actions:
+- `show`, `hide`, `draw`, `move`, `pulse`, `zoom`, `pan`
+- targets can be exact id, `*`, or selectors like `type:edge`, `type:icon`
+- plus `morph` for scene transition (`from` + `to` ids)
 
 ## Shortcut Cheat Sheet
 

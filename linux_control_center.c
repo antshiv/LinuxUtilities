@@ -6577,7 +6577,15 @@ static GtkWidget *build_shortcuts_tab(AppState *state) {
     gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Utility Button: Presenter Canvas", "Launch full-screen drawing canvas", "Use when you want a dedicated black board instead of drawing over existing apps."), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("1..9 / 0", "Select tool (select, pen, line, arrow, rect, ellipse, text, icon, eraser, pan)", "Fast tool switching while recording."), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Ctrl+S / Ctrl+O / Ctrl+Z / Ctrl+Y", "Save JSON / Load JSON / Undo / Redo", "Keep reusable episode scenes and restore quickly."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Ctrl+Shift+S", "Export DSL starter from current canvas", "Send scene directly into Storyboard DSL Player timeline workflow."), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("F / H / G / Delete", "Focus mode / show controls / toggle grid / remove selection", "Cleaner live demos with fewer UI distractions."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(content), card, FALSE, FALSE, 0);
+
+    card = create_shortcut_card("Storyboard DSL Player", "Timeline parser/player for bytebytego-style scripted animations.", &body);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Utility Button: Storyboard DSL", "Launch DSL timeline player", "Import presenter canvas JSON and generate timeline-ready animation scripts."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("CKE Train Preset / CKE Infer Preset", "Load C-Kernel-Engine animation templates", "Optimized for LLM training and decode walkthrough videos."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Space / R / F / H", "Play-pause / reset / focus / panel", "Operate playback while recording without touching the editor."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Ctrl+Enter / Ctrl+S", "Validate+Play / save DSL JSON", "Fast edit-run loop for scene scripting."), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(content), card, FALSE, FALSE, 0);
 
     card = create_shortcut_card("Teleprompter", "Laptop-panel script reader for ATEM workflows without OBS.", &body);
@@ -6849,6 +6857,8 @@ static GtkWidget *build_utilities_tab(AppState *state) {
         "bash -lc 'sheet=\"$HOME/Workspace/LinuxUtilities/SHORTCUTS_CHEATSHEET.md\"; [ -f \"$sheet\" ] || exit 1; xdg-open \"$sheet\" >/dev/null 2>&1'";
     const gchar *presenter_canvas_cmd =
         "bash -lc 'script=\"$HOME/Workspace/LinuxUtilities/launch_presenter_canvas.sh\"; [ -x \"$script\" ] || exit 1; \"$script\"'";
+    const gchar *presenter_storyboard_cmd =
+        "bash -lc 'script=\"$HOME/Workspace/LinuxUtilities/launch_presenter_storyboard.sh\"; [ -x \"$script\" ] || exit 1; \"$script\"'";
     const gchar *teleprompter_cmd =
         "bash -lc 'script=\"$HOME/Workspace/LinuxUtilities/launch_teleprompter.sh\"; [ -x \"$script\" ] || exit 1; \"$script\"'";
     GtkWidget *b1 = create_utility_button("Pavucontrol", "Audio mixer and device routing", "pavucontrol", state);
@@ -6871,6 +6881,7 @@ static GtkWidget *build_utilities_tab(AppState *state) {
     GtkWidget *b18 = create_utility_button("Shortcut Cheat Sheet", "Open full key/mouse/shell shortcuts", shortcut_sheet_cmd, state);
     GtkWidget *b19 = create_utility_button("Teleprompter", "Open local script prompter window", teleprompter_cmd, state);
     GtkWidget *b20 = create_utility_button("Presenter Canvas", "Open live whiteboard canvas with shape + JSON tools", presenter_canvas_cmd, state);
+    GtkWidget *b21 = create_utility_button("Storyboard DSL", "Open timeline parser/player for scripted animation scenes", presenter_storyboard_cmd, state);
 
     gtk_style_context_add_class(gtk_widget_get_style_context(root), "panel-root");
 
@@ -6904,12 +6915,13 @@ static GtkWidget *build_utilities_tab(AppState *state) {
     gtk_grid_attach(GTK_GRID(grid), b18, 1, 8, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), b19, 0, 9, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), b20, 1, 9, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), b21, 0, 10, 1, 1);
     gtk_widget_set_hexpand(grid, TRUE);
     gtk_widget_set_vexpand(grid, FALSE);
     gtk_widget_set_halign(grid, GTK_ALIGN_FILL);
 
     gtk_label_set_text(GTK_LABEL(hotkey_hint),
-                       "F6 draw; compat profile: Shift marker, Ctrl arrow pen, Alt red pen, Button3 eraser; F11 dash path; F7 spotlight; F8/Print capture; Presenter Canvas + Teleprompter buttons launch local recording aids.");
+                       "F6 draw; compat profile: Shift marker, Ctrl arrow pen, Alt red pen, Button3 eraser; F11 dash path; F7 spotlight; F8/Print capture; Presenter Canvas, Storyboard DSL, and Teleprompter buttons launch recording aids.");
     gtk_label_set_xalign(GTK_LABEL(hotkey_hint), 0.0);
     gtk_label_set_line_wrap(GTK_LABEL(hotkey_hint), TRUE);
     gtk_style_context_add_class(gtk_widget_get_style_context(hotkey_hint), "meta-info");
