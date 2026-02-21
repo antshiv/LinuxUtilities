@@ -126,10 +126,12 @@ cd LinuxUtilities
 # Cursor spotlight
 sudo apt install pkg-config libx11-dev libxext-dev libxfixes-dev libxrender-dev libcairo2-dev
 ./build_cursor_spotlight.sh
+./build_cursor_spotlight.sh --install   # optional: ~/Programs/bin/cursor_spotlight
 
 # Control center
 sudo apt install libgtk-3-dev pkg-config
 ./build_linux_control_center.sh
+./build_linux_control_center.sh --install   # optional: ~/Programs/bin/linux_control_center
 
 # Presenter drawing
 sudo apt install gromit-mpx xdotool
@@ -151,10 +153,10 @@ cp rc.lua ~/.config/awesome/rc.lua
 <div class="card card-blue">
     <h3>3 — Try It</h3>
     <pre><code># Toggle spotlight
-./cursor_spotlight --radius 180 --dim 0.68 --fps 50
+./build/bin/cursor_spotlight --radius 180 --dim 0.68 --fps 50
 
 # Launch control center
-./linux_control_center
+./build/bin/linux_control_center
 
 # Start presenter drawing (F6 in AwesomeWM)</code></pre>
 </div>

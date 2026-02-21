@@ -19,10 +19,14 @@ sudo apt install pkg-config libx11-dev libxext-dev libxfixes-dev libxrender-dev 
 ./build_cursor_spotlight.sh
 
 # Run with defaults
-./cursor_spotlight
+./build/bin/cursor_spotlight
 
 # Run with custom settings
-./cursor_spotlight --radius 180 --dim 0.68 --fps 50</code></pre>
+./build/bin/cursor_spotlight --radius 180 --dim 0.68 --fps 50
+
+# Optional install
+./build_cursor_spotlight.sh --install
+~/Programs/bin/cursor_spotlight --radius 180 --dim 0.68 --fps 50</code></pre>
 
 <h2>Command-Line Flags</h2>
 

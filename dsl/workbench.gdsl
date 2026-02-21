@@ -34,7 +34,7 @@ spacing=10
 type=button
 parent=quick_row
 text=Open Linux Control Center
-on_click=./linux_control_center
+on_click=bash -lc 'for app in "$HOME/Programs/bin/linux_control_center" "$HOME/Workspace/LinuxUtilities/build/bin/linux_control_center"; do [ -x "$app" ] && exec "$app"; done; exit 1'
 expand=true
 fill=true
 

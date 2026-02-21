@@ -385,7 +385,7 @@ local function handle_spotlight_start_result(stdout, exit_code)
         naughty.notify({
             preset = naughty.config.presets.warn,
             title = "Cursor Spotlight Missing",
-            text = "Build LinuxUtilities/cursor_spotlight first.",
+            text = "Build LinuxUtilities/build/bin/cursor_spotlight or install it to ~/Programs/bin.",
         })
     elseif exit_code ~= 0 or result == "failed" then
         naughty.notify({
@@ -404,9 +404,17 @@ local function start_cursor_spotlight(restart_existing, notify_on_start)
 
     awful.spawn.easy_async_with_shell(string.format([[
         spot_pat='(^|/)cursor_spotlight( |$)'
-        bin="$HOME/Workspace/LinuxUtilities/cursor_spotlight"
+        bin=""
+        for candidate in \
+            "$HOME/Programs/bin/cursor_spotlight" \
+            "$HOME/Workspace/LinuxUtilities/build/bin/cursor_spotlight"; do
+            if [ -x "$candidate" ]; then
+                bin="$candidate"
+                break
+            fi
+        done
         errfile="${XDG_RUNTIME_DIR:-/tmp}/cursor_spotlight.err"
-        if [ ! -x "$bin" ]; then
+        if [ -z "$bin" ]; then
             echo missing
             exit 2
         fi
@@ -671,8 +679,16 @@ local function open_linux_control_center(target_dir)
     end
 
     awful.spawn.easy_async_with_shell(string.format([[
-        app="$HOME/Workspace/LinuxUtilities/linux_control_center"
-        if [ -x "$app" ]; then
+        app=""
+        for candidate in \
+            "$HOME/Programs/bin/linux_control_center" \
+            "$HOME/Workspace/LinuxUtilities/build/bin/linux_control_center"; do
+            if [ -x "$candidate" ]; then
+                app="$candidate"
+                break
+            fi
+        done
+        if [ -n "$app" ]; then
             "$app"%s >/dev/null 2>&1 &
         else
             exit 1
@@ -682,7 +698,7 @@ local function open_linux_control_center(target_dir)
             naughty.notify({
                 preset = naughty.config.presets.warn,
                 title = "Control Center Missing",
-                text = "Build LinuxUtilities/linux_control_center first.",
+                text = "Build LinuxUtilities/build/bin/linux_control_center or install it to ~/Programs/bin.",
             })
         end
     end)

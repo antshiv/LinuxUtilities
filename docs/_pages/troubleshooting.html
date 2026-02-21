@@ -42,7 +42,7 @@ picom --daemon</code></pre>
     <summary><strong>Spotlight appears but no transparency</strong></summary>
     <p>Your compositor may not support ARGB visuals. Try:</p>
     <pre><code># Start with explicit 32-bit visual
-./cursor_spotlight --visual 32
+./build/bin/cursor_spotlight --visual 32
 
 # Or check picom configuration
 picom --backend glx --daemon</code></pre>
@@ -51,7 +51,7 @@ picom --backend glx --daemon</code></pre>
 <details>
     <summary><strong>Spotlight flickers or has wrong position</strong></summary>
     <p>Multi-monitor setups may cause offset issues. Specify the target display:</p>
-    <pre><code>./cursor_spotlight --display :0 --screen 0</code></pre>
+    <pre><code>./build/bin/cursor_spotlight --display :0 --screen 0</code></pre>
 </details>
 
 <h2>Gromit-MPX</h2>

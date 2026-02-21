@@ -6828,11 +6828,13 @@ static GtkWidget *build_utilities_tab(AppState *state) {
     GtkWidget *hotkey_hint = gtk_label_new(NULL);
     GtkWidget *status = gtk_label_new("Click a utility to launch it.");
     const gchar *spotlight_toggle_cmd =
-        "bash -lc 'bin=\"$HOME/Workspace/LinuxUtilities/cursor_spotlight\"; "
+        "bash -lc 'bin=\"\"; "
+        "for candidate in \"$HOME/Programs/bin/cursor_spotlight\" \"$HOME/Workspace/LinuxUtilities/build/bin/cursor_spotlight\"; do "
+        "[ -x \"$candidate\" ] && bin=\"$candidate\" && break; done; "
         "spot_pat=\"(^|/)cursor_spotlight( |$)\"; "
         "if pgrep -u \"$USER\" -f \"$spot_pat\" >/dev/null 2>&1; then "
         "pkill -u \"$USER\" -f \"$spot_pat\" >/dev/null 2>&1 || true; "
-        "else [ -x \"$bin\" ] || exit 1; "
+        "else [ -n \"$bin\" ] || exit 1; "
         "\"$bin\" --radius 180 --dim 0.68 --fps 50 >/dev/null 2>&1 & fi'";
     const gchar *spotlight_build_cmd =
         "bash -lc 'cd \"$HOME/Workspace/LinuxUtilities\" && ./build_cursor_spotlight.sh'";

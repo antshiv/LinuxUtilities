@@ -32,7 +32,11 @@ Build/run:
 ```bash
 sudo apt install pkg-config libx11-dev libxext-dev libxfixes-dev libxrender-dev libcairo2-dev
 ./build_cursor_spotlight.sh
-./cursor_spotlight --radius 180 --dim 0.68 --fps 50
+./build/bin/cursor_spotlight --radius 180 --dim 0.68 --fps 50
+# optional install target for PATH-based launches
+./build_cursor_spotlight.sh --install
+# then run as:
+~/Programs/bin/cursor_spotlight --radius 180 --dim 0.68 --fps 50
 ```
 
 Controls:
@@ -198,7 +202,10 @@ Build/run:
 ```bash
 sudo apt install libgtk-3-dev pkg-config
 ./build_linux_control_center.sh
-./linux_control_center
+./build/bin/linux_control_center
+# optional install target for AwesomeWM/global launchers
+./build_linux_control_center.sh --install
+~/Programs/bin/linux_control_center
 ```
 
 ## GTK DSL Starter (Box/Grid Mapping)
@@ -214,7 +221,10 @@ Build/run:
 
 ```bash
 ./build_gtk_dsl_demo.sh
-./gtk_dsl_demo dsl/workbench.gdsl
+./build/bin/gtk_dsl_demo dsl/workbench.gdsl
+# optional install target
+./build_gtk_dsl_demo.sh --install
+~/Programs/bin/gtk_dsl_demo dsl/workbench.gdsl
 ```
 
 DSL quick notes:

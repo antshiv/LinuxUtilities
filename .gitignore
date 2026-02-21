@@ -1,2 +1,9 @@
 # Generated docs output
 docs/build/
+Screenshots/
+/build/
+
+# Legacy root-level binary names (build outputs now go under build/bin/)
+/cursor_spotlight
+/gtk_dsl_demo
+/linux_control_center

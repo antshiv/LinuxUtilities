@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="/tmp/linux_control_center_smoke.log"
+APP_BIN="$ROOT_DIR/build/bin/linux_control_center"
 
 cd "$ROOT_DIR"
 
@@ -13,6 +14,11 @@ fi
 
 "$ROOT_DIR/build_linux_control_center.sh" >/dev/null
 
+if [[ ! -x "$APP_BIN" ]]; then
+    echo "Expected binary not found after build: $APP_BIN"
+    exit 1
+fi
+
 if ! command -v xvfb-run >/dev/null 2>&1; then
     echo "xvfb-run not found. Install with: sudo apt install xvfb"
     echo "Build succeeded; smoke launch was skipped."
@@ -20,7 +26,7 @@ if ! command -v xvfb-run >/dev/null 2>&1; then
 fi
 
 set +e
-timeout 5s xvfb-run -a "$ROOT_DIR/linux_control_center" "$ROOT_DIR" >"$LOG_FILE" 2>&1
+timeout 5s xvfb-run -a "$APP_BIN" "$ROOT_DIR" >"$LOG_FILE" 2>&1
 rc=$?
 set -e
 

@@ -9,11 +9,15 @@
 
 <pre><code>cd LinuxUtilities
 ./build_linux_control_center.sh   # compiles linux_control_center.c
-./linux_control_center              # launch the app</code></pre>
+./build/bin/linux_control_center              # launch the app
+# Optional install
+./build_linux_control_center.sh --install
+~/Programs/bin/linux_control_center</code></pre>
 
 <p>Or compile manually:</p>
 
-<pre><code>gcc -o linux_control_center linux_control_center.c \
+<pre><code>mkdir -p build/bin
+gcc -o build/bin/linux_control_center linux_control_center.c \
     $(pkg-config --cflags --libs gtk+-3.0) -lm</code></pre>
 
 <h2>Features</h2>
