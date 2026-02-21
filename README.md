@@ -47,6 +47,8 @@ Controls:
 The `Utilities` tab now includes:
 - `Cursor Spotlight` (toggle)
 - `Build Spotlight` (compile helper)
+- `Presenter Canvas` (live whiteboard with shape/icon tools + JSON save/load)
+- `Teleprompter` (local script reader window)
 
 ## Presenter Drawing (Epic Pen Style)
 
@@ -77,18 +79,70 @@ AwesomeWM hotkeys in `rc.lua`:
 - `Gromit Clear` (clear strokes)
 - `Dash Anchor`, `Dash Segment`, `Dot Segment`, `Arrow Segment` (real-time flow overlays)
 - `Install Gromit Profile` (installs `config/gromit-mpx.cfg` to `~/.config/gromit-mpx.cfg`)
+- `Presenter Canvas` (opens `presenter_canvas.html` via `launch_presenter_canvas.sh`)
+- `Teleprompter` (opens `teleprompter.html` via `launch_teleprompter.sh`)
 - `Shortcut Cheat Sheet` (open complete keyboard/mouse/shell mapping)
 
-Gromit shape tools in draw mode (profile-based):
+Gromit draw tools in draw mode (compat profile, default):
 - hold `Shift`: marker
-- hold `Ctrl`: straight line
-- hold `Ctrl+Shift`: arrow line
-- hold `Alt`: rectangle
-- hold `Alt+Shift`: circle
-- hold `Alt+Ctrl`: filled circle
+- hold `Ctrl`: arrow pen
+- hold `Alt`: red pen
+- hold middle button (`Button2`): fine pen
+- hold right button (`Button3`): eraser
+
+Advanced shape profile (rect/circle/smooth/orthogonal) is available for newer
+Gromit builds:
+
+```bash
+GROMIT_PROFILE_MODE=advanced ./install_gromit_profile.sh
+```
 
 Presenter dash helper script:
 - `presenter_dash.sh` supports: `anchor`, `dash`, `dot`, `solid`, `arrow`, `clear`, `undo`, `redo`, `reset`
+
+## Teleprompter (ATEM Friendly)
+
+Launch:
+
+```bash
+./launch_teleprompter.sh
+```
+
+Core controls inside the teleprompter:
+- `Space`: play/pause scroll
+- `R`: reset to top
+- `F`: focus mode
+- `M`: mirror mode (for glass teleprompter rigs)
+- `Up` / `Down`: speed adjust
+- `[` / `]`: font size adjust
+
+ATEM dual-display setup:
+- Keep teleprompter on the laptop panel.
+- Put browser/terminal windows on the HDMI output that ATEM captures.
+- Use extended display mode, not mirrored display mode.
+
+## Presenter Canvas (Live Whiteboard)
+
+Launch:
+
+```bash
+./launch_presenter_canvas.sh
+```
+
+Core controls inside the canvas:
+- `1..9` and `0`: switch tools (select, pen, line, arrow, rect, ellipse, text, icon, eraser, pan)
+- `Ctrl+S` / `Ctrl+O`: save/load canvas JSON
+- `Ctrl+Z` / `Ctrl+Y`: undo/redo
+- `Delete`: delete selected shape
+- `F` / `H`: focus mode and show/hide controls
+- Mouse wheel: zoom at cursor
+- Middle mouse drag or `0` pan tool: move camera
+
+For Wacom on X11, map stylus to your recording output (example HDMI):
+
+```bash
+xsetwacom set "Wacom Intuos S 2 Pen stylus" MapToOutput HDMI-1
+```
 
 ## Shortcut Cheat Sheet
 

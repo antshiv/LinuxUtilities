@@ -5,9 +5,9 @@
 
 :root {
     /* Antsand Brand Colors */
-    --orange: #ffb400;
-    --orange-dark: #e5a200;
-    --orange-light: #ffc933;
+    --orange: #c4a7ff;
+    --orange-dark: #9f7ef2;
+    --orange-light: #ddcdff;
     --dark: #2a2a2a;
     --dark-lighter: #363636;
     --dark-card: #323232;
@@ -256,8 +256,8 @@ main {
 }
 
 .hero-stat {
-    background: rgba(255,180,0,0.1);
-    border: 1px solid rgba(255,180,0,0.25);
+    background: rgba(196,167,255,0.12);
+    border: 1px solid rgba(196,167,255,0.28);
     border-radius: 6px;
     padding: 0.4rem 0.9rem;
     font-size: 0.8rem;
@@ -347,7 +347,7 @@ a.card-link:hover .card-arrow { gap: 0.75rem; }
     margin-bottom: 1rem;
 }
 
-.feature-icon.orange { background: rgba(255,180,0,0.15); color: var(--orange); }
+.feature-icon.orange { background: rgba(196,167,255,0.2); color: var(--orange); }
 .feature-icon.green  { background: rgba(71,180,117,0.15); color: var(--green); }
 .feature-icon.blue   { background: rgba(7,173,248,0.15); color: var(--blue); }
 .feature-icon.grey   { background: rgba(255,255,255,0.1); color: var(--text-secondary); }
@@ -438,7 +438,7 @@ a:hover { color: var(--orange-light); }
 
 .alert-icon { font-size: 1.25rem; flex-shrink: 0; }
 .alert-info    { background: rgba(7,173,248,0.1); border-color: var(--blue); color: var(--blue); }
-.alert-warning { background: rgba(255,180,0,0.1); border-color: var(--orange); color: var(--orange); }
+.alert-warning { background: rgba(196,167,255,0.12); border-color: var(--orange); color: var(--orange); }
 .alert-success { background: rgba(71,180,117,0.1); border-color: var(--green); color: var(--green); }
 
 /* ── Badges ──────────────────────────────────────────────────── */
@@ -542,7 +542,7 @@ details[open] summary { border-bottom: 1px solid var(--grey); }
 
 /* ── SVG Viewer clickable images ─────────────────────────────── */
 .svg-viewer { cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
-.svg-viewer:hover { transform: scale(1.01); box-shadow: 0 8px 32px rgba(255,180,0,0.3); }
+.svg-viewer:hover { transform: scale(1.01); box-shadow: 0 8px 32px rgba(196,167,255,0.34); }
 
 /* ── Keyboard shortcut styling ───────────────────────────────── */
 kbd {

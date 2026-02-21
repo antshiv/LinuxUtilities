@@ -10,6 +10,8 @@ for script in \
     build_linux_control_center.sh \
     build_cursor_spotlight.sh \
     presenter_dash.sh \
+    launch_presenter_canvas.sh \
+    launch_teleprompter.sh \
     test_linux_control_center_smoke.sh \
     import_screenshots.sh \
     install_gromit_profile.sh \

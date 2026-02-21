@@ -27,7 +27,7 @@
 <pre><code>sudo apt install build-essential pkg-config \
     libx11-dev libxext-dev libxfixes-dev libxrender-dev libcairo2-dev \
     libgtk-3-dev gromit-mpx xdotool
-./install_gromit_profile.sh</code></pre>
+./install_gromit_profile.sh   # installs compat profile by default</code></pre>
 
 <h2>Building Tools</h2>
 
@@ -53,10 +53,12 @@
     <div class="card">
         <h3>Presenter Dash</h3>
         <pre><code># No build step — it's a shell script
-./install_gromit_profile.sh   # install shape/modifier map once
+./install_gromit_profile.sh   # install parser-safe profile once
 ./presenter_dash.sh anchor   # set anchor at cursor
 ./presenter_dash.sh dash     # dashed segment
-./presenter_dash.sh arrow    # arrow segment</code></pre>
+./presenter_dash.sh arrow    # arrow segment
+./launch_teleprompter.sh     # local script reader window</code></pre>
+        <p>ATEM setup: keep teleprompter window on laptop panel and HDMI output for the captured app windows.</p>
     </div>
 </div>
 

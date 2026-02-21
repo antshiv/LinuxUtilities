@@ -6425,9 +6425,10 @@ static void on_shortcuts_copy_presenter_flow_clicked(GtkButton *button, gpointer
         "3) Shift+F11 -> dotted segment\n"
         "4) Mod4+F11 -> arrow segment\n"
         "5) F6       -> free draw toggle\n"
-        "6) Hold Shift/Ctrl/Alt while dragging for marker/line/rect tools\n"
+        "6) Hold Shift/Ctrl/Alt while dragging for marker/arrow/red pen tools\n"
         "7) Shift+F6 -> clear strokes\n"
-        "8) F7       -> cursor spotlight";
+        "8) Button3 drag -> eraser, Button2 drag -> fine pen\n"
+        "9) F7       -> cursor spotlight";
 
     (void)button;
     if (!state || !state->window) {
@@ -6507,7 +6508,7 @@ static GtkWidget *build_shortcuts_tab(AppState *state) {
     GtkWidget *subtitle = gtk_label_new("Live-demo controls grouped by workflow so you can present without pausing.");
     GtkWidget *flow_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 3);
     GtkWidget *flow_line1 = gtk_label_new("Demo sequence: F7 spotlight -> Alt+F11 anchor -> F11/Shift+F11/Mod4+F11 path -> F6 free draw.");
-    GtkWidget *flow_line2 = gtk_label_new("Shape mode: hold Shift/Ctrl/Alt while dragging. Reset: Shift+F6 clear, Ctrl+Alt+F6 quit, Ctrl+Alt+F11 anchor reset.");
+    GtkWidget *flow_line2 = gtk_label_new("Draw mode (compat profile): Shift marker, Ctrl arrow pen, Alt red pen, Button2 fine pen, Button3 eraser. Reset: Shift+F6 clear.");
     GtkWidget *actions = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     GtkWidget *btn_copy_flow = gtk_button_new_with_label("Copy Presenter Flow");
     GtkWidget *btn_copy_install = gtk_button_new_with_label("Copy Install/Build");
@@ -6560,8 +6561,8 @@ static GtkWidget *build_shortcuts_tab(AppState *state) {
     gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Shift+F6", "Clear all strokes", "Use between topics to reset the canvas."), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Ctrl+F6 / Ctrl+Shift+F6", "Undo / Redo stroke", "Quick correction without leaving presentation flow."), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Alt+F11, F11, Shift+F11, Mod4+F11", "Anchor + dashed/dotted/arrow segments", "Creates bytebytego-style flow emphasis in real time."), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Shift / Ctrl / Alt + drag", "Marker / line / rectangle (Gromit profile)", "Install profile once via ./install_gromit_profile.sh"), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Alt+Shift / Alt+Ctrl + drag", "Circle / filled circle tools", "Useful for emphasis rings and node grouping."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Shift / Ctrl / Alt + drag", "Marker / arrow pen / red pen (compat profile)", "Install profile once via ./install_gromit_profile.sh"), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Button2 / Button3 + drag", "Fine pen / Eraser", "Advanced shape tools need newer gromit + GROMIT_PROFILE_MODE=advanced"), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Ctrl+Alt+F11", "Reset presenter anchor", "Resync path start before a new section."), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(content), card, FALSE, FALSE, 0);
 
@@ -6570,6 +6571,19 @@ static GtkWidget *build_shortcuts_tab(AppState *state) {
     gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("F9 / F10", "Adjust dim amount", "Decrease or increase background dimming."), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Shift+F9 / Shift+F10", "Adjust spotlight radius", "Small radius for code, larger for diagrams."), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("F8 / Print", "Launch Flameshot capture", "Fast callout screenshot workflow."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(content), card, FALSE, FALSE, 0);
+
+    card = create_shortcut_card("Presenter Canvas", "Browser whiteboard for live diagrams, icons, and JSON scene files.", &body);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Utility Button: Presenter Canvas", "Launch full-screen drawing canvas", "Use when you want a dedicated black board instead of drawing over existing apps."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("1..9 / 0", "Select tool (select, pen, line, arrow, rect, ellipse, text, icon, eraser, pan)", "Fast tool switching while recording."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Ctrl+S / Ctrl+O / Ctrl+Z / Ctrl+Y", "Save JSON / Load JSON / Undo / Redo", "Keep reusable episode scenes and restore quickly."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("F / H / G / Delete", "Focus mode / show controls / toggle grid / remove selection", "Cleaner live demos with fewer UI distractions."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(content), card, FALSE, FALSE, 0);
+
+    card = create_shortcut_card("Teleprompter", "Laptop-panel script reader for ATEM workflows without OBS.", &body);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Utility Button: Teleprompter", "Launch local prompter window", "Use extended display: keep prompter on laptop panel, HDMI output stays clean."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Space / R / F / M", "Play-Pause / reset / focus / mirror", "Inside teleprompter window."), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(body), create_shortcut_row("Up/Down and [ / ]", "Speed and font size adjust", "Tune pacing live while speaking."), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(content), card, FALSE, FALSE, 0);
 
     card = create_shortcut_card("Mouse Mapped Controls", "Side-button accelerators from AwesomeWM root/client bindings.", &body);
@@ -6800,6 +6814,8 @@ static GtkWidget *build_utilities_tab(AppState *state) {
     GtkWidget *root = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
     GtkWidget *title = gtk_label_new(NULL);
     GtkWidget *subtitle = gtk_label_new(NULL);
+    GtkWidget *scroller = gtk_scrolled_window_new(NULL, NULL);
+    GtkWidget *content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
     GtkWidget *grid = gtk_grid_new();
     GtkWidget *hotkey_hint = gtk_label_new(NULL);
     GtkWidget *status = gtk_label_new("Click a utility to launch it.");
@@ -6831,6 +6847,10 @@ static GtkWidget *build_utilities_tab(AppState *state) {
         "bash -lc 'script=\"$HOME/Workspace/LinuxUtilities/install_gromit_profile.sh\"; [ -x \"$script\" ] || exit 1; \"$script\"'";
     const gchar *shortcut_sheet_cmd =
         "bash -lc 'sheet=\"$HOME/Workspace/LinuxUtilities/SHORTCUTS_CHEATSHEET.md\"; [ -f \"$sheet\" ] || exit 1; xdg-open \"$sheet\" >/dev/null 2>&1'";
+    const gchar *presenter_canvas_cmd =
+        "bash -lc 'script=\"$HOME/Workspace/LinuxUtilities/launch_presenter_canvas.sh\"; [ -x \"$script\" ] || exit 1; \"$script\"'";
+    const gchar *teleprompter_cmd =
+        "bash -lc 'script=\"$HOME/Workspace/LinuxUtilities/launch_teleprompter.sh\"; [ -x \"$script\" ] || exit 1; \"$script\"'";
     GtkWidget *b1 = create_utility_button("Pavucontrol", "Audio mixer and device routing", "pavucontrol", state);
     GtkWidget *b2 = create_utility_button("CC Switch", "Project/context switch helper", "cc-switch", state);
     GtkWidget *b3 = create_utility_button("Flameshot", "Capture area screenshot", "flameshot gui", state);
@@ -6847,8 +6867,10 @@ static GtkWidget *build_utilities_tab(AppState *state) {
     GtkWidget *b14 = create_utility_button("Dash Segment", "Animated dashed segment to cursor", presenter_dash_cmd, state);
     GtkWidget *b15 = create_utility_button("Dot Segment", "Animated dotted segment to cursor", presenter_dot_cmd, state);
     GtkWidget *b16 = create_utility_button("Arrow Segment", "Animated arrow segment to cursor", presenter_arrow_cmd, state);
-    GtkWidget *b17 = create_utility_button("Install Gromit Profile", "Enable shape/modifier tools config", gromit_profile_cmd, state);
+    GtkWidget *b17 = create_utility_button("Install Gromit Profile", "Install compatible draw tool profile", gromit_profile_cmd, state);
     GtkWidget *b18 = create_utility_button("Shortcut Cheat Sheet", "Open full key/mouse/shell shortcuts", shortcut_sheet_cmd, state);
+    GtkWidget *b19 = create_utility_button("Teleprompter", "Open local script prompter window", teleprompter_cmd, state);
+    GtkWidget *b20 = create_utility_button("Presenter Canvas", "Open live whiteboard canvas with shape + JSON tools", presenter_canvas_cmd, state);
 
     gtk_style_context_add_class(gtk_widget_get_style_context(root), "panel-root");
 
@@ -6880,12 +6902,14 @@ static GtkWidget *build_utilities_tab(AppState *state) {
     gtk_grid_attach(GTK_GRID(grid), b16, 1, 7, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), b17, 0, 8, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), b18, 1, 8, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), b19, 0, 9, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), b20, 1, 9, 1, 1);
     gtk_widget_set_hexpand(grid, TRUE);
-    gtk_widget_set_vexpand(grid, TRUE);
+    gtk_widget_set_vexpand(grid, FALSE);
     gtk_widget_set_halign(grid, GTK_ALIGN_FILL);
 
     gtk_label_set_text(GTK_LABEL(hotkey_hint),
-                       "F6 draw; shape tools in draw mode: Shift marker, Ctrl line, Alt rect/circle; F11 dash path; F7 spotlight; F8/Print capture.");
+                       "F6 draw; compat profile: Shift marker, Ctrl arrow pen, Alt red pen, Button3 eraser; F11 dash path; F7 spotlight; F8/Print capture; Presenter Canvas + Teleprompter buttons launch local recording aids.");
     gtk_label_set_xalign(GTK_LABEL(hotkey_hint), 0.0);
     gtk_label_set_line_wrap(GTK_LABEL(hotkey_hint), TRUE);
     gtk_style_context_add_class(gtk_widget_get_style_context(hotkey_hint), "meta-info");
@@ -6894,11 +6918,17 @@ static GtkWidget *build_utilities_tab(AppState *state) {
     gtk_label_set_line_wrap(GTK_LABEL(status), TRUE);
     gtk_style_context_add_class(gtk_widget_get_style_context(status), "status-pill");
 
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroller), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+    gtk_widget_set_hexpand(scroller, TRUE);
+    gtk_widget_set_vexpand(scroller, TRUE);
+    gtk_box_pack_start(GTK_BOX(content), grid, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(content), hotkey_hint, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(content), status, FALSE, FALSE, 0);
+    gtk_container_add(GTK_CONTAINER(scroller), content);
+
     gtk_box_pack_start(GTK_BOX(root), title, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(root), subtitle, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(root), grid, TRUE, TRUE, 0);
-    gtk_box_pack_start(GTK_BOX(root), hotkey_hint, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(root), status, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(root), scroller, TRUE, TRUE, 0);
 
     state->utils_status = status;
     return root;

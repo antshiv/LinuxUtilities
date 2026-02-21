@@ -46,15 +46,46 @@ require_command() {
     fi
 }
 
+display_hint() {
+    if [[ -z "${DISPLAY:-}" ]]; then
+        printf '%s' "DISPLAY is not set. Run from your desktop session."
+        return
+    fi
+
+    if [[ "${XDG_SESSION_TYPE:-}" == "wayland" ]]; then
+        printf '%s' "Wayland session detected; ensure XWayland is enabled for gromit-mpx/xdotool."
+        return
+    fi
+
+    printf '%s' "Verify cursor access with: xdotool getmouselocation --shell"
+}
+
 read_cursor_xy() {
     local out=""
     local key=""
     local value=""
     local x=""
     local y=""
+    local hint=""
 
-    out="$(xdotool getmouselocation --shell 2>/dev/null || true)"
+    if ! out="$(xdotool getmouselocation --shell 2>&1)"; then
+        hint="$(display_hint)"
+        out="$(tr '\n' ' ' <<< "$out" | sed 's/[[:space:]]\+/ /g; s/[[:space:]]*$//')"
+        if [[ -n "$hint" ]]; then
+            echo "xdotool failed: ${out:-no output}. ${hint}" >&2
+        else
+            echo "xdotool failed: ${out:-no output}." >&2
+        fi
+        return 1
+    fi
+
     if [[ -z "$out" ]]; then
+        hint="$(display_hint)"
+        if [[ -n "$hint" ]]; then
+            echo "xdotool returned empty cursor output. ${hint}" >&2
+        else
+            echo "xdotool returned empty cursor output." >&2
+        fi
         return 1
     fi
 
@@ -66,6 +97,7 @@ read_cursor_xy() {
     done <<< "$out"
 
     if [[ ! "$x" =~ ^-?[0-9]+$ || ! "$y" =~ ^-?[0-9]+$ ]]; then
+        echo "Unexpected xdotool output: ${out}" >&2
         return 1
     fi
 
@@ -81,7 +113,15 @@ ensure_gromit_running() {
     fi
 
     if ! pgrep -u "$USER" -x gromit-mpx >/dev/null 2>&1; then
-        notify_warn "Could not start gromit-mpx."
+        local hint=""
+        hint="$(display_hint)"
+        if [[ -n "$hint" ]]; then
+            notify_warn "Could not start gromit-mpx. ${hint}"
+            echo "Presenter Dash: Could not start gromit-mpx. ${hint}" >&2
+        else
+            notify_warn "Could not start gromit-mpx."
+            echo "Presenter Dash: Could not start gromit-mpx." >&2
+        fi
         return 1
     fi
 
@@ -209,14 +249,17 @@ line_draw_arrow_head() {
 }
 
 set_anchor_here() {
+    local cursor_xy=""
     local cx=""
     local cy=""
 
-    if ! read -r cx cy < <(read_cursor_xy); then
-        notify_warn "Could not read cursor position."
+    if ! cursor_xy="$(read_cursor_xy 2>&1)"; then
+        notify_warn "$cursor_xy"
+        echo "Presenter Dash: $cursor_xy" >&2
         return 1
     fi
 
+    read -r cx cy <<< "$cursor_xy"
     printf '%s %s\n' "$cx" "$cy" > "$STATE_FILE"
     notify_info "Anchor set at (${cx}, ${cy})."
 }
@@ -228,6 +271,7 @@ reset_anchor() {
 
 draw_from_anchor() {
     local style="$1"
+    local cursor_xy=""
     local sx=""
     local sy=""
     local ex=""
@@ -235,11 +279,13 @@ draw_from_anchor() {
     local on_len=0
     local off_len=0
 
-    if ! read -r ex ey < <(read_cursor_xy); then
-        notify_warn "Could not read cursor position."
+    if ! cursor_xy="$(read_cursor_xy 2>&1)"; then
+        notify_warn "$cursor_xy"
+        echo "Presenter Dash: $cursor_xy" >&2
         return 1
     fi
 
+    read -r ex ey <<< "$cursor_xy"
     if [[ ! -f "$STATE_FILE" ]]; then
         printf '%s %s\n' "$ex" "$ey" > "$STATE_FILE"
         notify_info "Anchor was missing, set now. Trigger again to draw."

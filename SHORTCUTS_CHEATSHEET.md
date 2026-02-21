@@ -26,26 +26,28 @@ Tips:
 - If mouse is stuck drawing, press `F6` to leave draw mode.
 - `Esc` does not quit gromit. Use `Ctrl+Alt+F6` (or `gromit-mpx -q`).
 
-Install profile once (adds shape tools and modifier map):
+Install profile once (auto-selects a compatible profile):
 
 ```bash
 ./install_gromit_profile.sh
 ```
 
-Draw-mode shape/modifier map (from `config/gromit-mpx.cfg`):
+Draw-mode map (compat profile, from `config/gromit-mpx.cfg`):
 
 | Hold while dragging | Tool |
 | --- | --- |
 | none | Cyan pen |
 | `Shift` | Yellow marker |
-| `Ctrl` | Straight line |
-| `Ctrl+Shift` | Arrow line |
-| `Alt` | Rectangle |
-| `Alt+Shift` | Circle |
-| `Alt+Ctrl` | Filled circle |
-| `Mouse Button2` | Smooth path |
-| `Mouse Button2 + Shift` | Orthogonal path |
+| `Ctrl` | Arrow pen |
+| `Alt` | Red pen |
+| `Mouse Button2` | Fine pen |
 | `Mouse Button3` | Eraser |
+
+Advanced shape map (for newer Gromit builds) can be installed with:
+
+```bash
+GROMIT_PROFILE_MODE=advanced ./install_gromit_profile.sh
+```
 
 ### Presenter Dash (animated flow lines/arrows)
 
@@ -106,6 +108,58 @@ Spotlight process:
 | --- | --- |
 | `F8` | Open Flameshot capture |
 | `Print` | Open Flameshot capture |
+
+### Teleprompter (local window)
+
+Launch:
+
+```bash
+./launch_teleprompter.sh
+```
+
+In-app keys:
+
+| Key | Action |
+| --- | --- |
+| `Space` | Play / Pause |
+| `R` | Reset to top |
+| `F` | Toggle focus mode |
+| `M` | Toggle mirror mode |
+| `Up / Down` | Increase / decrease speed |
+| `[` / `]` | Smaller / larger font |
+
+ATEM tip:
+- Use extended display mode.
+- Keep teleprompter on laptop panel.
+- Keep HDMI output for browser/terminal feed.
+
+### Presenter Canvas (local live whiteboard)
+
+Launch:
+
+```bash
+./launch_presenter_canvas.sh
+```
+
+In-app keys:
+
+| Key | Action |
+| --- | --- |
+| `1..9` and `0` | Tool select (select/pen/line/arrow/rect/ellipse/text/icon/eraser/pan) |
+| `Ctrl+S` / `Ctrl+O` | Save JSON / Load JSON |
+| `Ctrl+Z` / `Ctrl+Y` | Undo / Redo |
+| `Delete` | Delete selected shape |
+| `F` | Focus mode |
+| `H` | Show/hide controls |
+| `G` | Toggle grid |
+| `Wheel` | Zoom |
+| `Middle drag` or Pan tool | Move camera |
+
+Wacom quick map (example to HDMI recording output):
+
+```bash
+xsetwacom set "Wacom Intuos S 2 Pen stylus" MapToOutput HDMI-1
+```
 
 ## Mouse Shortcuts (AwesomeWM)
 
@@ -279,3 +333,5 @@ Buttons available:
 - Arrow Segment
 - Install Gromit Profile
 - Shortcut Cheat Sheet
+- Teleprompter
+- Presenter Canvas

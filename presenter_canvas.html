@@ -1,0 +1,1664 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LinuxUtilities Presenter Canvas</title>
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --panel: #121929;
+      --panel-2: #1a2336;
+      --text: #eaf0ff;
+      --muted: #99a9cd;
+      --accent: #7ac7ff;
+      --accent-2: #9a87ff;
+      --border: #2c3853;
+      --danger: #ff7b9c;
+      --good: #76e8c6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Fira Sans", "Noto Sans", "DejaVu Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at -10% -20%, #273659 0%, transparent 55%),
+        radial-gradient(1000px 700px at 115% -10%, #221a46 0%, transparent 55%),
+        var(--bg);
+      overflow: hidden;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 350px minmax(0, 1fr);
+      height: 100vh;
+      width: 100%;
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 45%), var(--panel);
+      padding: 14px;
+      overflow: auto;
+    }
+
+    .brand {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: #a9d7ff;
+    }
+
+    .sub {
+      margin: 6px 0 12px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .group {
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 12px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+
+    .group h3 {
+      margin: 0 0 8px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    button, select, input[type="number"], input[type="text"] {
+      border: 1px solid var(--border);
+      background: #1d2740;
+      color: var(--text);
+      border-radius: 9px;
+      padding: 7px 9px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    button {
+      cursor: pointer;
+      min-height: 34px;
+    }
+
+    button:hover, select:hover, input[type="number"]:hover, input[type="text"]:hover {
+      border-color: #8ebfff;
+    }
+
+    button.tool {
+      min-height: 40px;
+      font-size: 11px;
+      padding: 6px;
+      line-height: 1.15;
+    }
+
+    button.tool.active {
+      background: linear-gradient(120deg, #2a5276, #404089);
+      border-color: #84b8ff;
+      color: #eef6ff;
+    }
+
+    button.primary {
+      background: linear-gradient(120deg, #2f7a98, #3c5faa);
+      border-color: #6ca7df;
+    }
+
+    button.warn {
+      background: #392436;
+      border-color: #74455e;
+      color: #ffd2dd;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 6px 0;
+    }
+
+    .row > * { flex: 1; }
+    .row.tight > * { flex: initial; }
+
+    label {
+      font-size: 12px;
+      color: var(--muted);
+      display: block;
+      margin-top: 8px;
+      margin-bottom: 4px;
+    }
+
+    input[type="range"] { width: 100%; }
+
+    input[type="checkbox"] {
+      accent-color: #8ebfff;
+      transform: translateY(1px);
+    }
+
+    .canvas-wrap {
+      position: relative;
+      background:
+        radial-gradient(1200px 700px at 80% -30%, rgba(133, 107, 255, 0.16), transparent 60%),
+        #05070d;
+      overflow: hidden;
+    }
+
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .hud {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 9;
+      display: flex;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .pill {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(9, 12, 20, 0.82);
+      padding: 6px 10px;
+      color: #d4defa;
+      font-weight: 700;
+      backdrop-filter: blur(4px);
+    }
+
+    .pill.live {
+      color: #9fffd6;
+      border-color: #3f8f76;
+    }
+
+    .status {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      min-height: 34px;
+    }
+
+    .kbd {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #10172a;
+      padding: 1px 5px;
+      font-family: "JetBrains Mono", "Fira Mono", monospace;
+      font-size: 11px;
+      color: #d5defd;
+    }
+
+    .focus-toggle {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      z-index: 10;
+      background: rgba(13, 18, 29, 0.86);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 7px 11px;
+      font-size: 12px;
+      color: var(--text);
+      display: none;
+    }
+
+    body.focus .app { grid-template-columns: 1fr; }
+    body.focus .sidebar { display: none; }
+    body.focus .focus-toggle { display: block; }
+
+    @media (max-width: 1024px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar {
+        position: absolute;
+        z-index: 11;
+        width: min(360px, 90vw);
+        height: 100vh;
+        transform: translateX(-100%);
+        transition: transform 0.2s ease;
+      }
+      body.menu-open .sidebar { transform: translateX(0); }
+      .menu-btn {
+        display: inline-flex;
+      }
+    }
+
+    .menu-btn { display: none; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <h1 class="brand">Presenter Canvas</h1>
+      <p class="sub">Live whiteboard for recording. Draw, drop icons, animate flow lines, and save/load JSON.</p>
+
+      <section class="group">
+        <h3>Tools</h3>
+        <div class="tool-grid" id="toolGrid"></div>
+        <p class="sub" style="margin:8px 0 0">Quick keys: <span class="kbd">1..9</span> tools, <span class="kbd">Del</span> delete, <span class="kbd">Ctrl+Z/Y</span>, <span class="kbd">F</span> focus, <span class="kbd">H</span> hide/show panel.</p>
+      </section>
+
+      <section class="group">
+        <h3>Style</h3>
+        <div class="row tight">
+          <label for="strokeColor" style="margin:0">Color</label>
+          <input id="strokeColor" type="color" value="#6ec8ff" style="flex:initial;width:72px;padding:2px;height:34px">
+          <label for="bgColor" style="margin:0">Canvas</label>
+          <input id="bgColor" type="color" value="#06080f" style="flex:initial;width:72px;padding:2px;height:34px">
+        </div>
+
+        <label for="lineWidth">Line Width <span id="lineWidthValue"></span></label>
+        <input id="lineWidth" type="range" min="1" max="24" value="4">
+
+        <label for="lineStyle">Line Style</label>
+        <select id="lineStyle">
+          <option value="solid">Solid</option>
+          <option value="dashed">Dashed</option>
+          <option value="dotted">Dotted</option>
+        </select>
+
+        <div class="row tight" style="margin-top:9px">
+          <input id="animated" type="checkbox">
+          <label for="animated" style="margin:0">Animated stroke</label>
+        </div>
+
+        <label for="textSize">Text Size</label>
+        <input id="textSize" type="number" min="12" max="128" value="34">
+
+        <label for="textContent">Text / Label</label>
+        <input id="textContent" type="text" value="Idea" maxlength="160">
+
+        <label for="iconType">Icon Type</label>
+        <select id="iconType">
+          <option value="server">Server</option>
+          <option value="database">Database</option>
+          <option value="cloud">Cloud</option>
+          <option value="user">User</option>
+          <option value="api">API</option>
+          <option value="box">Box</option>
+          <option value="check">Check</option>
+        </select>
+
+        <label for="iconSize">Icon Size</label>
+        <input id="iconSize" type="number" min="20" max="240" value="88">
+      </section>
+
+      <section class="group">
+        <h3>Canvas</h3>
+        <div class="row">
+          <button id="btnUndo">Undo</button>
+          <button id="btnRedo">Redo</button>
+          <button id="btnDelete" class="warn">Delete</button>
+        </div>
+        <div class="row">
+          <button id="btnClear" class="warn">Clear</button>
+          <button id="btnCenter">Center View</button>
+          <button id="btnFit">Fit Content</button>
+        </div>
+        <div class="row">
+          <button id="btnGrid">Toggle Grid</button>
+          <button id="btnFocus">Focus Mode</button>
+          <button id="btnFullscreen">Fullscreen</button>
+        </div>
+      </section>
+
+      <section class="group">
+        <h3>Save / Load</h3>
+        <div class="row">
+          <button id="btnSaveJson" class="primary">Save JSON</button>
+          <button id="btnLoadJson">Load JSON</button>
+          <button id="btnExportPng">Export PNG</button>
+        </div>
+        <input id="fileLoader" type="file" accept="application/json" style="display:none">
+        <p class="sub" style="margin:8px 0 0">You can keep each episode as JSON and reopen to continue live drawing later.</p>
+      </section>
+
+      <section class="group">
+        <h3>Recording Notes</h3>
+        <p class="sub" style="margin:0">Use this window full-screen on the feed you record. For system-wide overlay over terminal/browser, keep using Gromit-MPX.</p>
+      </section>
+
+      <div class="status" id="status"></div>
+    </aside>
+
+    <main class="canvas-wrap" id="canvasWrap">
+      <button class="focus-toggle" id="focusToggleBtn">Press H to show controls</button>
+      <button class="focus-toggle menu-btn" id="menuBtn" style="left:12px;bottom:52px">Menu</button>
+      <canvas id="stage" aria-label="Presenter drawing canvas"></canvas>
+      <div class="hud">
+        <div class="pill" id="toolPill">Tool: Pen</div>
+        <div class="pill" id="zoomPill">Zoom: 100%</div>
+        <div class="pill live" id="animPill">Animation: Off</div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const TOOLS = [
+        { id: 'select', label: 'Select', hotkey: '1' },
+        { id: 'pen', label: 'Pen', hotkey: '2' },
+        { id: 'line', label: 'Line', hotkey: '3' },
+        { id: 'arrow', label: 'Arrow', hotkey: '4' },
+        { id: 'rect', label: 'Rect', hotkey: '5' },
+        { id: 'ellipse', label: 'Ellipse', hotkey: '6' },
+        { id: 'text', label: 'Text', hotkey: '7' },
+        { id: 'icon', label: 'Icon', hotkey: '8' },
+        { id: 'eraser', label: 'Eraser', hotkey: '9' },
+        { id: 'pan', label: 'Pan', hotkey: '0' }
+      ];
+
+      const STORAGE_KEY = 'linuxutilities.presenter_canvas.v1';
+      const state = {
+        tool: 'pen',
+        lineWidth: 4,
+        strokeColor: '#6ec8ff',
+        bgColor: '#06080f',
+        lineStyle: 'solid',
+        animated: false,
+        textSize: 34,
+        textContent: 'Idea',
+        iconType: 'server',
+        iconSize: 88,
+        grid: true,
+        camera: { x: 0, y: 0, scale: 1 },
+        shapes: [],
+        selectedId: null,
+        pointer: { down: false, drawing: false, start: null, current: null, temp: null },
+        history: [],
+        historyIndex: -1,
+        dashTick: 0
+      };
+
+      const els = {
+        stage: document.getElementById('stage'),
+        canvasWrap: document.getElementById('canvasWrap'),
+        toolGrid: document.getElementById('toolGrid'),
+        strokeColor: document.getElementById('strokeColor'),
+        bgColor: document.getElementById('bgColor'),
+        lineWidth: document.getElementById('lineWidth'),
+        lineWidthValue: document.getElementById('lineWidthValue'),
+        lineStyle: document.getElementById('lineStyle'),
+        animated: document.getElementById('animated'),
+        textSize: document.getElementById('textSize'),
+        textContent: document.getElementById('textContent'),
+        iconType: document.getElementById('iconType'),
+        iconSize: document.getElementById('iconSize'),
+        btnUndo: document.getElementById('btnUndo'),
+        btnRedo: document.getElementById('btnRedo'),
+        btnDelete: document.getElementById('btnDelete'),
+        btnClear: document.getElementById('btnClear'),
+        btnCenter: document.getElementById('btnCenter'),
+        btnFit: document.getElementById('btnFit'),
+        btnGrid: document.getElementById('btnGrid'),
+        btnFocus: document.getElementById('btnFocus'),
+        btnFullscreen: document.getElementById('btnFullscreen'),
+        btnSaveJson: document.getElementById('btnSaveJson'),
+        btnLoadJson: document.getElementById('btnLoadJson'),
+        btnExportPng: document.getElementById('btnExportPng'),
+        fileLoader: document.getElementById('fileLoader'),
+        status: document.getElementById('status'),
+        toolPill: document.getElementById('toolPill'),
+        zoomPill: document.getElementById('zoomPill'),
+        animPill: document.getElementById('animPill'),
+        focusToggleBtn: document.getElementById('focusToggleBtn'),
+        menuBtn: document.getElementById('menuBtn')
+      };
+
+      const ctx = els.stage.getContext('2d');
+      const DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+
+      function setStatus(msg) {
+        els.status.textContent = msg;
+      }
+
+      function clamp(val, min, max) {
+        return Math.max(min, Math.min(max, val));
+      }
+
+      function uid() {
+        return `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+      }
+
+      function toWorld(px, py) {
+        const rect = els.stage.getBoundingClientRect();
+        const x = (px - rect.left) / state.camera.scale + state.camera.x;
+        const y = (py - rect.top) / state.camera.scale + state.camera.y;
+        return { x, y };
+      }
+
+      function toScreen(x, y) {
+        return {
+          x: (x - state.camera.x) * state.camera.scale,
+          y: (y - state.camera.y) * state.camera.scale
+        };
+      }
+
+      function styleFromControls() {
+        return {
+          color: state.strokeColor,
+          width: state.lineWidth,
+          style: state.lineStyle,
+          animated: state.animated
+        };
+      }
+
+      function getDashPattern(shape) {
+        const mode = shape.style || 'solid';
+        const width = Math.max(1, shape.width || 2);
+        if (mode === 'dashed') {
+          return [width * 2.6, width * 1.6];
+        }
+        if (mode === 'dotted') {
+          return [width * 0.5, width * 1.55];
+        }
+        return [];
+      }
+
+      function pushHistory() {
+        const snapshot = JSON.stringify({
+          shapes: state.shapes,
+          camera: state.camera,
+          bgColor: state.bgColor,
+          grid: state.grid
+        });
+        state.history = state.history.slice(0, state.historyIndex + 1);
+        state.history.push(snapshot);
+        if (state.history.length > 120) {
+          state.history.shift();
+        }
+        state.historyIndex = state.history.length - 1;
+        saveToLocalStorage();
+      }
+
+      function restoreHistory(index) {
+        const snap = state.history[index];
+        if (!snap) {
+          return;
+        }
+        try {
+          const parsed = JSON.parse(snap);
+          state.shapes = Array.isArray(parsed.shapes) ? parsed.shapes : [];
+          state.camera = parsed.camera || { x: 0, y: 0, scale: 1 };
+          state.bgColor = parsed.bgColor || state.bgColor;
+          state.grid = !!parsed.grid;
+          state.selectedId = null;
+          render();
+          syncControls();
+          saveToLocalStorage();
+        } catch (err) {
+          setStatus('Unable to restore history snapshot.');
+        }
+      }
+
+      function undo() {
+        if (state.historyIndex <= 0) {
+          return;
+        }
+        state.historyIndex -= 1;
+        restoreHistory(state.historyIndex);
+        setStatus('Undo');
+      }
+
+      function redo() {
+        if (state.historyIndex >= state.history.length - 1) {
+          return;
+        }
+        state.historyIndex += 1;
+        restoreHistory(state.historyIndex);
+        setStatus('Redo');
+      }
+
+      function drawGrid() {
+        if (!state.grid) {
+          return;
+        }
+        const spacing = 48;
+        const left = state.camera.x;
+        const top = state.camera.y;
+        const right = left + els.stage.width / DPR / state.camera.scale;
+        const bottom = top + els.stage.height / DPR / state.camera.scale;
+
+        const startX = Math.floor(left / spacing) * spacing;
+        const startY = Math.floor(top / spacing) * spacing;
+
+        ctx.save();
+        ctx.strokeStyle = 'rgba(190, 206, 255, 0.08)';
+        ctx.lineWidth = 1 / state.camera.scale;
+        ctx.setLineDash([]);
+
+        for (let x = startX; x < right; x += spacing) {
+          ctx.beginPath();
+          ctx.moveTo(x, top);
+          ctx.lineTo(x, bottom);
+          ctx.stroke();
+        }
+        for (let y = startY; y < bottom; y += spacing) {
+          ctx.beginPath();
+          ctx.moveTo(left, y);
+          ctx.lineTo(right, y);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+
+      function drawArrowHead(x1, y1, x2, y2, color, width) {
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        const size = Math.max(10, width * 3.5);
+        const spread = Math.PI / 7;
+        ctx.save();
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - size * Math.cos(angle - spread), y2 - size * Math.sin(angle - spread));
+        ctx.lineTo(x2 - size * Math.cos(angle + spread), y2 - size * Math.sin(angle + spread));
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawIconShape(shape) {
+        const x = shape.x;
+        const y = shape.y;
+        const size = Math.max(20, shape.size || 80);
+        const color = shape.color || '#9fd3ff';
+        const w = size;
+        const h = size;
+        const sx = x - w / 2;
+        const sy = y - h / 2;
+
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.fillStyle = 'rgba(126, 186, 255, 0.12)';
+        ctx.lineWidth = Math.max(2, size / 18);
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        switch (shape.icon) {
+          case 'server': {
+            const unitH = h / 3.4;
+            for (let i = 0; i < 3; i += 1) {
+              const yy = sy + i * (unitH + h * 0.04);
+              roundRect(sx + w * 0.12, yy, w * 0.76, unitH, w * 0.08, true, true);
+              ctx.fillStyle = color;
+              ctx.beginPath();
+              ctx.arc(sx + w * 0.22, yy + unitH / 2, Math.max(2, size / 26), 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = 'rgba(126, 186, 255, 0.12)';
+            }
+            break;
+          }
+          case 'database': {
+            const rx = w * 0.34;
+            const ry = h * 0.11;
+            const cx = x;
+            let cy = sy + h * 0.22;
+            for (let i = 0; i < 3; i += 1) {
+              ctx.beginPath();
+              ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.moveTo(cx - rx, cy);
+              ctx.lineTo(cx - rx, cy + h * 0.18);
+              ctx.moveTo(cx + rx, cy);
+              ctx.lineTo(cx + rx, cy + h * 0.18);
+              ctx.stroke();
+              cy += h * 0.2;
+            }
+            ctx.beginPath();
+            ctx.ellipse(cx, sy + h * 0.82, rx, ry, 0, 0, Math.PI);
+            ctx.stroke();
+            break;
+          }
+          case 'cloud': {
+            ctx.beginPath();
+            ctx.arc(x - w * 0.16, y + h * 0.03, w * 0.16, Math.PI * 0.9, Math.PI * 1.95);
+            ctx.arc(x + w * 0.05, y - h * 0.06, w * 0.2, Math.PI, Math.PI * 2.02);
+            ctx.arc(x + w * 0.27, y + h * 0.05, w * 0.14, Math.PI * 1.15, Math.PI * 2.02);
+            ctx.lineTo(x + w * 0.3, y + h * 0.23);
+            ctx.lineTo(x - w * 0.31, y + h * 0.23);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            break;
+          }
+          case 'user': {
+            ctx.beginPath();
+            ctx.arc(x, y - h * 0.17, w * 0.15, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(x, y + h * 0.2, w * 0.28, Math.PI, 0);
+            ctx.stroke();
+            break;
+          }
+          case 'api': {
+            roundRect(sx + w * 0.08, sy + h * 0.12, w * 0.84, h * 0.72, w * 0.08, true, true);
+            ctx.fillStyle = color;
+            ctx.font = `${Math.max(12, Math.floor(size * 0.22))}px "JetBrains Mono", monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('API', x, y);
+            break;
+          }
+          case 'box': {
+            roundRect(sx + w * 0.12, sy + h * 0.12, w * 0.76, h * 0.76, w * 0.06, true, true);
+            break;
+          }
+          case 'check': {
+            ctx.beginPath();
+            ctx.moveTo(sx + w * 0.2, sy + h * 0.56);
+            ctx.lineTo(sx + w * 0.44, sy + h * 0.76);
+            ctx.lineTo(sx + w * 0.82, sy + h * 0.28);
+            ctx.stroke();
+            break;
+          }
+          default:
+            roundRect(sx + w * 0.12, sy + h * 0.12, w * 0.76, h * 0.76, w * 0.06, true, true);
+        }
+        ctx.restore();
+      }
+
+      function roundRect(x, y, width, height, radius, fill, stroke) {
+        const r = Math.min(radius, width / 2, height / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + width, y, x + width, y + height, r);
+        ctx.arcTo(x + width, y + height, x, y + height, r);
+        ctx.arcTo(x, y + height, x, y, r);
+        ctx.arcTo(x, y, x + width, y, r);
+        ctx.closePath();
+        if (fill) {
+          ctx.fill();
+        }
+        if (stroke) {
+          ctx.stroke();
+        }
+      }
+
+      function drawShape(shape, highlight) {
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        const color = shape.color || '#7ec8ff';
+        const width = Math.max(1, shape.width || 2);
+        const dash = getDashPattern(shape);
+        const animated = !!shape.animated && dash.length > 0;
+
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = width;
+        ctx.setLineDash(dash);
+        if (animated) {
+          ctx.lineDashOffset = -state.dashTick * 1.5;
+        }
+
+        if (shape.type === 'pen') {
+          const pts = shape.points || [];
+          if (pts.length > 1) {
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pts[0].y);
+            for (let i = 1; i < pts.length; i += 1) {
+              ctx.lineTo(pts[i].x, pts[i].y);
+            }
+            ctx.stroke();
+          }
+        } else if (shape.type === 'line' || shape.type === 'arrow') {
+          ctx.beginPath();
+          ctx.moveTo(shape.x1, shape.y1);
+          ctx.lineTo(shape.x2, shape.y2);
+          ctx.stroke();
+          if (shape.type === 'arrow') {
+            drawArrowHead(shape.x1, shape.y1, shape.x2, shape.y2, color, width);
+          }
+        } else if (shape.type === 'rect') {
+          const x = Math.min(shape.x1, shape.x2);
+          const y = Math.min(shape.y1, shape.y2);
+          const w = Math.abs(shape.x2 - shape.x1);
+          const h = Math.abs(shape.y2 - shape.y1);
+          ctx.strokeRect(x, y, w, h);
+        } else if (shape.type === 'ellipse') {
+          const cx = (shape.x1 + shape.x2) / 2;
+          const cy = (shape.y1 + shape.y2) / 2;
+          const rx = Math.abs(shape.x2 - shape.x1) / 2;
+          const ry = Math.abs(shape.y2 - shape.y1) / 2;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (shape.type === 'text') {
+          ctx.setLineDash([]);
+          ctx.fillStyle = color;
+          ctx.font = `${Math.max(12, shape.size || 28)}px "Fira Sans", "Noto Sans", sans-serif`;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          const lines = String(shape.text || 'Text').split('\n');
+          const step = Math.max(14, (shape.size || 28) * 1.24);
+          for (let i = 0; i < lines.length; i += 1) {
+            ctx.fillText(lines[i], shape.x, shape.y + i * step);
+          }
+        } else if (shape.type === 'icon') {
+          drawIconShape(shape);
+        }
+
+        if (highlight) {
+          const box = getBounds(shape);
+          if (box) {
+            ctx.setLineDash([8 / state.camera.scale, 6 / state.camera.scale]);
+            ctx.lineWidth = 1.4 / state.camera.scale;
+            ctx.strokeStyle = 'rgba(176, 204, 255, 0.9)';
+            ctx.strokeRect(box.x - 8 / state.camera.scale, box.y - 8 / state.camera.scale, box.w + 16 / state.camera.scale, box.h + 16 / state.camera.scale);
+          }
+        }
+
+        ctx.restore();
+      }
+
+      function getBounds(shape) {
+        if (!shape) {
+          return null;
+        }
+        if (shape.type === 'pen') {
+          const pts = shape.points || [];
+          if (!pts.length) {
+            return null;
+          }
+          let minX = pts[0].x;
+          let maxX = pts[0].x;
+          let minY = pts[0].y;
+          let maxY = pts[0].y;
+          for (const p of pts) {
+            minX = Math.min(minX, p.x);
+            maxX = Math.max(maxX, p.x);
+            minY = Math.min(minY, p.y);
+            maxY = Math.max(maxY, p.y);
+          }
+          return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+        }
+        if (shape.type === 'line' || shape.type === 'arrow' || shape.type === 'rect' || shape.type === 'ellipse') {
+          const minX = Math.min(shape.x1, shape.x2);
+          const minY = Math.min(shape.y1, shape.y2);
+          return {
+            x: minX,
+            y: minY,
+            w: Math.abs(shape.x2 - shape.x1),
+            h: Math.abs(shape.y2 - shape.y1)
+          };
+        }
+        if (shape.type === 'text') {
+          const fontSize = Math.max(12, shape.size || 28);
+          const text = String(shape.text || 'Text');
+          const lines = text.split('\n');
+          ctx.save();
+          ctx.font = `${fontSize}px "Fira Sans", "Noto Sans", sans-serif`;
+          let maxW = 0;
+          for (const line of lines) {
+            maxW = Math.max(maxW, ctx.measureText(line).width);
+          }
+          ctx.restore();
+          return { x: shape.x, y: shape.y - fontSize * 0.55, w: maxW, h: lines.length * fontSize * 1.24 };
+        }
+        if (shape.type === 'icon') {
+          const size = Math.max(20, shape.size || 80);
+          return { x: shape.x - size / 2, y: shape.y - size / 2, w: size, h: size };
+        }
+        return null;
+      }
+
+      function distToSegment(px, py, x1, y1, x2, y2) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        if (dx === 0 && dy === 0) {
+          return Math.hypot(px - x1, py - y1);
+        }
+        const t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy);
+        const clamped = clamp(t, 0, 1);
+        const x = x1 + clamped * dx;
+        const y = y1 + clamped * dy;
+        return Math.hypot(px - x, py - y);
+      }
+
+      function hitShape(shape, x, y) {
+        const tol = Math.max(8 / state.camera.scale, (shape.width || 3) + 3);
+        if (shape.type === 'pen') {
+          const pts = shape.points || [];
+          for (let i = 1; i < pts.length; i += 1) {
+            if (distToSegment(x, y, pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y) <= tol) {
+              return true;
+            }
+          }
+          return false;
+        }
+
+        if (shape.type === 'line' || shape.type === 'arrow') {
+          return distToSegment(x, y, shape.x1, shape.y1, shape.x2, shape.y2) <= tol;
+        }
+
+        if (shape.type === 'rect' || shape.type === 'ellipse' || shape.type === 'text' || shape.type === 'icon') {
+          const box = getBounds(shape);
+          if (!box) {
+            return false;
+          }
+          return x >= box.x - tol && x <= box.x + box.w + tol && y >= box.y - tol && y <= box.y + box.h + tol;
+        }
+        return false;
+      }
+
+      function findShapeAt(x, y) {
+        for (let i = state.shapes.length - 1; i >= 0; i -= 1) {
+          const shape = state.shapes[i];
+          if (hitShape(shape, x, y)) {
+            return shape;
+          }
+        }
+        return null;
+      }
+
+      function moveShape(shape, dx, dy) {
+        if (shape.type === 'pen') {
+          for (const p of shape.points || []) {
+            p.x += dx;
+            p.y += dy;
+          }
+          return;
+        }
+        if (shape.type === 'text' || shape.type === 'icon') {
+          shape.x += dx;
+          shape.y += dy;
+          return;
+        }
+        if (typeof shape.x1 === 'number') {
+          shape.x1 += dx;
+          shape.y1 += dy;
+          shape.x2 += dx;
+          shape.y2 += dy;
+        }
+      }
+
+      function beginDraw(world) {
+        const style = styleFromControls();
+        const tool = state.tool;
+        state.pointer.temp = null;
+
+        if (tool === 'pen') {
+          state.pointer.temp = {
+            id: uid(),
+            type: 'pen',
+            points: [{ x: world.x, y: world.y }],
+            color: style.color,
+            width: style.width,
+            style: style.style,
+            animated: style.animated
+          };
+          state.pointer.drawing = true;
+          return;
+        }
+
+        if (tool === 'line' || tool === 'arrow' || tool === 'rect' || tool === 'ellipse') {
+          state.pointer.temp = {
+            id: uid(),
+            type: tool,
+            x1: world.x,
+            y1: world.y,
+            x2: world.x,
+            y2: world.y,
+            color: style.color,
+            width: style.width,
+            style: style.style,
+            animated: style.animated
+          };
+          state.pointer.drawing = true;
+          return;
+        }
+
+        if (tool === 'text') {
+          const rawText = (state.textContent || 'Text').trim();
+          const payload = rawText ? rawText : 'Text';
+          state.shapes.push({
+            id: uid(),
+            type: 'text',
+            x: world.x,
+            y: world.y,
+            text: payload,
+            size: state.textSize,
+            color: style.color
+          });
+          pushHistory();
+          state.selectedId = state.shapes[state.shapes.length - 1].id;
+          setStatus('Text placed.');
+          return;
+        }
+
+        if (tool === 'icon') {
+          state.shapes.push({
+            id: uid(),
+            type: 'icon',
+            x: world.x,
+            y: world.y,
+            size: state.iconSize,
+            icon: state.iconType,
+            color: style.color
+          });
+          pushHistory();
+          state.selectedId = state.shapes[state.shapes.length - 1].id;
+          setStatus('Icon placed.');
+          return;
+        }
+
+        if (tool === 'eraser') {
+          const hit = findShapeAt(world.x, world.y);
+          if (hit) {
+            state.shapes = state.shapes.filter((s) => s.id !== hit.id);
+            state.selectedId = null;
+            pushHistory();
+            setStatus('Shape erased.');
+          }
+          return;
+        }
+
+        if (tool === 'select') {
+          const hit = findShapeAt(world.x, world.y);
+          state.selectedId = hit ? hit.id : null;
+          state.pointer.drawing = false;
+          setStatus(hit ? 'Shape selected. Drag to move.' : 'Selection cleared.');
+          return;
+        }
+
+        if (tool === 'pan') {
+          state.pointer.drawing = false;
+          return;
+        }
+      }
+
+      function continueDraw(world) {
+        if (!state.pointer.temp) {
+          return;
+        }
+        const t = state.pointer.temp;
+        if (t.type === 'pen') {
+          const pts = t.points;
+          const last = pts[pts.length - 1];
+          const d = Math.hypot(world.x - last.x, world.y - last.y);
+          if (d > 1.2 / state.camera.scale) {
+            pts.push({ x: world.x, y: world.y });
+          }
+          return;
+        }
+        t.x2 = world.x;
+        t.y2 = world.y;
+      }
+
+      function finishDraw() {
+        if (!state.pointer.temp) {
+          return;
+        }
+        const t = state.pointer.temp;
+        state.pointer.temp = null;
+        state.pointer.drawing = false;
+
+        if (t.type === 'pen' && (t.points || []).length < 2) {
+          return;
+        }
+
+        if ((t.type === 'line' || t.type === 'arrow' || t.type === 'rect' || t.type === 'ellipse') &&
+            Math.hypot(t.x2 - t.x1, t.y2 - t.y1) < 2 / state.camera.scale) {
+          return;
+        }
+
+        state.shapes.push(t);
+        state.selectedId = t.id;
+        pushHistory();
+      }
+
+      function deleteSelected() {
+        if (!state.selectedId) {
+          return;
+        }
+        const countBefore = state.shapes.length;
+        state.shapes = state.shapes.filter((s) => s.id !== state.selectedId);
+        state.selectedId = null;
+        if (state.shapes.length !== countBefore) {
+          pushHistory();
+          setStatus('Deleted selected shape.');
+        }
+      }
+
+      function clearAll() {
+        state.shapes = [];
+        state.selectedId = null;
+        pushHistory();
+        setStatus('Canvas cleared.');
+      }
+
+      function saveToLocalStorage() {
+        try {
+          const payload = {
+            version: 1,
+            shapes: state.shapes,
+            camera: state.camera,
+            bgColor: state.bgColor,
+            grid: state.grid,
+            ui: {
+              lineWidth: state.lineWidth,
+              strokeColor: state.strokeColor,
+              lineStyle: state.lineStyle,
+              animated: state.animated,
+              textSize: state.textSize,
+              textContent: state.textContent,
+              iconType: state.iconType,
+              iconSize: state.iconSize,
+              tool: state.tool
+            }
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        } catch (_err) {
+        }
+      }
+
+      function loadFromLocalStorage() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) {
+            return false;
+          }
+          const payload = JSON.parse(raw);
+          state.shapes = Array.isArray(payload.shapes) ? payload.shapes : [];
+          state.camera = payload.camera || state.camera;
+          state.bgColor = payload.bgColor || state.bgColor;
+          state.grid = payload.grid !== false;
+          if (payload.ui) {
+            state.lineWidth = payload.ui.lineWidth || state.lineWidth;
+            state.strokeColor = payload.ui.strokeColor || state.strokeColor;
+            state.lineStyle = payload.ui.lineStyle || state.lineStyle;
+            state.animated = !!payload.ui.animated;
+            state.textSize = payload.ui.textSize || state.textSize;
+            state.textContent = payload.ui.textContent || state.textContent;
+            state.iconType = payload.ui.iconType || state.iconType;
+            state.iconSize = payload.ui.iconSize || state.iconSize;
+            state.tool = payload.ui.tool || state.tool;
+          }
+          state.selectedId = null;
+          pushHistory();
+          setStatus('Restored autosaved canvas.');
+          return true;
+        } catch (_err) {
+          return false;
+        }
+      }
+
+      function exportJson() {
+        const payload = {
+          version: 1,
+          createdAt: new Date().toISOString(),
+          bgColor: state.bgColor,
+          grid: state.grid,
+          camera: state.camera,
+          shapes: state.shapes
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `presenter-canvas-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        setStatus('Saved JSON.');
+      }
+
+      function importJson(file) {
+        if (!file) {
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const payload = JSON.parse(String(reader.result || '{}'));
+            if (!Array.isArray(payload.shapes)) {
+              throw new Error('Missing shapes array');
+            }
+            state.shapes = payload.shapes;
+            state.bgColor = payload.bgColor || state.bgColor;
+            state.grid = payload.grid !== false;
+            state.camera = payload.camera || state.camera;
+            state.selectedId = null;
+            pushHistory();
+            syncControls();
+            setStatus(`Loaded ${state.shapes.length} shapes.`);
+          } catch (err) {
+            setStatus('Invalid JSON file.');
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      function exportPng() {
+        const previous = state.selectedId;
+        state.selectedId = null;
+        render();
+        const url = els.stage.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `presenter-canvas-${Date.now()}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        state.selectedId = previous;
+        render();
+        setStatus('Exported PNG.');
+      }
+
+      function centerView() {
+        state.camera.x = 0;
+        state.camera.y = 0;
+        state.camera.scale = 1;
+        saveToLocalStorage();
+        render();
+        setStatus('View reset to center.');
+      }
+
+      function fitContent() {
+        if (!state.shapes.length) {
+          centerView();
+          return;
+        }
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+
+        for (const shape of state.shapes) {
+          const b = getBounds(shape);
+          if (!b) {
+            continue;
+          }
+          minX = Math.min(minX, b.x);
+          minY = Math.min(minY, b.y);
+          maxX = Math.max(maxX, b.x + b.w);
+          maxY = Math.max(maxY, b.y + b.h);
+        }
+
+        if (!isFinite(minX)) {
+          centerView();
+          return;
+        }
+
+        const padding = 80;
+        minX -= padding;
+        minY -= padding;
+        maxX += padding;
+        maxY += padding;
+
+        const worldW = Math.max(1, maxX - minX);
+        const worldH = Math.max(1, maxY - minY);
+        const screenW = els.stage.width / DPR;
+        const screenH = els.stage.height / DPR;
+
+        const scale = clamp(Math.min(screenW / worldW, screenH / worldH), 0.2, 5);
+        state.camera.scale = scale;
+        state.camera.x = minX - (screenW / scale - worldW) / 2;
+        state.camera.y = minY - (screenH / scale - worldH) / 2;
+        render();
+        saveToLocalStorage();
+        setStatus('Fitted content to viewport.');
+      }
+
+      function applyPointerDown(event) {
+        const isMiddle = event.button === 1;
+        const panWithSpace = state.spacePan;
+        const shouldPan = isMiddle || panWithSpace || state.tool === 'pan';
+
+        state.pointer.down = true;
+        state.pointer.start = { x: event.clientX, y: event.clientY };
+        state.pointer.current = { x: event.clientX, y: event.clientY };
+
+        const world = toWorld(event.clientX, event.clientY);
+
+        if (state.tool === 'select' && !shouldPan) {
+          const hit = findShapeAt(world.x, world.y);
+          state.selectedId = hit ? hit.id : null;
+          if (hit) {
+            state.draggingSelected = true;
+            state.pointer.lastWorld = world;
+          } else {
+            state.draggingSelected = false;
+          }
+          render();
+          return;
+        }
+
+        if (shouldPan) {
+          state.panning = true;
+          els.stage.style.cursor = 'grabbing';
+          return;
+        }
+
+        beginDraw(world);
+        render();
+      }
+
+      function applyPointerMove(event) {
+        if (!state.pointer.down) {
+          return;
+        }
+
+        const dxScreen = event.clientX - state.pointer.current.x;
+        const dyScreen = event.clientY - state.pointer.current.y;
+        state.pointer.current = { x: event.clientX, y: event.clientY };
+
+        if (state.panning) {
+          state.camera.x -= dxScreen / state.camera.scale;
+          state.camera.y -= dyScreen / state.camera.scale;
+          render();
+          return;
+        }
+
+        const world = toWorld(event.clientX, event.clientY);
+
+        if (state.draggingSelected && state.selectedId) {
+          const selected = state.shapes.find((s) => s.id === state.selectedId);
+          if (selected && state.pointer.lastWorld) {
+            const dx = world.x - state.pointer.lastWorld.x;
+            const dy = world.y - state.pointer.lastWorld.y;
+            moveShape(selected, dx, dy);
+            state.pointer.lastWorld = world;
+            render();
+            return;
+          }
+        }
+
+        continueDraw(world);
+        render();
+      }
+
+      function applyPointerUp() {
+        if (!state.pointer.down) {
+          return;
+        }
+
+        if (state.draggingSelected && state.selectedId) {
+          state.draggingSelected = false;
+          pushHistory();
+          setStatus('Moved shape.');
+        }
+
+        finishDraw();
+
+        state.pointer.down = false;
+        state.panning = false;
+        state.draggingSelected = false;
+        state.pointer.start = null;
+        state.pointer.current = null;
+        state.pointer.lastWorld = null;
+        els.stage.style.cursor = state.tool === 'pan' ? 'grab' : 'crosshair';
+        render();
+      }
+
+      function resizeCanvas() {
+        const rect = els.canvasWrap.getBoundingClientRect();
+        els.stage.width = Math.max(1, Math.floor(rect.width * DPR));
+        els.stage.height = Math.max(1, Math.floor(rect.height * DPR));
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+        render();
+      }
+
+      function render() {
+        const width = els.stage.width / DPR;
+        const height = els.stage.height / DPR;
+
+        ctx.save();
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = state.bgColor;
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.translate(-state.camera.x * state.camera.scale, -state.camera.y * state.camera.scale);
+        ctx.scale(state.camera.scale, state.camera.scale);
+
+        drawGrid();
+
+        for (const shape of state.shapes) {
+          drawShape(shape, shape.id === state.selectedId);
+        }
+        if (state.pointer.temp) {
+          drawShape(state.pointer.temp, false);
+        }
+
+        ctx.restore();
+
+        const activeTool = TOOLS.find((t) => t.id === state.tool);
+        els.toolPill.textContent = `Tool: ${activeTool ? activeTool.label : state.tool}`;
+        els.zoomPill.textContent = `Zoom: ${Math.round(state.camera.scale * 100)}%`;
+        els.animPill.textContent = `Animation: ${state.animated ? 'On' : 'Off'}`;
+      }
+
+      function setTool(tool) {
+        state.tool = tool;
+        if (tool === 'pan') {
+          els.stage.style.cursor = 'grab';
+        } else if (tool === 'select') {
+          els.stage.style.cursor = 'default';
+        } else if (tool === 'eraser') {
+          els.stage.style.cursor = 'not-allowed';
+        } else {
+          els.stage.style.cursor = 'crosshair';
+        }
+
+        for (const btn of els.toolGrid.querySelectorAll('button.tool')) {
+          btn.classList.toggle('active', btn.dataset.tool === tool);
+        }
+        saveToLocalStorage();
+        render();
+      }
+
+      function toggleFocusMode(force) {
+        const willFocus = typeof force === 'boolean' ? force : !document.body.classList.contains('focus');
+        document.body.classList.toggle('focus', willFocus);
+        if (!willFocus) {
+          document.body.classList.remove('menu-open');
+        }
+      }
+
+      function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+
+      function initTools() {
+        for (const tool of TOOLS) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'tool';
+          btn.dataset.tool = tool.id;
+          btn.textContent = `${tool.label}\n[${tool.hotkey}]`;
+          btn.addEventListener('click', () => setTool(tool.id));
+          els.toolGrid.appendChild(btn);
+        }
+      }
+
+      function syncControls() {
+        els.strokeColor.value = state.strokeColor;
+        els.bgColor.value = state.bgColor;
+        els.lineWidth.value = String(state.lineWidth);
+        els.lineWidthValue.textContent = `${state.lineWidth}px`;
+        els.lineStyle.value = state.lineStyle;
+        els.animated.checked = state.animated;
+        els.textSize.value = String(state.textSize);
+        els.textContent.value = state.textContent;
+        els.iconType.value = state.iconType;
+        els.iconSize.value = String(state.iconSize);
+        setTool(state.tool);
+      }
+
+      function animate() {
+        state.dashTick += 1;
+        render();
+        requestAnimationFrame(animate);
+      }
+
+      function setupBindings() {
+        els.strokeColor.addEventListener('input', () => {
+          state.strokeColor = els.strokeColor.value;
+          saveToLocalStorage();
+        });
+        els.bgColor.addEventListener('input', () => {
+          state.bgColor = els.bgColor.value;
+          saveToLocalStorage();
+          render();
+        });
+        els.lineWidth.addEventListener('input', () => {
+          state.lineWidth = Number(els.lineWidth.value) || 4;
+          els.lineWidthValue.textContent = `${state.lineWidth}px`;
+          saveToLocalStorage();
+        });
+        els.lineStyle.addEventListener('change', () => {
+          state.lineStyle = els.lineStyle.value;
+          saveToLocalStorage();
+        });
+        els.animated.addEventListener('change', () => {
+          state.animated = els.animated.checked;
+          saveToLocalStorage();
+          render();
+        });
+        els.textSize.addEventListener('change', () => {
+          state.textSize = clamp(Number(els.textSize.value) || 32, 12, 128);
+          els.textSize.value = String(state.textSize);
+          saveToLocalStorage();
+        });
+        els.textContent.addEventListener('change', () => {
+          state.textContent = els.textContent.value || 'Idea';
+          saveToLocalStorage();
+        });
+        els.iconType.addEventListener('change', () => {
+          state.iconType = els.iconType.value;
+          saveToLocalStorage();
+        });
+        els.iconSize.addEventListener('change', () => {
+          state.iconSize = clamp(Number(els.iconSize.value) || 88, 20, 240);
+          els.iconSize.value = String(state.iconSize);
+          saveToLocalStorage();
+        });
+
+        els.btnUndo.addEventListener('click', undo);
+        els.btnRedo.addEventListener('click', redo);
+        els.btnDelete.addEventListener('click', deleteSelected);
+        els.btnClear.addEventListener('click', clearAll);
+        els.btnCenter.addEventListener('click', centerView);
+        els.btnFit.addEventListener('click', fitContent);
+        els.btnGrid.addEventListener('click', () => {
+          state.grid = !state.grid;
+          saveToLocalStorage();
+          render();
+          setStatus(state.grid ? 'Grid enabled.' : 'Grid hidden.');
+        });
+        els.btnFocus.addEventListener('click', () => toggleFocusMode());
+        els.btnFullscreen.addEventListener('click', toggleFullscreen);
+        els.focusToggleBtn.addEventListener('click', () => toggleFocusMode(false));
+        els.menuBtn.addEventListener('click', () => {
+          document.body.classList.toggle('menu-open');
+        });
+
+        els.btnSaveJson.addEventListener('click', exportJson);
+        els.btnLoadJson.addEventListener('click', () => els.fileLoader.click());
+        els.fileLoader.addEventListener('change', () => {
+          importJson(els.fileLoader.files[0]);
+          els.fileLoader.value = '';
+        });
+        els.btnExportPng.addEventListener('click', exportPng);
+
+        els.stage.addEventListener('pointerdown', (event) => {
+          event.preventDefault();
+          els.stage.setPointerCapture(event.pointerId);
+          applyPointerDown(event);
+        });
+        els.stage.addEventListener('pointermove', (event) => {
+          event.preventDefault();
+          applyPointerMove(event);
+        });
+        els.stage.addEventListener('pointerup', (event) => {
+          event.preventDefault();
+          applyPointerUp();
+          if (els.stage.hasPointerCapture(event.pointerId)) {
+            els.stage.releasePointerCapture(event.pointerId);
+          }
+        });
+        els.stage.addEventListener('pointercancel', applyPointerUp);
+
+        els.stage.addEventListener('wheel', (event) => {
+          event.preventDefault();
+          const factor = event.deltaY < 0 ? 1.1 : 0.9;
+          const oldScale = state.camera.scale;
+          const newScale = clamp(oldScale * factor, 0.15, 8);
+          if (Math.abs(newScale - oldScale) < 0.0001) {
+            return;
+          }
+
+          const worldBefore = toWorld(event.clientX, event.clientY);
+          state.camera.scale = newScale;
+          const worldAfter = toWorld(event.clientX, event.clientY);
+          state.camera.x += worldBefore.x - worldAfter.x;
+          state.camera.y += worldBefore.y - worldAfter.y;
+          saveToLocalStorage();
+          render();
+        }, { passive: false });
+
+        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('keydown', (event) => {
+          if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+            event.preventDefault();
+            if (event.shiftKey) {
+              redo();
+            } else {
+              undo();
+            }
+            return;
+          }
+          if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'y') {
+            event.preventDefault();
+            redo();
+            return;
+          }
+          if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+            event.preventDefault();
+            exportJson();
+            return;
+          }
+          if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'o') {
+            event.preventDefault();
+            els.fileLoader.click();
+            return;
+          }
+
+          if (event.key === 'Delete' || event.key === 'Backspace') {
+            if (event.target && (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA')) {
+              return;
+            }
+            event.preventDefault();
+            deleteSelected();
+            return;
+          }
+
+          if (event.key === ' ') {
+            if (!event.repeat) {
+              state.spacePan = true;
+              if (!state.pointer.down) {
+                els.stage.style.cursor = 'grab';
+              }
+            }
+            return;
+          }
+
+          if (event.key.toLowerCase() === 'f') {
+            if (event.target && (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.tagName === 'SELECT')) {
+              return;
+            }
+            event.preventDefault();
+            toggleFocusMode();
+            return;
+          }
+
+          if (event.key.toLowerCase() === 'h') {
+            if (event.target && (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.tagName === 'SELECT')) {
+              return;
+            }
+            event.preventDefault();
+            if (window.matchMedia('(max-width: 1024px)').matches) {
+              document.body.classList.toggle('menu-open');
+            } else {
+              toggleFocusMode();
+            }
+            return;
+          }
+
+          if (event.key.toLowerCase() === 'g') {
+            event.preventDefault();
+            state.grid = !state.grid;
+            saveToLocalStorage();
+            render();
+            return;
+          }
+
+          if (event.key === '+' || event.key === '=') {
+            state.camera.scale = clamp(state.camera.scale * 1.1, 0.15, 8);
+            render();
+            saveToLocalStorage();
+            return;
+          }
+
+          if (event.key === '-') {
+            state.camera.scale = clamp(state.camera.scale * 0.9, 0.15, 8);
+            render();
+            saveToLocalStorage();
+            return;
+          }
+
+          if (event.key === '0') {
+            setTool('pan');
+            return;
+          }
+
+          const numeric = Number(event.key);
+          if (!Number.isNaN(numeric) && numeric >= 1 && numeric <= 9) {
+            const tool = TOOLS[numeric - 1];
+            if (tool) {
+              setTool(tool.id);
+            }
+          }
+        });
+
+        window.addEventListener('keyup', (event) => {
+          if (event.key === ' ') {
+            state.spacePan = false;
+            if (!state.pointer.down) {
+              setTool(state.tool);
+            }
+          }
+        });
+      }
+
+      function init() {
+        initTools();
+        const restored = loadFromLocalStorage();
+        if (!restored) {
+          pushHistory();
+          setStatus('New canvas ready.');
+        }
+        syncControls();
+        setupBindings();
+        resizeCanvas();
+        requestAnimationFrame(animate);
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>

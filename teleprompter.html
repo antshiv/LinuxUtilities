@@ -1,0 +1,958 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LinuxUtilities Teleprompter</title>
+  <style>
+    :root {
+      --bg: #0f1116;
+      --panel: #171a22;
+      --panel-2: #1f2330;
+      --text: #edf2ff;
+      --muted: #9aa4c3;
+      --accent: #66e2d9;
+      --accent-2: #8ba8ff;
+      --danger: #ff7b8a;
+      --border: #2a3143;
+      --font-size: 64px;
+      --line-height: 1.35;
+      --reading-line-pos: 34%;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Fira Sans", "Noto Sans", "DejaVu Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at 10% -20%, #243250 0%, transparent 60%),
+        radial-gradient(900px 500px at 100% 0%, #1f2a46 0%, transparent 55%),
+        var(--bg);
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      min-height: 100vh;
+      gap: 0;
+    }
+
+    .controls {
+      border-right: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 35%), var(--panel);
+      padding: 18px 16px 20px;
+      overflow: auto;
+    }
+
+    .brand {
+      margin: 0 0 6px;
+      font-size: 19px;
+      letter-spacing: 0.02em;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .sub {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .group {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .group h3 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      resize: vertical;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #10131b;
+      color: var(--text);
+      padding: 10px;
+      font-family: "JetBrains Mono", "Fira Mono", monospace;
+      font-size: 13px;
+      line-height: 1.45;
+      outline: none;
+    }
+
+    textarea:focus { border-color: var(--accent-2); }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 8px;
+    }
+
+    button {
+      border: 1px solid var(--border);
+      background: #20283a;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 11px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:hover { border-color: var(--accent-2); }
+    button.primary { background: linear-gradient(90deg, #2b8f8a, #2f78c6); border-color: #4888c5; }
+    button.warn { background: #372130; border-color: #77415d; color: #ffbdd0; }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 10px;
+      margin-bottom: 4px;
+    }
+
+    input[type="range"] { width: 100%; }
+
+    .stat {
+      color: var(--text);
+      font-weight: 700;
+      font-size: 12px;
+      margin-left: 6px;
+    }
+
+    .check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 9px;
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .check input { accent-color: var(--accent); }
+
+    .hint {
+      margin: 10px 0 0;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+
+    .viewer-wrap {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(21, 28, 44, 0.55), transparent 20%), var(--bg);
+    }
+
+    .hud {
+      position: absolute;
+      top: 10px;
+      right: 14px;
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+      font-size: 12px;
+    }
+
+    .pill {
+      background: rgba(20, 26, 40, 0.82);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-weight: 600;
+      backdrop-filter: blur(4px);
+    }
+
+    .pill.playing { border-color: #2f8a81; color: #9ef9ef; }
+    .pill.stopped { border-color: #5c3346; color: #f9b8cb; }
+
+    .viewport {
+      position: absolute;
+      inset: 0;
+      overflow-y: auto;
+      padding: 12vh 11vw 20vh;
+      scrollbar-width: none;
+    }
+
+    .viewport::-webkit-scrollbar { display: none; }
+
+    .prompt {
+      font-size: var(--font-size);
+      line-height: var(--line-height);
+      letter-spacing: 0.01em;
+      font-weight: 600;
+      text-wrap: pretty;
+      color: var(--text);
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .prompt.mirror { transform: scaleX(-1); }
+
+    .prompt p {
+      margin: 0 0 1.15em;
+      text-shadow: 0 0 22px rgba(84, 100, 162, 0.18);
+    }
+
+    .reading-line {
+      position: absolute;
+      top: var(--reading-line-pos);
+      left: 0;
+      right: 0;
+      border-top: 2px dashed rgba(102, 226, 217, 0.45);
+      pointer-events: none;
+    }
+
+    .reading-line::before,
+    .reading-line::after {
+      content: "";
+      position: absolute;
+      top: -6px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(102, 226, 217, 0.92);
+    }
+
+    .reading-line::before { left: 7.5vw; }
+    .reading-line::after { right: 7.5vw; }
+
+    .focus-panel {
+      display: none;
+      position: fixed;
+      bottom: 14px;
+      right: 14px;
+      z-index: 50;
+      background: rgba(15, 18, 25, 0.8);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 7px;
+      gap: 6px;
+      backdrop-filter: blur(4px);
+    }
+
+    .focus-panel button {
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 12px;
+    }
+
+    body.focus .controls {
+      display: none;
+    }
+
+    body.focus .app {
+      grid-template-columns: 1fr;
+    }
+
+    body.focus .focus-panel {
+      display: flex;
+    }
+
+    .kbd {
+      font-family: "JetBrains Mono", "Fira Mono", monospace;
+      font-size: 11px;
+      border: 1px solid var(--border);
+      background: #111625;
+      border-radius: 6px;
+      padding: 2px 6px;
+      color: #d5ddff;
+    }
+
+    @media (max-width: 1024px) {
+      .app { grid-template-columns: 1fr; }
+      .controls { border-right: none; border-bottom: 1px solid var(--border); }
+      .viewer-wrap { min-height: 58vh; }
+      .prompt { font-size: 42px; }
+    }
+
+    /* Viewport fade mask */
+    .viewer-wrap::before,
+    .viewer-wrap::after {
+      content: ''; position: absolute; left: 0; right: 0;
+      z-index: 5; pointer-events: none;
+    }
+    .viewer-wrap::before {
+      top: 0; height: 20vh;
+      background: linear-gradient(to bottom, var(--bg), transparent);
+    }
+    .viewer-wrap::after {
+      bottom: 0; height: 20vh;
+      background: linear-gradient(to top, var(--bg), transparent);
+    }
+
+    /* Active paragraph highlight */
+    .prompt p { transition: opacity 0.4s ease; }
+    .prompt.has-active p { opacity: 0.35; }
+    .prompt.has-active p.active-para { opacity: 1; text-shadow: 0 0 30px rgba(102,226,217,0.15); }
+
+    /* Cue markers */
+    .cue-pause {
+      display: block; color: var(--danger); font-size: 0.45em; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase; padding: 0.2em 0;
+      border-top: 1px dashed rgba(255,123,138,0.35); margin-top: 0.2em;
+    }
+    .cue-slow {
+      display: block; color: var(--accent-2); font-size: 0.4em;
+      font-style: italic; padding: 0.1em 0;
+    }
+    .cue-section {
+      display: block; color: var(--accent); font-size: 0.4em; font-weight: 700;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      border-top: 2px solid rgba(102,226,217,0.25);
+      padding-top: 0.3em; margin-top: 0.4em;
+    }
+
+    /* Section nav */
+    .section-nav { max-height: 150px; overflow-y: auto; scrollbar-width: thin; }
+    .section-nav-item {
+      display: block; width: 100%; text-align: left;
+      padding: 4px 8px; border: none; background: transparent;
+      color: var(--muted); font-size: 12px; cursor: pointer;
+      border-radius: 6px; transition: background 0.15s, color 0.15s;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .section-nav-item:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+    .section-nav-item.current { color: var(--accent); background: rgba(102,226,217,0.1); }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 2px dashed var(--border); border-radius: 10px;
+      padding: 12px; text-align: center; color: var(--muted);
+      font-size: 11px; margin-top: 8px; transition: border-color 0.2s, color 0.2s;
+      cursor: pointer;
+    }
+    .drop-zone.over { border-color: var(--accent); color: var(--accent); }
+
+    .pill-sm { font-size: 11px; padding: 4px 8px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="controls">
+      <h1 class="brand">LinuxUtilities Teleprompter</h1>
+      <p class="sub">
+        ATEM workflow tip: use extended displays.
+        Keep this window on laptop panel, keep code/browser windows on HDMI output.
+      </p>
+
+      <section class="group">
+        <h3>Script</h3>
+        <textarea id="scriptInput" spellcheck="false"></textarea>
+        <div class="row">
+          <button id="applyBtn" class="primary">Apply Text</button>
+          <button id="sampleBtn">Load Sample</button>
+          <button id="exportBtn">Export .txt</button>
+          <button id="clearBtn" class="warn">Clear</button>
+        </div>
+        <div id="dropZone" class="drop-zone">Drop a .txt / .md file here, or click to browse</div>
+      </section>
+
+      <section class="group">
+        <h3>Playback</h3>
+        <div class="row">
+          <button id="playBtn" class="primary">Play</button>
+          <button id="resetBtn">Reset Top</button>
+          <button id="focusBtn">Focus Mode</button>
+          <button id="fullscreenBtn">Fullscreen</button>
+        </div>
+
+        <label for="speedRange">Scroll Speed <span id="speedStat" class="stat">90 px/s</span></label>
+        <input id="speedRange" type="range" min="10" max="360" step="2" value="90">
+
+        <label for="fontRange">Font Size <span id="fontStat" class="stat">64 px</span></label>
+        <input id="fontRange" type="range" min="30" max="124" step="2" value="64">
+
+        <label for="lineRange">Line Height <span id="lineStat" class="stat">1.35</span></label>
+        <input id="lineRange" type="range" min="1.1" max="2.0" step="0.05" value="1.35">
+
+        <label class="check"><input id="mirrorCheck" type="checkbox"> Mirror Mode (for glass rigs)</label>
+
+        <label for="readlineRange">Reading Line Position <span id="readlineStat" class="stat">34%</span></label>
+        <input id="readlineRange" type="range" min="15" max="65" step="1" value="34">
+      </section>
+
+      <section class="group">
+        <h3>Keyboard</h3>
+        <p class="hint">
+          <span class="kbd">Space</span> play/pause
+          <span class="kbd">R</span> reset
+          <span class="kbd">F</span> focus mode
+          <span class="kbd">M</span> mirror
+        </p>
+        <p class="hint">
+          <span class="kbd">Up/Down</span> speed
+          <span class="kbd">[ / ]</span> font
+          <span class="kbd">Esc</span> leave focus mode
+        </p>
+      </section>
+
+      <section class="group">
+        <h3>Sections</h3>
+        <div id="sectionNav" class="section-nav">
+          <div style="color:var(--muted);font-size:11px;">Add [SECTION: name] markers in your script to navigate here.</div>
+        </div>
+        <p class="hint" style="margin-top:6px;">Cue markers: <span class="kbd">[PAUSE]</span> auto-stops &nbsp; <span class="kbd">[SLOW]</span> visual hint &nbsp; <span class="kbd">[SECTION: name]</span> nav anchor</p>
+      </section>
+    </aside>
+
+    <main class="viewer-wrap">
+      <div class="hud">
+        <div id="statePill" class="pill stopped">Stopped</div>
+        <div id="elapsedPill" class="pill pill-sm">0:00</div>
+        <div id="wordsPill" class="pill pill-sm">—</div>
+        <div id="etaPill" class="pill pill-sm">ETA —</div>
+        <div id="progressPill" class="pill">0%</div>
+      </div>
+      <div class="reading-line"></div>
+      <div id="viewport" class="viewport">
+        <div id="prompt" class="prompt"></div>
+      </div>
+    </main>
+  </div>
+
+  <div class="focus-panel">
+    <button id="focusPlayBtn" class="primary">Play</button>
+    <button id="focusResetBtn">Top</button>
+    <button id="focusExitBtn">Exit Focus</button>
+  </div>
+
+  <script>
+    (function () {
+      const LS_KEY_TEXT = "lu.teleprompter.text";
+      const LS_KEY_SPEED = "lu.teleprompter.speed";
+      const LS_KEY_FONT = "lu.teleprompter.font";
+      const LS_KEY_LINE = "lu.teleprompter.line";
+      const LS_KEY_MIRROR = "lu.teleprompter.mirror";
+
+      const DEFAULT_SCRIPT = [
+        "[SECTION: Introduction]",
+        "Today I will walk through the code path and show where the data starts,",
+        "how it moves through the pipeline, and where we validate outputs.",
+        "",
+        "[SECTION: Pipeline]",
+        "I will pause after each section so viewers can read the terminal output clearly.",
+        "",
+        "[PAUSE]",
+        "",
+        "[SECTION: Summary]",
+        "Use the dashed flow overlays for transitions and keep one concise point per step.",
+        "[SLOW]",
+        "Thank you for watching."
+      ].join("\n");
+
+      const state = {
+        playing: false,
+        rafId: 0,
+        lastTs: 0,
+        playStartTime: 0,
+        easeStart: 0,
+        sections: [],
+        wordCount: 0,
+        _lastUiUpdate: 0
+      };
+
+      const body = document.body;
+      const scriptInput = document.getElementById("scriptInput");
+      const applyBtn = document.getElementById("applyBtn");
+      const sampleBtn = document.getElementById("sampleBtn");
+      const clearBtn = document.getElementById("clearBtn");
+      const playBtn = document.getElementById("playBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      const focusBtn = document.getElementById("focusBtn");
+      const speedRange = document.getElementById("speedRange");
+      const fontRange = document.getElementById("fontRange");
+      const lineRange = document.getElementById("lineRange");
+      const mirrorCheck = document.getElementById("mirrorCheck");
+      const speedStat = document.getElementById("speedStat");
+      const fontStat = document.getElementById("fontStat");
+      const lineStat = document.getElementById("lineStat");
+      const statePill = document.getElementById("statePill");
+      const progressPill = document.getElementById("progressPill");
+      const viewport = document.getElementById("viewport");
+      const prompt = document.getElementById("prompt");
+      const focusPlayBtn = document.getElementById("focusPlayBtn");
+      const focusResetBtn = document.getElementById("focusResetBtn");
+      const focusExitBtn = document.getElementById("focusExitBtn");
+      const elapsedPill = document.getElementById("elapsedPill");
+      const wordsPill = document.getElementById("wordsPill");
+      const etaPill = document.getElementById("etaPill");
+      const sectionNav = document.getElementById("sectionNav");
+      const dropZone = document.getElementById("dropZone");
+      const exportBtn = document.getElementById("exportBtn");
+      const fullscreenBtn = document.getElementById("fullscreenBtn");
+      const readlineRange = document.getElementById("readlineRange");
+      const readlineStat = document.getElementById("readlineStat");
+
+      function escapeHtml(text) {
+        return text
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;");
+      }
+
+      function renderPrompt(rawText) {
+        const text = rawText.trim();
+        if (!text) {
+          prompt.innerHTML = "<p>Paste your script in the left panel and click Apply Text.</p>";
+          updateProgress();
+          state.wordCount = 0;
+          state.sections = [];
+          renderSectionNav();
+          updateWordsPill();
+          return;
+        }
+        state.wordCount = text.replace(/\[.*?\]/g, "").split(/\s+/).filter(Boolean).length;
+        state.sections = [];
+        const blocks = text.split(/\n\s*\n/g).map(s => s.trim()).filter(Boolean);
+        prompt.innerHTML = blocks.map(function (block, idx) {
+          var html = escapeHtml(block);
+          html = html.replace(/\[PAUSE\]/gi, '<span class="cue-pause" data-cue="pause">\u23f8 PAUSE</span>');
+          html = html.replace(/\[SLOW\]/gi, '<span class="cue-slow" data-cue="slow">\u2014 slow \u2014</span>');
+          html = html.replace(/\[SECTION:\s*([^\]]+)\]/gi, function (_, name) {
+            state.sections.push({ name: name.trim(), index: idx });
+            return '<span class="cue-section" data-section="' + escapeHtml(name.trim()) + '">\u00a7 ' + escapeHtml(name.trim()) + '</span>';
+          });
+          html = html.replaceAll("\n", "<br>");
+          return '<p data-idx="' + idx + '">' + html + '</p>';
+        }).join("");
+        prompt.querySelectorAll(".cue-pause").forEach(function (c) { delete c.dataset.triggered; });
+        renderSectionNav();
+        updateWordsPill();
+        updateProgress();
+      }
+
+      function getSpeed() {
+        return Number(speedRange.value);
+      }
+
+      function updateStats() {
+        speedStat.textContent = speedRange.value + " px/s";
+        fontStat.textContent = fontRange.value + " px";
+        lineStat.textContent = Number(lineRange.value).toFixed(2);
+      }
+
+      function applyTypography() {
+        document.documentElement.style.setProperty("--font-size", fontRange.value + "px");
+        document.documentElement.style.setProperty("--line-height", lineRange.value);
+      }
+
+      function applyMirror() {
+        prompt.classList.toggle("mirror", mirrorCheck.checked);
+      }
+
+      function updateProgress() {
+        const max = Math.max(1, viewport.scrollHeight - viewport.clientHeight);
+        const pct = Math.min(100, Math.round((viewport.scrollTop / max) * 100));
+        progressPill.textContent = pct + "%";
+      }
+
+      function syncButtons() {
+        const label = state.playing ? "Pause" : "Play";
+        playBtn.textContent = label;
+        focusPlayBtn.textContent = label;
+        statePill.textContent = state.playing ? "Playing" : "Stopped";
+        statePill.classList.toggle("playing", state.playing);
+        statePill.classList.toggle("stopped", !state.playing);
+      }
+
+      function stopPlayback() {
+        state.playing = false;
+        if (state.rafId) {
+          cancelAnimationFrame(state.rafId);
+          state.rafId = 0;
+        }
+        state.lastTs = 0;
+        prompt.classList.remove("has-active");
+        prompt.querySelectorAll(".active-para").forEach(function (p) { p.classList.remove("active-para"); });
+        syncButtons();
+      }
+
+      function tick(ts) {
+        if (!state.playing) return;
+        if (state.lastTs) {
+          const dt = (ts - state.lastTs) / 1000;
+          var speedFactor = 1;
+          var easeElapsed = ts - state.easeStart;
+          if (easeElapsed < 600) speedFactor = easeElapsed / 600;
+          viewport.scrollTop += getSpeed() * speedFactor * dt;
+          updateProgress();
+          if (!state._lastUiUpdate || ts - state._lastUiUpdate > 250) {
+            state._lastUiUpdate = ts;
+            highlightCurrentPara();
+            updateTimingHud();
+            checkCuePause();
+          }
+          if (viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 2) {
+            stopPlayback();
+            return;
+          }
+        }
+        state.lastTs = ts;
+        state.rafId = requestAnimationFrame(tick);
+      }
+
+      function togglePlayback() {
+        if (state.playing) {
+          stopPlayback();
+          return;
+        }
+        state.playing = true;
+        state.lastTs = 0;
+        state.easeStart = performance.now();
+        if (!state.playStartTime) state.playStartTime = Date.now();
+        syncButtons();
+        state.rafId = requestAnimationFrame(tick);
+      }
+
+      function resetToTop() {
+        viewport.scrollTop = 0;
+        state.playStartTime = 0;
+        if (elapsedPill) elapsedPill.textContent = "0:00";
+        if (etaPill) etaPill.textContent = "ETA \u2014";
+        prompt.querySelectorAll(".cue-pause").forEach(function (c) { delete c.dataset.triggered; });
+        updateProgress();
+      }
+
+      function setFocusMode(enabled) {
+        body.classList.toggle("focus", enabled);
+      }
+
+      function loadFromStorage() {
+        const text = localStorage.getItem(LS_KEY_TEXT) || DEFAULT_SCRIPT;
+        scriptInput.value = text;
+
+        const speed = localStorage.getItem(LS_KEY_SPEED);
+        const font = localStorage.getItem(LS_KEY_FONT);
+        const line = localStorage.getItem(LS_KEY_LINE);
+        const mirror = localStorage.getItem(LS_KEY_MIRROR);
+
+        if (speed) speedRange.value = speed;
+        if (font) fontRange.value = font;
+        if (line) lineRange.value = line;
+        mirrorCheck.checked = mirror === "1";
+
+        updateStats();
+        applyTypography();
+        applyMirror();
+        renderPrompt(scriptInput.value);
+      }
+
+      function persistSettings() {
+        localStorage.setItem(LS_KEY_TEXT, scriptInput.value);
+        localStorage.setItem(LS_KEY_SPEED, speedRange.value);
+        localStorage.setItem(LS_KEY_FONT, fontRange.value);
+        localStorage.setItem(LS_KEY_LINE, lineRange.value);
+        localStorage.setItem(LS_KEY_MIRROR, mirrorCheck.checked ? "1" : "0");
+      }
+
+      applyBtn.addEventListener("click", () => {
+        renderPrompt(scriptInput.value);
+        resetToTop();
+        persistSettings();
+      });
+
+      sampleBtn.addEventListener("click", () => {
+        scriptInput.value = DEFAULT_SCRIPT;
+        renderPrompt(scriptInput.value);
+        resetToTop();
+        persistSettings();
+      });
+
+      clearBtn.addEventListener("click", () => {
+        scriptInput.value = "";
+        renderPrompt(scriptInput.value);
+        resetToTop();
+        persistSettings();
+      });
+
+      playBtn.addEventListener("click", togglePlayback);
+      focusPlayBtn.addEventListener("click", togglePlayback);
+      resetBtn.addEventListener("click", resetToTop);
+      focusResetBtn.addEventListener("click", resetToTop);
+      focusBtn.addEventListener("click", () => setFocusMode(true));
+      focusExitBtn.addEventListener("click", () => setFocusMode(false));
+
+      speedRange.addEventListener("input", () => {
+        updateStats();
+        persistSettings();
+      });
+
+      fontRange.addEventListener("input", () => {
+        updateStats();
+        applyTypography();
+        persistSettings();
+      });
+
+      lineRange.addEventListener("input", () => {
+        updateStats();
+        applyTypography();
+        persistSettings();
+      });
+
+      mirrorCheck.addEventListener("change", () => {
+        applyMirror();
+        persistSettings();
+      });
+
+      viewport.addEventListener("scroll", updateProgress);
+      scriptInput.addEventListener("input", persistSettings);
+
+      document.addEventListener("keydown", (event) => {
+        const inText = event.target === scriptInput;
+
+        if (event.key === "Escape" && body.classList.contains("focus")) {
+          setFocusMode(false);
+          return;
+        }
+
+        if (inText && !event.ctrlKey && !event.metaKey) {
+          return;
+        }
+
+        if (event.key === " ") {
+          event.preventDefault();
+          togglePlayback();
+          return;
+        }
+
+        if (event.key === "r" || event.key === "R") {
+          resetToTop();
+          return;
+        }
+
+        if (event.key === "f" || event.key === "F") {
+          setFocusMode(!body.classList.contains("focus"));
+          return;
+        }
+
+        if (event.key === "m" || event.key === "M") {
+          mirrorCheck.checked = !mirrorCheck.checked;
+          applyMirror();
+          persistSettings();
+          return;
+        }
+
+        if (event.key === "ArrowUp") {
+          speedRange.value = String(Math.min(360, Number(speedRange.value) + 8));
+          updateStats();
+          persistSettings();
+          return;
+        }
+
+        if (event.key === "ArrowDown") {
+          speedRange.value = String(Math.max(10, Number(speedRange.value) - 8));
+          updateStats();
+          persistSettings();
+          return;
+        }
+
+        if (event.key === "]") {
+          fontRange.value = String(Math.min(124, Number(fontRange.value) + 2));
+          updateStats();
+          applyTypography();
+          persistSettings();
+          return;
+        }
+
+        if (event.key === "[") {
+          fontRange.value = String(Math.max(30, Number(fontRange.value) - 2));
+          updateStats();
+          applyTypography();
+          persistSettings();
+          return;
+        }
+      });
+
+      /* ── New feature functions ── */
+
+      function getReadingLinePos() {
+        return (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--reading-line-pos")) || 34) / 100;
+      }
+
+      function updateWordsPill() {
+        if (wordsPill) wordsPill.textContent = state.wordCount ? state.wordCount + " words" : "\u2014";
+      }
+
+      function updateTimingHud() {
+        if (!state.playing || !state.playStartTime) return;
+        var elapsed = Date.now() - state.playStartTime;
+        var mins = Math.floor(elapsed / 60000);
+        var secs = Math.floor((elapsed % 60000) / 1000);
+        if (elapsedPill) elapsedPill.textContent = mins + ":" + String(secs).padStart(2, "0");
+        if (etaPill) {
+          var max = Math.max(1, viewport.scrollHeight - viewport.clientHeight);
+          var remaining = max - viewport.scrollTop;
+          var speed = getSpeed();
+          if (speed > 0) {
+            var etaSecs = Math.ceil(remaining / speed);
+            var em = Math.floor(etaSecs / 60);
+            var es = etaSecs % 60;
+            etaPill.textContent = "ETA " + em + ":" + String(es).padStart(2, "0");
+          }
+        }
+      }
+
+      function highlightCurrentPara() {
+        var paras = prompt.querySelectorAll("p");
+        if (!paras.length || !state.playing) {
+          prompt.classList.remove("has-active");
+          return;
+        }
+        var viewRect = viewport.getBoundingClientRect();
+        var lineY = viewRect.top + viewRect.height * getReadingLinePos();
+        prompt.classList.add("has-active");
+        var found = false;
+        paras.forEach(function (p) {
+          var rect = p.getBoundingClientRect();
+          var isActive = lineY >= rect.top && lineY < rect.bottom;
+          p.classList.toggle("active-para", isActive);
+          if (isActive) found = true;
+        });
+        if (!found) {
+          var closest = paras[0], closestDist = Infinity;
+          paras.forEach(function (p) {
+            var rect = p.getBoundingClientRect();
+            var mid = rect.top + rect.height / 2;
+            var dist = Math.abs(mid - lineY);
+            if (dist < closestDist) { closestDist = dist; closest = p; }
+          });
+          closest.classList.add("active-para");
+        }
+      }
+
+      function checkCuePause() {
+        var cues = prompt.querySelectorAll(".cue-pause");
+        if (!cues.length) return;
+        var viewRect = viewport.getBoundingClientRect();
+        var lineY = viewRect.top + viewRect.height * getReadingLinePos();
+        cues.forEach(function (cue) {
+          if (cue.dataset.triggered) return;
+          var rect = cue.getBoundingClientRect();
+          if (rect.top <= lineY && rect.bottom >= lineY - 40) {
+            cue.dataset.triggered = "1";
+            stopPlayback();
+          }
+        });
+      }
+
+      function renderSectionNav() {
+        if (!sectionNav) return;
+        if (!state.sections.length) {
+          sectionNav.innerHTML = '<div style="color:var(--muted);font-size:11px;">No [SECTION: name] markers found.</div>';
+          return;
+        }
+        sectionNav.innerHTML = state.sections.map(function (s, i) {
+          return '<button class="section-nav-item" data-jump="' + s.index + '">' + (i + 1) + ". " + s.name + "</button>";
+        }).join("");
+        sectionNav.querySelectorAll(".section-nav-item").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var para = prompt.querySelector('p[data-idx="' + btn.dataset.jump + '"]');
+            if (para) {
+              viewport.scrollTop = para.offsetTop - viewport.clientHeight * getReadingLinePos();
+              updateProgress();
+            }
+          });
+        });
+      }
+
+      /* ── Export ── */
+      if (exportBtn) {
+        exportBtn.addEventListener("click", function () {
+          var blob = new Blob([scriptInput.value], { type: "text/plain" });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement("a");
+          a.href = url; a.download = "teleprompter-script.txt";
+          a.click(); URL.revokeObjectURL(url);
+        });
+      }
+
+      /* ── Fullscreen ── */
+      if (fullscreenBtn) {
+        fullscreenBtn.addEventListener("click", function () {
+          var wrap = document.querySelector(".viewer-wrap");
+          if (document.fullscreenElement) {
+            document.exitFullscreen();
+          } else if (wrap) {
+            wrap.requestFullscreen();
+          }
+        });
+      }
+
+      /* ── Reading line position slider ── */
+      if (readlineRange) {
+        readlineRange.addEventListener("input", function () {
+          document.documentElement.style.setProperty("--reading-line-pos", readlineRange.value + "%");
+          if (readlineStat) readlineStat.textContent = readlineRange.value + "%";
+        });
+      }
+
+      /* ── Drag-and-drop ── */
+      if (dropZone) {
+        ["dragenter", "dragover"].forEach(function (e) {
+          dropZone.addEventListener(e, function (ev) {
+            ev.preventDefault(); dropZone.classList.add("over");
+          });
+        });
+        ["dragleave", "drop"].forEach(function (e) {
+          dropZone.addEventListener(e, function () {
+            dropZone.classList.remove("over");
+          });
+        });
+        dropZone.addEventListener("drop", function (ev) {
+          ev.preventDefault();
+          var file = ev.dataTransfer.files[0];
+          if (file) {
+            var reader = new FileReader();
+            reader.onload = function () {
+              scriptInput.value = reader.result;
+              renderPrompt(reader.result);
+              resetToTop();
+              persistSettings();
+            };
+            reader.readAsText(file);
+          }
+        });
+        dropZone.addEventListener("click", function () {
+          var input = document.createElement("input");
+          input.type = "file"; input.accept = ".txt,.md";
+          input.onchange = function () {
+            var file = input.files[0];
+            if (file) {
+              var reader = new FileReader();
+              reader.onload = function () {
+                scriptInput.value = reader.result;
+                renderPrompt(reader.result);
+                resetToTop();
+                persistSettings();
+              };
+              reader.readAsText(file);
+            }
+          };
+          input.click();
+        });
+      }
+
+      loadFromStorage();
+      syncButtons();
+    })();
+  </script>
+</body>
+</html>

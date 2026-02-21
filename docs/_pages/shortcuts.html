@@ -39,7 +39,7 @@
     </tbody>
 </table>
 
-<h3>Draw-Mode Tool Map (Profile)</h3>
+<h3>Draw-Mode Tool Map (Compat Profile)</h3>
 
 <table>
     <thead>
@@ -48,16 +48,14 @@
     <tbody>
         <tr><td>None</td><td>Cyan pen</td></tr>
         <tr><td><kbd>Shift</kbd></td><td>Yellow marker</td></tr>
-        <tr><td><kbd>Ctrl</kbd></td><td>Straight line</td></tr>
-        <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd></td><td>Arrow line</td></tr>
-        <tr><td><kbd>Alt</kbd></td><td>Rectangle</td></tr>
-        <tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd></td><td>Circle</td></tr>
-        <tr><td><kbd>Alt</kbd>+<kbd>Ctrl</kbd></td><td>Filled circle</td></tr>
-        <tr><td><kbd>Mouse Button2</kbd></td><td>Smooth path</td></tr>
-        <tr><td><kbd>Mouse Button2</kbd> + <kbd>Shift</kbd></td><td>Orthogonal path</td></tr>
+        <tr><td><kbd>Ctrl</kbd></td><td>Arrow pen</td></tr>
+        <tr><td><kbd>Alt</kbd></td><td>Red pen</td></tr>
+        <tr><td><kbd>Mouse Button2</kbd></td><td>Fine pen</td></tr>
         <tr><td><kbd>Mouse Button3</kbd></td><td>Eraser</td></tr>
     </tbody>
 </table>
+
+<p>Advanced shape profile (for newer Gromit builds): <code>GROMIT_PROFILE_MODE=advanced ./install_gromit_profile.sh</code></p>
 
 <h2>Presenter Dash Segments</h2>
 
@@ -74,6 +72,48 @@
         <tr><td><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F11</kbd></td><td>Reset anchor</td></tr>
     </tbody>
 </table>
+
+<h2>Teleprompter</h2>
+
+<p>Launch with: <code>./launch_teleprompter.sh</code></p>
+
+<table>
+    <thead>
+        <tr><th>Key</th><th>Action</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><kbd>Space</kbd></td><td>Play / Pause scroll</td></tr>
+        <tr><td><kbd>R</kbd></td><td>Reset to top</td></tr>
+        <tr><td><kbd>F</kbd></td><td>Focus mode (hide controls)</td></tr>
+        <tr><td><kbd>M</kbd></td><td>Mirror mode (for glass rigs)</td></tr>
+        <tr><td><kbd>Up</kbd> / <kbd>Down</kbd></td><td>Increase / decrease speed</td></tr>
+        <tr><td><kbd>[</kbd> / <kbd>]</kbd></td><td>Decrease / increase font size</td></tr>
+    </tbody>
+</table>
+
+<p>ATEM tip: use extended displays, keep teleprompter on laptop panel, keep HDMI output for browser/terminal feed.</p>
+
+<h2>Presenter Canvas</h2>
+
+<p>Launch with: <code>./launch_presenter_canvas.sh</code></p>
+
+<table>
+    <thead>
+        <tr><th>Key</th><th>Action</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><kbd>1</kbd>.. <kbd>9</kbd> and <kbd>0</kbd></td><td>Tool select (select, pen, line, arrow, rect, ellipse, text, icon, eraser, pan)</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd> / <kbd>Ctrl</kbd>+<kbd>O</kbd></td><td>Save JSON / Load JSON</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>Undo / Redo</td></tr>
+        <tr><td><kbd>Delete</kbd></td><td>Delete selected shape</td></tr>
+        <tr><td><kbd>F</kbd> / <kbd>H</kbd></td><td>Focus mode / show-hide controls</td></tr>
+        <tr><td><kbd>G</kbd></td><td>Toggle grid</td></tr>
+        <tr><td>Mouse wheel</td><td>Zoom at cursor</td></tr>
+        <tr><td>Middle drag or pan tool</td><td>Move camera</td></tr>
+    </tbody>
+</table>
+
+<p>Wacom map example (recording display): <code>xsetwacom set "Wacom Intuos S 2 Pen stylus" MapToOutput HDMI-1</code></p>
 
 <h2>AwesomeWM General</h2>
 
@@ -106,6 +146,8 @@
         <tr><td>Dash Anchor</td><td>Set presenter-dash anchor</td></tr>
         <tr><td>Dash / Dot / Arrow Segment</td><td>Draw animated segments</td></tr>
         <tr><td>Install Gromit Profile</td><td>Install shape/modifier map to <code>~/.config/gromit-mpx.cfg</code></td></tr>
+        <tr><td>Presenter Canvas</td><td>Open local whiteboard canvas with shapes/icons and JSON save/load</td></tr>
+        <tr><td>Teleprompter</td><td>Open local script reader window</td></tr>
         <tr><td>Shortcut Cheat Sheet</td><td>Open this reference</td></tr>
     </tbody>
 </table>
