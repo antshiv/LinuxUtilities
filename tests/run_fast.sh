@@ -24,6 +24,20 @@ for script in \
     fi
 done
 
+echo "[fast] Make target dry checks"
+make help >/dev/null
+make wacom-help >/dev/null
+make wacom-status >/dev/null
+make -n docs >/dev/null
+make -n docs-serve >/dev/null
+make -n wacom >/dev/null
+make -n wacom-hdmi >/dev/null
+if [[ -n "${DISPLAY:-}" ]] && command -v xrandr >/dev/null 2>&1 && xrandr --query >/dev/null 2>&1; then
+    make -n wacom-switch >/dev/null
+else
+    echo "[fast] Skipping make -n wacom-switch (no active X11 display)"
+fi
+
 echo "[fast] Build + GUI smoke"
 "$ROOT_DIR/test_linux_control_center_smoke.sh"
 

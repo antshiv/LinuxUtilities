@@ -2,8 +2,13 @@
 docs/build/
 Screenshots/
 /build/
+rc.dupe.lua
 
 # Legacy root-level binary names (build outputs now go under build/bin/)
 /cursor_spotlight
 /gtk_dsl_demo
 /linux_control_center
+
+# Legacy screenshot copies (superseded by assets/images + docs/assets/images)
+assets/screenshots/
+docs/assets/screenshots/

@@ -10,10 +10,11 @@ SYSTEM_RC_BACKUP ?= $(AWESOME_RC).bak.$(BACKUP_TAG)
 
 BUILD_BIN_DIR ?= build/bin
 PROGRAMS_BIN ?= $(HOME)/Programs/bin
+DOCS_PORT ?= 8080
 WACOM_OUTPUT ?= HDMI-1
 WACOM_STATE_FILE ?= $(HOME)/.cache/linuxutilities/wacom_output_last
 
-.PHONY: help rc-backup awesome-backup awesome-update apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install wacom-help wacom wacom-list-outputs wacom-list-devices wacom-set-screen wacom-switch wacom-hdmi wacom-external
+.PHONY: help rc-backup awesome-backup awesome-update apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external
 
 help:
 >@echo "Targets:"
@@ -29,10 +30,13 @@ help:
 >@echo "  make build-all-install Build and install binaries to $(PROGRAMS_BIN)"
 >@echo "  make linuxutils        Check deps, then build all"
 >@echo "  make linuxutils-install Check deps, build all, install to $(PROGRAMS_BIN)"
+>@echo "  make docs                Build docs into docs/build"
+>@echo "  make docs-serve          Build docs and serve locally on http://localhost:$(DOCS_PORT)"
 >@echo "  make wacom-help          Show quick Wacom mapping cheatsheet"
 >@echo "  make wacom               Map tablet to default HDMI output ($(WACOM_OUTPUT))"
 >@echo "  make wacom-list-outputs  List connected display outputs (xrandr)"
 >@echo "  make wacom-list-devices  List detected tablet devices (xsetwacom)"
+>@echo "  make wacom-status        Show outputs/devices and last mapped output"
 >@echo "  make wacom-set-screen OUTPUT=<display>  Map tablet area to one screen"
 >@echo "  make wacom-switch        Cycle tablet mapping to the next connected output"
 >@echo "  make wacom-hdmi          Shortcut for OUTPUT=HDMI-1"
@@ -161,11 +165,19 @@ linuxutils: deps-check build-all
 linuxutils-install: deps-check build-all-install
 >@echo "LinuxUtilities build/install complete."
 
+docs:
+>@bash docs/build.sh
+
+docs-serve: docs
+>@echo "Serving docs on http://localhost:$(DOCS_PORT)"
+>@cd docs/build && python3 -m http.server $(DOCS_PORT)
+
 wacom-help:
 >@echo "Wacom mapping quick commands:"
 >@echo "  make wacom                          (default: $(WACOM_OUTPUT))"
 >@echo "  make wacom-list-outputs"
 >@echo "  make wacom-list-devices"
+>@echo "  make wacom-status"
 >@echo "  make wacom-set-screen OUTPUT=HDMI-1"
 >@echo "Shortcuts:"
 >@echo "  make wacom-switch"
@@ -182,6 +194,33 @@ wacom-list-outputs:
 wacom-list-devices:
 >@if ! command -v xsetwacom >/dev/null 2>&1; then echo "Missing xsetwacom (install package: xserver-xorg-input-wacom)"; exit 1; fi
 >@xsetwacom --list devices
+
+wacom-status:
+>@echo "Wacom status:"
+>@echo "  default output: $(WACOM_OUTPUT)"
+>@echo "  state file: $(WACOM_STATE_FILE)"
+>@if [ -f "$(WACOM_STATE_FILE)" ]; then \
+>  last=$$(head -n 1 "$(WACOM_STATE_FILE)" | awk 'NF {print $$1; exit}'); \
+>  echo "  last mapped output: $${last:-unknown}"; \
+>else \
+>  echo "  last mapped output: (none saved yet)"; \
+>fi
+>@echo "Connected outputs:"
+>@if ! command -v xrandr >/dev/null 2>&1; then \
+>  echo "  xrandr missing (install package: x11-xserver-utils)"; \
+>elif xrandr --query >/dev/null 2>&1; then \
+>  xrandr --query | awk '/ connected/{print "  - " $$1}'; \
+>else \
+>  echo "  xrandr query failed (run in active X11 desktop session)."; \
+>fi
+>@echo "Tablet devices:"
+>@if ! command -v xsetwacom >/dev/null 2>&1; then \
+>  echo "  xsetwacom missing (install package: xserver-xorg-input-wacom)"; \
+>elif xsetwacom --list devices >/dev/null 2>&1; then \
+>  xsetwacom --list devices | sed 's/^/  - /'; \
+>else \
+>  echo "  xsetwacom query failed (check device/driver/session)."; \
+>fi
 
 wacom-set-screen:
 >@if [ -z "$(OUTPUT)" ]; then \
