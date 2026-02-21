@@ -15,6 +15,67 @@ My current setup is simple and focused on efficiency:
 *   **Terminal:** Terminator
 *   **Tooling:** AI CLI tools
 
+## AwesomeWM rc.lua Make Targets
+
+Use these shortcuts to back up and deploy the AwesomeWM config at `/etc/xdg/awesome/rc.lua`:
+
+```bash
+# Copy system rc.lua into local rc.dupe.lua
+make rc-backup
+
+# Backup current system rc.lua (timestamped) + install local rc.lua
+make awesome-update
+```
+
+`make awesome-update` performs:
+- local backup: `/etc/xdg/awesome/rc.lua` -> `./rc.dupe.lua`
+- system backup: `/etc/xdg/awesome/rc.lua` -> `/etc/xdg/awesome/rc.lua.bak.<timestamp>`
+- install: `./rc.lua` -> `/etc/xdg/awesome/rc.lua`
+
+## LinuxUtilities Make Targets
+
+Use these to check dependencies, warn about missing runtime tools, and build everything:
+
+```bash
+# full dependency pass + build all binaries into build/bin
+make linuxutils
+
+# same, but also install binaries into ~/Programs/bin
+make linuxutils-install
+```
+
+Dependency-only helpers:
+
+```bash
+make apt-check           # warns if apt metadata looks stale
+make deps-check-build    # required build deps (fails if missing)
+make deps-check-runtime  # optional runtime deps (warn-only)
+```
+
+Wacom mapping helper:
+
+```bash
+make wacom
+make wacom-list-outputs
+make wacom-list-devices
+make wacom-set-screen OUTPUT=HDMI-1
+make wacom-switch
+
+# shortcuts (easier to remember)
+make wacom-hdmi
+make wacom-external
+make wacom-help
+```
+
+`make wacom-switch` cycles across currently connected outputs. If only one
+display is connected, it will map to the same output each time.
+
+Override default HDMI output name if needed:
+
+```bash
+make wacom WACOM_OUTPUT=HDMI-A-1
+```
+
 ## Scripts:
 
 - `import_screenshots.sh`: A utility to manage screenshots and phone photos, moving them to designated directories and generating prompts for AI CLI tools.
@@ -145,11 +206,24 @@ Core controls inside the canvas:
 - Mouse wheel: zoom at cursor
 - Middle mouse drag or `0` pan tool: move camera
 
-For Wacom on X11, map stylus to your recording output (example HDMI):
+Presenter Canvas UI (captured on February 21, 2026):
+
+![Presenter Canvas UI](assets/images/presenter-canvas-wacom-workflow.png)
+
+For Wacom on X11, use the Make helpers:
 
 ```bash
-xsetwacom set "Wacom Intuos S 2 Pen stylus" MapToOutput HDMI-1
+make wacom                 # map to default HDMI output (HDMI-1)
+make wacom-switch          # cycle to next connected monitor
+make wacom-external        # auto-pick an external output (prefers HDMI)
+make wacom-help
 ```
+
+Wacom + Presenter Canvas quick flow:
+1. Connect HDMI output used for recording.
+2. Run `make wacom`.
+3. Launch `./launch_presenter_canvas.sh`.
+4. Use pen tool (`2`) or arrow tool (`4`) and draw live while recording.
 
 ## Storyboard DSL Player (Timeline + Parser)
 

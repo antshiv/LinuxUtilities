@@ -114,7 +114,11 @@
     </tbody>
 </table>
 
-<p>Wacom map example (recording display): <code>xsetwacom set "Wacom Intuos S 2 Pen stylus" MapToOutput HDMI-1</code></p>
+<p>Wacom + Presenter Canvas mapping helpers:</p>
+<pre><code>make wacom                 # default HDMI output
+make wacom-switch          # cycle to next connected monitor
+make wacom-external        # auto-detect external output (prefers HDMI)
+make wacom-help</code></pre>
 
 <h2>Storyboard DSL Player</h2>
 

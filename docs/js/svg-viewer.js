@@ -1,12 +1,13 @@
 /**
- * SVG Viewer — Full-screen overlay with zoom, pan, keyboard nav.
+ * SVG/Image Viewer — Full-screen overlay with zoom, pan, keyboard nav.
  * Ported from C-Kernel-Engine docs, refactored to ES6 module.
  *
  * Usage:
  *   import { initSvgViewer } from './svg-viewer.js';
  *   initSvgViewer();          // call after DOM ready
  *
- * Any element with class="svg-viewer" and a child <img> becomes
+ * Any element with class="svg-viewer", "image-viewer", or "media-viewer"
+ * and a child <img> becomes
  * clickable — opens in the full-screen overlay.
  */
 
@@ -104,9 +105,9 @@ export function initSvgViewer() {
         });
     });
 
-    // Collect all .svg-viewer elements
+    // Collect all viewer-enabled elements
     images.length = 0;
-    document.querySelectorAll('.svg-viewer').forEach((viewer, index) => {
+    document.querySelectorAll('.svg-viewer, .image-viewer, .media-viewer').forEach((viewer, index) => {
         const viewerImg = viewer.querySelector('img');
         if (viewerImg) {
             images.push({

@@ -156,10 +156,13 @@ In-app keys:
 | `Wheel` | Zoom |
 | `Middle drag` or Pan tool | Move camera |
 
-Wacom quick map (example to HDMI recording output):
+Wacom + Presenter Canvas quick map:
 
 ```bash
-xsetwacom set "Wacom Intuos S 2 Pen stylus" MapToOutput HDMI-1
+make wacom                 # default HDMI output
+make wacom-switch          # cycle to next connected monitor
+make wacom-external        # auto-detect external output (prefers HDMI)
+make wacom-help
 ```
 
 ### Storyboard DSL Player (timeline parser/player)

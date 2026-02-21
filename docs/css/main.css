@@ -540,9 +540,48 @@ details[open] summary { border-bottom: 1px solid var(--grey); }
     border: 1px solid var(--grey);
 }
 
-/* ── SVG Viewer clickable images ─────────────────────────────── */
-.svg-viewer { cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
-.svg-viewer:hover { transform: scale(1.01); box-shadow: 0 8px 32px rgba(196,167,255,0.34); }
+/* ── SVG/Image Viewer clickable media ────────────────────────── */
+.svg-viewer,
+.image-viewer,
+.media-viewer { cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+
+.svg-viewer:hover,
+.image-viewer:hover,
+.media-viewer:hover { transform: scale(1.01); box-shadow: 0 8px 32px rgba(196,167,255,0.34); }
+
+/* Homepage media gallery */
+.media-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0 2rem;
+}
+
+.media-tile {
+    margin: 0;
+    background: var(--dark-card);
+    border: 1px solid var(--grey);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.media-tile img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    display: block;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.media-tile figcaption {
+    padding: 0.65rem 0.85rem;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    border-top: 1px solid var(--grey);
+    background: rgba(0,0,0,0.25);
+}
 
 /* ── Keyboard shortcut styling ───────────────────────────────── */
 kbd {

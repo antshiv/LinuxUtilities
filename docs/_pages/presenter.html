@@ -97,6 +97,20 @@
 
 <p>The Storyboard player includes ready-made <strong>CKE Train Preset</strong> and <strong>CKE Infer Preset</strong> templates to accelerate LLM training/inference video production.</p>
 
+<h3>Presenter Canvas UI</h3>
+<p>Screenshot captured on February 21, 2026:</p>
+<div class="img-container media-viewer image-viewer svg-viewer" data-title="Presenter Canvas + Wacom Workflow">
+    <img src="assets/images/presenter-canvas-wacom-workflow.png" alt="Presenter Canvas interface showing tool palette, style controls, and canvas grid" style="width:100%;height:auto;border-radius:12px;border:1px solid rgba(120,150,210,0.35);">
+</div>
+
+<h3>Wacom + Canvas Workflow (X11)</h3>
+<pre><code>make wacom                 # map tablet to default HDMI output
+./launch_presenter_canvas.sh
+
+# optional during session:
+make wacom-switch          # cycle mapping across connected outputs
+make wacom-help</code></pre>
+
 <div class="card">
     <h3>Pipeline</h3>
     <div class="diagram"><span class="wrn">1.</span> Draw your scene in <strong>Presenter Canvas</strong>
