@@ -463,7 +463,7 @@
           <button id="btnToggleArrow">Line ↔ Arrow</button>
           <button id="btnRectRadius">Set Rect Radius</button>
         </div>
-        <p class="sub" style="margin:8px 0 0">Tip: Shift+Click to multi-select. Double-click a rectangle to edit corner radius.</p>
+        <p class="sub" style="margin:8px 0 0">Tip: Shift+Click or drag to multi-select. Alt+drag subtracts. Double-click a rectangle to edit corner radius.</p>
       </section>
 
       <section class="group">
@@ -483,13 +483,13 @@
       </section>
 
       <section class="group">
-        <h3>Pathfinder (Rectangles)</h3>
+        <h3>Pathfinder (Objects)</h3>
         <div class="mini-grid cols-2">
           <button id="btnPathUnion">Union</button>
           <button id="btnPathIntersect">Intersect</button>
           <button id="btnPathSubtract">Subtract</button>
         </div>
-        <p class="sub" style="margin:8px 0 0">Select two overlapping rectangles. Subtract uses the last selected rectangle as the primary shape.</p>
+        <p class="sub" style="margin:8px 0 0">Select two overlapping objects (bounds-based). Subtract uses the last selected object as the primary shape.</p>
       </section>
 
       <section class="group">
@@ -544,7 +544,9 @@
         <tr><td><span class="kbd">Ctrl+S</span></td><td>Save JSON</td></tr>
         <tr><td><span class="kbd">Ctrl+Shift+S</span></td><td>Export DSL Starter</td></tr>
         <tr><td><span class="kbd">Ctrl+O</span></td><td>Load JSON</td></tr>
-        <tr><td><span class="kbd">Shift+Click</span></td><td>Add/remove shape from selection</td></tr>
+        <tr><td><span class="kbd">Drag</span> on empty</td><td>Marquee select shapes that overlap the box</td></tr>
+        <tr><td><span class="kbd">Shift+Click</span> / <span class="kbd">Shift+Drag</span></td><td>Add to selection</td></tr>
+        <tr><td><span class="kbd">Alt+Drag</span></td><td>Subtract overlapped shapes from selection</td></tr>
         <tr><td>Double-click rect</td><td>Set rectangle corner radius</td></tr>
         <tr><td><span class="kbd">F</span></td><td>Focus mode</td></tr>
         <tr><td><span class="kbd">H</span></td><td>Toggle sidebar</td></tr>
@@ -622,7 +624,7 @@
         activeArtboardId: null,
         selectedId: null,
         selectedIds: [],
-        pointer: { down: false, drawing: false, start: null, current: null, temp: null },
+        pointer: { down: false, drawing: false, start: null, current: null, temp: null, lastWorld: null, marquee: null },
         history: [],
         historyIndex: -1,
         dashTick: 0,
@@ -821,6 +823,125 @@
       function selectedShapes() {
         const ids = selectedShapeIds();
         return ids.map((id) => state.shapes.find((s) => s.id === id)).filter(Boolean);
+      }
+
+      function boxFromPoints(a, b) {
+        if (!a || !b) {
+          return null;
+        }
+        const x = Math.min(a.x, b.x);
+        const y = Math.min(a.y, b.y);
+        return { x, y, w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y) };
+      }
+
+      function boxesOverlap(a, b) {
+        if (!a || !b) {
+          return false;
+        }
+        return a.x <= b.x + b.w &&
+               a.x + a.w >= b.x &&
+               a.y <= b.y + b.h &&
+               a.y + a.h >= b.y;
+      }
+
+      function selectedIdsInMarquee(box) {
+        if (!box) {
+          return [];
+        }
+        const ids = [];
+        for (const shape of state.shapes) {
+          const bounds = getBounds(shape);
+          if (!bounds) {
+            continue;
+          }
+          const pad = Math.max(6 / state.camera.scale, (shape.width || 2) * 0.5);
+          const expanded = {
+            x: bounds.x - pad,
+            y: bounds.y - pad,
+            w: bounds.w + pad * 2,
+            h: bounds.h + pad * 2
+          };
+          if (boxesOverlap(expanded, box)) {
+            ids.push(shape.id);
+          }
+        }
+        return ids;
+      }
+
+      function finalizeMarqueeSelection() {
+        const marquee = state.pointer.marquee;
+        if (!marquee) {
+          return;
+        }
+        const box = boxFromPoints(marquee.start, marquee.current);
+        const clickThreshold = 4 / state.camera.scale;
+        const isClick = !box || (box.w < clickThreshold && box.h < clickThreshold);
+        const before = selectedShapeIds();
+        let next = before.slice();
+        let touched = [];
+
+        if (isClick) {
+          if (marquee.mode === 'replace') {
+            next = [];
+            setStatus('Selection cleared.');
+          }
+        } else {
+          touched = selectedIdsInMarquee(box);
+          if (marquee.mode === 'add') {
+            for (const id of touched) {
+              if (!next.includes(id)) {
+                next.push(id);
+              }
+            }
+          } else if (marquee.mode === 'subtract') {
+            next = next.filter((id) => !touched.includes(id));
+          } else {
+            next = touched;
+          }
+
+          if (marquee.mode === 'add') {
+            const added = Math.max(0, next.length - before.length);
+            setStatus(`Marquee added ${added} shape(s).`);
+          } else if (marquee.mode === 'subtract') {
+            const removed = Math.max(0, before.length - next.length);
+            setStatus(`Marquee removed ${removed} shape(s).`);
+          } else {
+            setStatus(`Marquee selected ${touched.length} shape(s).`);
+          }
+        }
+
+        setSelection(next);
+        state.pointer.marquee = null;
+      }
+
+      function drawMarqueeOverlay() {
+        const marquee = state.pointer.marquee;
+        if (!marquee) {
+          return;
+        }
+        const box = boxFromPoints(marquee.start, marquee.current);
+        if (!box) {
+          return;
+        }
+
+        ctx.save();
+        ctx.setLineDash([10 / state.camera.scale, 6 / state.camera.scale]);
+        ctx.lineWidth = 1.4 / state.camera.scale;
+
+        if (marquee.mode === 'subtract') {
+          ctx.strokeStyle = 'rgba(255, 122, 122, 0.95)';
+          ctx.fillStyle = 'rgba(255, 96, 96, 0.12)';
+        } else if (marquee.mode === 'add') {
+          ctx.strokeStyle = 'rgba(132, 214, 255, 0.95)';
+          ctx.fillStyle = 'rgba(106, 194, 255, 0.12)';
+        } else {
+          ctx.strokeStyle = 'rgba(176, 204, 255, 0.95)';
+          ctx.fillStyle = 'rgba(125, 166, 255, 0.1)';
+        }
+
+        ctx.fillRect(box.x, box.y, box.w, box.h);
+        ctx.strokeRect(box.x, box.y, box.w, box.h);
+        ctx.restore();
       }
 
       function renderArtboardTabs() {
@@ -1977,20 +2098,43 @@
         if (state.tool === 'select' && !shouldPan) {
           const hit = findShapeAt(world.x, world.y);
           const shift = !!event.shiftKey;
-          if (hit && shift) {
-            if (state.selectedIds.includes(hit.id)) {
-              setSelection(state.selectedIds.filter((id) => id !== hit.id));
+          const alt = !!event.altKey;
+          if (hit) {
+            const selected = selectedShapeIds();
+            if (shift) {
+              if (selected.includes(hit.id)) {
+                setSelection(selected.filter((id) => id !== hit.id));
+              } else {
+                setSelection(selected.concat(hit.id));
+              }
+            } else if (alt) {
+              if (selected.includes(hit.id)) {
+                setSelection(selected.filter((id) => id !== hit.id));
+              }
             } else {
-              setSelection(state.selectedIds.concat(hit.id));
+              setSelection([hit.id]);
             }
-          } else {
-            setSelection(hit ? [hit.id] : []);
-          }
-          if (hit && selectedShapeIds().includes(hit.id)) {
-            state.draggingSelected = true;
-            state.pointer.lastWorld = world;
+
+            if (selectedShapeIds().includes(hit.id) && !alt) {
+              state.draggingSelected = true;
+              state.pointer.lastWorld = world;
+            } else {
+              state.draggingSelected = false;
+              state.pointer.lastWorld = null;
+            }
+
+            state.pointer.marquee = null;
           } else {
             state.draggingSelected = false;
+            state.pointer.lastWorld = null;
+            state.pointer.marquee = {
+              start: world,
+              current: world,
+              mode: alt ? 'subtract' : shift ? 'add' : 'replace'
+            };
+            if (!shift && !alt) {
+              clearSelection();
+            }
           }
           render();
           return;
@@ -2029,6 +2173,12 @@
 
         const world = toWorld(event.clientX, event.clientY);
 
+        if (state.pointer.marquee) {
+          state.pointer.marquee.current = world;
+          render();
+          return;
+        }
+
         if (state.draggingSelected && selectedShapeIds().length) {
           const selected = selectedShapes();
           if (selected.length && state.pointer.lastWorld) {
@@ -2052,6 +2202,10 @@
           return;
         }
 
+        if (state.pointer.marquee) {
+          finalizeMarqueeSelection();
+        }
+
         if (state.draggingSelected && selectedShapeIds().length) {
           state.draggingSelected = false;
           pushHistory();
@@ -2066,6 +2220,7 @@
         state.pointer.start = null;
         state.pointer.current = null;
         state.pointer.lastWorld = null;
+        state.pointer.marquee = null;
         if (state.tool === 'pan') {
           els.stage.style.cursor = 'grab';
         } else if (state.tool === 'select') {
@@ -2110,6 +2265,7 @@
         if (state.pointer.temp) {
           drawShape(state.pointer.temp, false);
         }
+        drawMarqueeOverlay();
 
         ctx.restore();
 
@@ -2679,6 +2835,12 @@
       }
 
       function alignSelected(mode) {
+        const validModes = new Set(['left', 'center', 'right', 'top', 'middle', 'bottom']);
+        if (!validModes.has(mode)) {
+          setStatus('Unknown align mode.');
+          return;
+        }
+
         const items = selectedShapes();
         if (items.length < 2) {
           setStatus('Select at least two shapes to align.');
@@ -2712,10 +2874,18 @@
 
         pushHistory();
         render();
-        setStatus(`Aligned ${records.length} shapes (${mode}).`);
+        const skipped = items.length - records.length;
+        setStatus(skipped > 0
+          ? `Aligned ${records.length} shape(s), skipped ${skipped}.`
+          : `Aligned ${records.length} shapes (${mode}).`);
       }
 
       function distributeSelected(axis) {
+        if (axis !== 'x' && axis !== 'y') {
+          setStatus('Unknown distribute axis.');
+          return;
+        }
+
         const items = selectedShapes();
         if (items.length < 3) {
           setStatus('Select at least three shapes to distribute.');
@@ -2750,7 +2920,9 @@
 
         pushHistory();
         render();
-        setStatus(axis === 'x' ? 'Distributed horizontally.' : 'Distributed vertically.');
+        const skipped = items.length - records.length;
+        const base = axis === 'x' ? 'Distributed horizontally.' : 'Distributed vertically.';
+        setStatus(skipped > 0 ? `${base} Skipped ${skipped} shape(s).` : base);
       }
 
       function normalizeRectFromShape(shape) {
@@ -2760,6 +2932,26 @@
         const x2 = Math.max(shape.x1, shape.x2);
         const y2 = Math.max(shape.y1, shape.y2);
         return { x1, y1, x2, y2 };
+      }
+
+      function pathfinderBoxFromShape(shape) {
+        if (!shape) {
+          return null;
+        }
+        if (shape.type === 'rect') {
+          return normalizeRectFromShape(shape);
+        }
+        const bounds = getBounds(shape);
+        if (!bounds) {
+          return null;
+        }
+        const strokePad = Math.max(0.5, (shape.width || 1) * 0.5);
+        return {
+          x1: bounds.x - strokePad,
+          y1: bounds.y - strokePad,
+          x2: bounds.x + bounds.w + strokePad,
+          y2: bounds.y + bounds.h + strokePad
+        };
       }
 
       function rectArea(box) {
@@ -2783,30 +2975,48 @@
         };
       }
 
-      function selectedRectPair() {
-        const ids = selectedShapeIds();
-        if (ids.length !== 2) {
-          return null;
+      function selectedPathfinderPair() {
+        const selected = selectedShapes();
+        if (selected.length < 2) {
+          return { error: 'Select two objects first.' };
         }
-        const a = state.shapes.find((s) => s.id === ids[0]);
-        const b = state.shapes.find((s) => s.id === ids[1]);
-        if (!a || !b || a.type !== 'rect' || b.type !== 'rect') {
-          return null;
+        if (selected.length > 2) {
+          return { error: `Select only two objects for pathfinder (${selected.length} selected).` };
         }
-        return [a, b];
+
+        let primary = selected.find((shape) => shape.id === state.selectedId);
+        if (!primary) {
+          const byZ = selected.slice().sort((a, b) => {
+            const aIdx = state.shapes.findIndex((shape) => shape.id === a.id);
+            const bIdx = state.shapes.findIndex((shape) => shape.id === b.id);
+            return aIdx - bIdx;
+          });
+          primary = byZ[byZ.length - 1];
+        }
+        const secondary = selected[0].id === primary.id ? selected[1] : selected[0];
+        return { primary, secondary };
       }
 
       function applyPathfinder(mode) {
-        const pair = selectedRectPair();
-        if (!pair) {
-          setStatus('Select exactly two rectangles first.');
+        const pair = selectedPathfinderPair();
+        if (!pair || pair.error) {
+          setStatus((pair && pair.error) || 'Select two objects first.');
           return;
         }
-        const [shapeA, shapeB] = pair;
-        const topShape = state.selectedId === shapeA.id ? shapeA : shapeB;
-        const other = topShape === shapeA ? shapeB : shapeA;
-        const a = normalizeRectFromShape(topShape);
-        const b = normalizeRectFromShape(other);
+        if (mode !== 'union' && mode !== 'intersect' && mode !== 'subtract') {
+          setStatus('Unknown pathfinder mode.');
+          return;
+        }
+        const topShape = pair.primary;
+        const other = pair.secondary;
+        const shapeA = topShape;
+        const shapeB = other;
+        const a = pathfinderBoxFromShape(topShape);
+        const b = pathfinderBoxFromShape(other);
+        if (!a || !b || rectArea(a) <= 0.0001 || rectArea(b) <= 0.0001) {
+          setStatus('Pathfinder needs two area-based objects.');
+          return;
+        }
         const overlap = {
           x1: Math.max(a.x1, b.x1),
           y1: Math.max(a.y1, b.y1),
@@ -2841,7 +3051,7 @@
             { x1: overlap.x2, y1: overlap.y1, x2: a.x2, y2: overlap.y2 }
           ].filter((box) => rectArea(box) > 0.0001);
           if (!parts.length) {
-            setStatus('Subtract removed the primary rectangle completely.');
+            setStatus('Subtract removed the primary object completely.');
             return;
           }
           for (const box of parts) {
@@ -2854,7 +3064,7 @@
         setSelection(toAdd.map((shape) => shape.id));
         pushHistory();
         render();
-        setStatus(`Pathfinder ${mode} complete.`);
+        setStatus(`Pathfinder ${mode} complete (${toAdd.length} result shape(s)).`);
       }
 
       // ── Duplicate selected ──
@@ -2887,23 +3097,53 @@
 
       // ── Z-order ──
       function bringForward() {
-        if (!state.selectedId) return;
-        const idx = state.shapes.findIndex((s) => s.id === state.selectedId);
-        if (idx < 0 || idx >= state.shapes.length - 1) return;
-        [state.shapes[idx], state.shapes[idx + 1]] = [state.shapes[idx + 1], state.shapes[idx]];
+        const ids = selectedShapeIds();
+        if (!ids.length) {
+          setStatus('Select at least one shape first.');
+          return;
+        }
+        const selectedSet = new Set(ids);
+        let moved = false;
+        for (let i = state.shapes.length - 2; i >= 0; i -= 1) {
+          const curr = state.shapes[i];
+          const next = state.shapes[i + 1];
+          if (selectedSet.has(curr.id) && !selectedSet.has(next.id)) {
+            [state.shapes[i], state.shapes[i + 1]] = [state.shapes[i + 1], state.shapes[i]];
+            moved = true;
+          }
+        }
+        if (!moved) {
+          setStatus('Selection is already at the front.');
+          return;
+        }
         pushHistory();
         render();
-        setStatus('Brought forward.');
+        setStatus(`Brought ${ids.length} shape(s) forward.`);
       }
 
       function sendBackward() {
-        if (!state.selectedId) return;
-        const idx = state.shapes.findIndex((s) => s.id === state.selectedId);
-        if (idx <= 0) return;
-        [state.shapes[idx], state.shapes[idx - 1]] = [state.shapes[idx - 1], state.shapes[idx]];
+        const ids = selectedShapeIds();
+        if (!ids.length) {
+          setStatus('Select at least one shape first.');
+          return;
+        }
+        const selectedSet = new Set(ids);
+        let moved = false;
+        for (let i = 1; i < state.shapes.length; i += 1) {
+          const prev = state.shapes[i - 1];
+          const curr = state.shapes[i];
+          if (!selectedSet.has(prev.id) && selectedSet.has(curr.id)) {
+            [state.shapes[i - 1], state.shapes[i]] = [state.shapes[i], state.shapes[i - 1]];
+            moved = true;
+          }
+        }
+        if (!moved) {
+          setStatus('Selection is already at the back.');
+          return;
+        }
         pushHistory();
         render();
-        setStatus('Sent backward.');
+        setStatus(`Sent ${ids.length} shape(s) backward.`);
       }
 
       // ── Laser pointer ──
