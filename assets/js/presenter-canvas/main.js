@@ -50,6 +50,12 @@ const els = {
   layerList: document.getElementById('layerList'),
   btnLayerUp: document.getElementById('btnLayerUp'),
   btnLayerDown: document.getElementById('btnLayerDown'),
+  btnAddRect: document.getElementById('btnAddRect'),
+  btnAddEllipse: document.getElementById('btnAddEllipse'),
+  btnAddLine: document.getElementById('btnAddLine'),
+  btnAddArrow: document.getElementById('btnAddArrow'),
+  btnAddText: document.getElementById('btnAddText'),
+  btnAddIcon: document.getElementById('btnAddIcon'),
   toolGrid: document.getElementById('toolGrid'),
   strokeColor: document.getElementById('strokeColor'),
   bgColor: document.getElementById('bgColor'),
@@ -316,6 +322,114 @@ function styleFromControls() {
     animated: state.animated,
     opacity: state.opacity
   };
+}
+
+function viewportCenterWorld() {
+  const worldW = (els.stage.width / DPR) / state.camera.scale;
+  const worldH = (els.stage.height / DPR) / state.camera.scale;
+  return {
+    x: state.camera.x + worldW / 2,
+    y: state.camera.y + worldH / 2
+  };
+}
+
+function quickAddShape(type) {
+  const center = snapPoint(viewportCenterWorld());
+  const style = styleFromControls();
+  const id = uid();
+  const size = Math.max(60 / state.camera.scale, 1);
+  let shape = null;
+
+  if (type === 'rect') {
+    shape = {
+      id,
+      type: 'rect',
+      x1: center.x - size * 0.9,
+      y1: center.y - size * 0.65,
+      x2: center.x + size * 0.9,
+      y2: center.y + size * 0.65,
+      color: style.color,
+      width: style.width,
+      style: style.style,
+      animated: style.animated,
+      opacity: style.opacity,
+      radius: 0
+    };
+  } else if (type === 'ellipse') {
+    shape = {
+      id,
+      type: 'ellipse',
+      x1: center.x - size * 0.9,
+      y1: center.y - size * 0.65,
+      x2: center.x + size * 0.9,
+      y2: center.y + size * 0.65,
+      color: style.color,
+      width: style.width,
+      style: style.style,
+      animated: style.animated,
+      opacity: style.opacity
+    };
+  } else if (type === 'line' || type === 'arrow') {
+    shape = {
+      id,
+      type,
+      x1: center.x - size,
+      y1: center.y,
+      x2: center.x + size,
+      y2: center.y,
+      color: style.color,
+      width: style.width,
+      style: style.style,
+      animated: style.animated,
+      opacity: style.opacity
+    };
+  } else if (type === 'text') {
+    const rawText = String(state.textContent || 'Text').trim();
+    shape = {
+      id,
+      type: 'text',
+      x: center.x,
+      y: center.y,
+      text: rawText || 'Text',
+      size: state.textSize,
+      color: style.color,
+      opacity: style.opacity
+    };
+  } else if (type === 'icon') {
+    shape = {
+      id,
+      type: 'icon',
+      x: center.x,
+      y: center.y,
+      size: state.iconSize,
+      icon: state.iconType,
+      color: style.color,
+      opacity: style.opacity
+    };
+  }
+
+  if (!shape) {
+    return;
+  }
+
+  if (shouldRevealShape(shape)) {
+    shape.revealStartMs = Date.now();
+    shape.revealDurationMs = state.drawAnimDurationMs;
+  }
+  state.shapes.push(shape);
+  setSelection([shape.id]);
+  trackRecentColor(shape.color);
+  pushHistory();
+  render();
+  const label = {
+    rect: 'rectangle',
+    ellipse: 'ellipse',
+    line: 'line',
+    arrow: 'arrow',
+    text: 'text',
+    icon: 'icon'
+  }[type] || 'shape';
+  setStatus(`Added ${label}.`);
 }
 
 function getDashPattern(shape) {
@@ -1664,6 +1778,12 @@ function setupBindings() {
       setStatus(count ? `Selected ${count} layer(s).` : 'Selection cleared.');
     });
   }
+  if (els.btnAddRect) els.btnAddRect.addEventListener('click', () => quickAddShape('rect'));
+  if (els.btnAddEllipse) els.btnAddEllipse.addEventListener('click', () => quickAddShape('ellipse'));
+  if (els.btnAddLine) els.btnAddLine.addEventListener('click', () => quickAddShape('line'));
+  if (els.btnAddArrow) els.btnAddArrow.addEventListener('click', () => quickAddShape('arrow'));
+  if (els.btnAddText) els.btnAddText.addEventListener('click', () => quickAddShape('text'));
+  if (els.btnAddIcon) els.btnAddIcon.addEventListener('click', () => quickAddShape('icon'));
 
   // Selected-shape quick style edits
   els.btnLineSolid.addEventListener('click', () => setSelectedLineStyle('solid'));
