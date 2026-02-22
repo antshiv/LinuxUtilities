@@ -463,7 +463,7 @@
           <button id="btnToggleArrow">Line ↔ Arrow</button>
           <button id="btnRectRadius">Set Rect Radius</button>
         </div>
-        <p class="sub" style="margin:8px 0 0">Tip: Shift+Click or drag to multi-select. Alt+drag subtracts. Double-click a rectangle to edit corner radius.</p>
+        <p class="sub" style="margin:8px 0 0">Tip: Shift+Click or drag to multi-select. Alt+drag subtracts. Select one line/rect to reveal editable points.</p>
       </section>
 
       <section class="group">
@@ -489,7 +489,7 @@
           <button id="btnPathIntersect">Intersect</button>
           <button id="btnPathSubtract">Subtract</button>
         </div>
-        <p class="sub" style="margin:8px 0 0">Select two overlapping objects (bounds-based). Subtract uses the last selected object as the primary shape.</p>
+        <p class="sub" style="margin:8px 0 0">Select overlapping objects (bounds-based). Subtract uses the last selected object as primary; if more than two are selected, the last two are used.</p>
       </section>
 
       <section class="group">
@@ -547,6 +547,7 @@
         <tr><td><span class="kbd">Drag</span> on empty</td><td>Marquee select shapes that overlap the box</td></tr>
         <tr><td><span class="kbd">Shift+Click</span> / <span class="kbd">Shift+Drag</span></td><td>Add to selection</td></tr>
         <tr><td><span class="kbd">Alt+Drag</span></td><td>Subtract overlapped shapes from selection</td></tr>
+        <tr><td><span class="kbd">Drag point handles</span></td><td>Edit selected line/rectangle geometry</td></tr>
         <tr><td>Double-click rect</td><td>Set rectangle corner radius</td></tr>
         <tr><td><span class="kbd">F</span></td><td>Focus mode</td></tr>
         <tr><td><span class="kbd">H</span></td><td>Toggle sidebar</td></tr>
@@ -624,7 +625,7 @@
         activeArtboardId: null,
         selectedId: null,
         selectedIds: [],
-        pointer: { down: false, drawing: false, start: null, current: null, temp: null, lastWorld: null, marquee: null },
+        pointer: { down: false, drawing: false, start: null, current: null, temp: null, lastWorld: null, marquee: null, handleDrag: null },
         history: [],
         historyIndex: -1,
         dashTick: 0,
@@ -942,6 +943,227 @@
         ctx.fillRect(box.x, box.y, box.w, box.h);
         ctx.strokeRect(box.x, box.y, box.w, box.h);
         ctx.restore();
+      }
+
+      function activeEditableShape() {
+        if (state.tool !== 'select') {
+          return null;
+        }
+        const items = selectedShapes();
+        if (items.length !== 1) {
+          return null;
+        }
+        const shape = items[0];
+        if (!shape) {
+          return null;
+        }
+        if (shape.type === 'line' || shape.type === 'arrow' || shape.type === 'rect') {
+          return shape;
+        }
+        return null;
+      }
+
+      function normalizedRectBounds(shape) {
+        if (!shape || typeof shape.x1 !== 'number' || typeof shape.y1 !== 'number' || typeof shape.x2 !== 'number' || typeof shape.y2 !== 'number') {
+          return null;
+        }
+        return {
+          x1: Math.min(shape.x1, shape.x2),
+          y1: Math.min(shape.y1, shape.y2),
+          x2: Math.max(shape.x1, shape.x2),
+          y2: Math.max(shape.y1, shape.y2)
+        };
+      }
+
+      function clampRectRadiusToBounds(shape) {
+        if (!shape || shape.type !== 'rect') {
+          return;
+        }
+        const box = normalizedRectBounds(shape);
+        if (!box) {
+          return;
+        }
+        const maxRadius = Math.max(0, Math.min((box.x2 - box.x1) / 2, (box.y2 - box.y1) / 2));
+        shape.radius = clamp(Number(shape.radius) || 0, 0, maxRadius);
+      }
+
+      function editHandlesForShape(shape) {
+        if (!shape) {
+          return [];
+        }
+        if (shape.type === 'line' || shape.type === 'arrow') {
+          return [
+            { id: 'start', kind: 'vertex', x: shape.x1, y: shape.y1 },
+            { id: 'end', kind: 'vertex', x: shape.x2, y: shape.y2 }
+          ];
+        }
+        if (shape.type === 'rect') {
+          const box = normalizedRectBounds(shape);
+          if (!box) {
+            return [];
+          }
+          const maxRadius = Math.max(0, Math.min((box.x2 - box.x1) / 2, (box.y2 - box.y1) / 2));
+          const radius = clamp(Number(shape.radius) || 0, 0, maxRadius);
+          return [
+            { id: 'nw', kind: 'vertex', x: box.x1, y: box.y1 },
+            { id: 'ne', kind: 'vertex', x: box.x2, y: box.y1 },
+            { id: 'se', kind: 'vertex', x: box.x2, y: box.y2 },
+            { id: 'sw', kind: 'vertex', x: box.x1, y: box.y2 },
+            { id: 'radius', kind: 'radius', x: box.x1 + radius, y: box.y1 - 16 / state.camera.scale }
+          ];
+        }
+        return [];
+      }
+
+      function findEditHandleAt(x, y) {
+        const shape = activeEditableShape();
+        if (!shape) {
+          return null;
+        }
+        const handles = editHandlesForShape(shape);
+        const hitRadius = 10 / state.camera.scale;
+        for (let i = handles.length - 1; i >= 0; i -= 1) {
+          const handle = handles[i];
+          if (Math.hypot(handle.x - x, handle.y - y) <= hitRadius) {
+            return { shape, handle };
+          }
+        }
+        return null;
+      }
+
+      function drawEditHandlesOverlay() {
+        const shape = activeEditableShape();
+        if (!shape) {
+          return;
+        }
+        const handles = editHandlesForShape(shape);
+        if (!handles.length) {
+          return;
+        }
+
+        const box = shape.type === 'rect' ? normalizedRectBounds(shape) : null;
+        const radiusHandle = handles.find((handle) => handle.id === 'radius');
+        ctx.save();
+        ctx.setLineDash([]);
+        ctx.lineWidth = 1.2 / state.camera.scale;
+
+        if (box && radiusHandle) {
+          ctx.strokeStyle = 'rgba(157, 214, 255, 0.75)';
+          ctx.beginPath();
+          ctx.moveTo(box.x1, radiusHandle.y);
+          ctx.lineTo(radiusHandle.x, radiusHandle.y);
+          ctx.lineTo(radiusHandle.x, box.y1);
+          ctx.stroke();
+        }
+
+        for (const handle of handles) {
+          const isRadius = handle.kind === 'radius';
+          const size = (isRadius ? 6.6 : 5.2) / state.camera.scale;
+          ctx.fillStyle = isRadius ? 'rgba(90, 255, 191, 0.95)' : 'rgba(174, 211, 255, 0.95)';
+          ctx.strokeStyle = 'rgba(13, 22, 42, 0.95)';
+          ctx.beginPath();
+          ctx.arc(handle.x, handle.y, size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function beginHandleDrag(hit) {
+        if (!hit || !hit.shape || !hit.handle) {
+          return;
+        }
+        const drag = {
+          shapeId: hit.shape.id,
+          shapeType: hit.shape.type,
+          handleId: hit.handle.id,
+          didMove: false
+        };
+        if (hit.shape.type === 'rect') {
+          drag.baseBox = normalizedRectBounds(hit.shape);
+        }
+        state.pointer.handleDrag = drag;
+      }
+
+      function applyHandleDrag(world, shiftKey) {
+        const drag = state.pointer.handleDrag;
+        if (!drag) {
+          return false;
+        }
+        const shape = state.shapes.find((item) => item.id === drag.shapeId);
+        if (!shape) {
+          state.pointer.handleDrag = null;
+          return false;
+        }
+
+        if (drag.shapeType === 'line' || drag.shapeType === 'arrow') {
+          const snapped = snapPoint(world);
+          if (drag.handleId === 'start') {
+            const constrained = constrainEndpoint({ type: shape.type, x1: shape.x2, y1: shape.y2 }, snapped, !!shiftKey);
+            shape.x1 = constrained.x;
+            shape.y1 = constrained.y;
+            drag.didMove = true;
+            return true;
+          }
+          if (drag.handleId === 'end') {
+            const constrained = constrainEndpoint({ type: shape.type, x1: shape.x1, y1: shape.y1 }, snapped, !!shiftKey);
+            shape.x2 = constrained.x;
+            shape.y2 = constrained.y;
+            drag.didMove = true;
+            return true;
+          }
+          return false;
+        }
+
+        if (drag.shapeType === 'rect') {
+          if (drag.handleId === 'radius') {
+            const box = normalizedRectBounds(shape);
+            if (!box) {
+              return false;
+            }
+            const maxRadius = Math.max(0, Math.min((box.x2 - box.x1) / 2, (box.y2 - box.y1) / 2));
+            shape.radius = clamp(world.x - box.x1, 0, maxRadius);
+            drag.didMove = true;
+            return true;
+          }
+
+          const base = drag.baseBox;
+          if (!base) {
+            return false;
+          }
+          const snapped = snapPoint(world);
+          const cornerConfig = {
+            nw: { ax: base.x2, ay: base.y2, sx: -1, sy: -1 },
+            ne: { ax: base.x1, ay: base.y2, sx: 1, sy: -1 },
+            sw: { ax: base.x2, ay: base.y1, sx: -1, sy: 1 },
+            se: { ax: base.x1, ay: base.y1, sx: 1, sy: 1 }
+          }[drag.handleId];
+          if (!cornerConfig) {
+            return false;
+          }
+
+          let cx = snapped.x;
+          let cy = snapped.y;
+          if (shiftKey) {
+            const dx = cx - cornerConfig.ax;
+            const dy = cy - cornerConfig.ay;
+            const size = Math.max(Math.abs(dx), Math.abs(dy));
+            const sx = Math.sign(dx) || cornerConfig.sx;
+            const sy = Math.sign(dy) || cornerConfig.sy;
+            cx = cornerConfig.ax + size * sx;
+            cy = cornerConfig.ay + size * sy;
+          }
+
+          shape.x1 = Math.min(cornerConfig.ax, cx);
+          shape.y1 = Math.min(cornerConfig.ay, cy);
+          shape.x2 = Math.max(cornerConfig.ax, cx);
+          shape.y2 = Math.max(cornerConfig.ay, cy);
+          clampRectRadiusToBounds(shape);
+          drag.didMove = true;
+          return true;
+        }
+
+        return false;
       }
 
       function renderArtboardTabs() {
@@ -2096,6 +2318,18 @@
         const world = toWorld(event.clientX, event.clientY);
 
         if (state.tool === 'select' && !shouldPan) {
+          const handleHit = findEditHandleAt(world.x, world.y);
+          if (handleHit) {
+            setSelection([handleHit.shape.id]);
+            state.draggingSelected = false;
+            state.pointer.lastWorld = null;
+            state.pointer.marquee = null;
+            beginHandleDrag(handleHit);
+            render();
+            return;
+          }
+          state.pointer.handleDrag = null;
+
           const hit = findShapeAt(world.x, world.y);
           const shift = !!event.shiftKey;
           const alt = !!event.altKey;
@@ -2141,11 +2375,13 @@
         }
 
         if (shouldPan) {
+          state.pointer.handleDrag = null;
           state.panning = true;
           els.stage.style.cursor = 'grabbing';
           return;
         }
 
+        state.pointer.handleDrag = null;
         beginDraw(world);
         render();
       }
@@ -2172,6 +2408,12 @@
         }
 
         const world = toWorld(event.clientX, event.clientY);
+
+        if (state.pointer.handleDrag) {
+          applyHandleDrag(world, event.shiftKey);
+          render();
+          return;
+        }
 
         if (state.pointer.marquee) {
           state.pointer.marquee.current = world;
@@ -2206,6 +2448,19 @@
           finalizeMarqueeSelection();
         }
 
+        if (state.pointer.handleDrag) {
+          const drag = state.pointer.handleDrag;
+          state.pointer.handleDrag = null;
+          if (drag.didMove) {
+            pushHistory();
+            if (drag.handleId === 'radius') {
+              setStatus('Adjusted rectangle corner radius.');
+            } else {
+              setStatus('Edited selected shape points.');
+            }
+          }
+        }
+
         if (state.draggingSelected && selectedShapeIds().length) {
           state.draggingSelected = false;
           pushHistory();
@@ -2221,6 +2476,7 @@
         state.pointer.current = null;
         state.pointer.lastWorld = null;
         state.pointer.marquee = null;
+        state.pointer.handleDrag = null;
         if (state.tool === 'pan') {
           els.stage.style.cursor = 'grab';
         } else if (state.tool === 'select') {
@@ -2266,6 +2522,7 @@
           drawShape(state.pointer.temp, false);
         }
         drawMarqueeOverlay();
+        drawEditHandlesOverlay();
 
         ctx.restore();
 
@@ -2824,6 +3081,7 @@
           return;
         }
         shape.radius = clamp(value, 0, 2000);
+        clampRectRadiusToBounds(shape);
         pushHistory();
         render();
         setStatus(`Rectangle radius set to ${Math.round(shape.radius)}px.`);
@@ -2958,7 +3216,8 @@
         return Math.max(0, box.x2 - box.x1) * Math.max(0, box.y2 - box.y1);
       }
 
-      function makeRectFromBox(box, styleSource) {
+      function makeRectFromBox(box, styleSource, options) {
+        const opts = options || {};
         return {
           id: uid(),
           type: 'rect',
@@ -2971,30 +3230,38 @@
           style: styleSource.style || state.lineStyle,
           animated: !!styleSource.animated,
           opacity: typeof styleSource.opacity === 'number' ? styleSource.opacity : 1,
-          radius: Number(styleSource.radius) || 0
+          radius: opts.keepRadius ? Number(styleSource.radius) || 0 : 0
         };
       }
 
       function selectedPathfinderPair() {
-        const selected = selectedShapes();
-        if (selected.length < 2) {
+        const ids = selectedShapeIds();
+        if (ids.length < 2) {
           return { error: 'Select two objects first.' };
         }
-        if (selected.length > 2) {
-          return { error: `Select only two objects for pathfinder (${selected.length} selected).` };
+        const existing = ids.filter((id) => state.shapes.some((shape) => shape.id === id));
+        if (existing.length < 2) {
+          return { error: 'Select two objects first.' };
         }
 
-        let primary = selected.find((shape) => shape.id === state.selectedId);
-        if (!primary) {
-          const byZ = selected.slice().sort((a, b) => {
-            const aIdx = state.shapes.findIndex((shape) => shape.id === a.id);
-            const bIdx = state.shapes.findIndex((shape) => shape.id === b.id);
-            return aIdx - bIdx;
-          });
-          primary = byZ[byZ.length - 1];
+        const preferredPrimaryId = existing.includes(state.selectedId) ? state.selectedId : existing[existing.length - 1];
+        let secondaryId = null;
+        for (let i = existing.length - 1; i >= 0; i -= 1) {
+          if (existing[i] !== preferredPrimaryId) {
+            secondaryId = existing[i];
+            break;
+          }
         }
-        const secondary = selected[0].id === primary.id ? selected[1] : selected[0];
-        return { primary, secondary };
+        if (!secondaryId) {
+          return { error: 'Select two different objects first.' };
+        }
+
+        const primary = state.shapes.find((shape) => shape.id === preferredPrimaryId);
+        const secondary = state.shapes.find((shape) => shape.id === secondaryId);
+        if (!primary || !secondary) {
+          return { error: 'Select two objects first.' };
+        }
+        return { primary, secondary, ignoredCount: Math.max(0, existing.length - 2) };
       }
 
       function applyPathfinder(mode) {
@@ -3011,6 +3278,7 @@
         const other = pair.secondary;
         const shapeA = topShape;
         const shapeB = other;
+        const approximate = topShape.type !== 'rect' || other.type !== 'rect';
         const a = pathfinderBoxFromShape(topShape);
         const b = pathfinderBoxFromShape(other);
         if (!a || !b || rectArea(a) <= 0.0001 || rectArea(b) <= 0.0001) {
@@ -3064,7 +3332,9 @@
         setSelection(toAdd.map((shape) => shape.id));
         pushHistory();
         render();
-        setStatus(`Pathfinder ${mode} complete (${toAdd.length} result shape(s)).`);
+        const approxMsg = approximate ? ' (bounds approximation)' : '';
+        const ignoredMsg = pair.ignoredCount > 0 ? `; used last 2 of ${pair.ignoredCount + 2} selected` : '';
+        setStatus(`Pathfinder ${mode} complete: ${toAdd.length} result shape(s)${approxMsg}${ignoredMsg}.`);
       }
 
       // ── Duplicate selected ──
