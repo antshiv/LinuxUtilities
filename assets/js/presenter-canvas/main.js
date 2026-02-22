@@ -47,6 +47,9 @@ const els = {
   btnArtboardDup: document.getElementById('btnArtboardDup'),
   btnArtboardRename: document.getElementById('btnArtboardRename'),
   btnArtboardDelete: document.getElementById('btnArtboardDelete'),
+  layerList: document.getElementById('layerList'),
+  btnLayerUp: document.getElementById('btnLayerUp'),
+  btnLayerDown: document.getElementById('btnLayerDown'),
   toolGrid: document.getElementById('toolGrid'),
   strokeColor: document.getElementById('strokeColor'),
   bgColor: document.getElementById('bgColor'),
@@ -145,6 +148,59 @@ function renderArtboardTabs() {
     btn.textContent = `${board.name} (${board.shapes.length})`;
     btn.addEventListener('click', () => switchArtboard(board.id));
     els.artboardTabs.appendChild(btn);
+  }
+}
+
+function shapeLayerLabel(shape) {
+  if (!shape) return 'Shape';
+  if (shape.type === 'text') {
+    const text = String(shape.text || 'Text').split('\n')[0].trim();
+    return text ? `Text: ${text.slice(0, 28)}` : 'Text';
+  }
+  if (shape.type === 'icon') {
+    return `Icon: ${shape.icon || 'icon'}`;
+  }
+  if (shape.type === 'line') return 'Line';
+  if (shape.type === 'arrow') return 'Arrow';
+  if (shape.type === 'rect') return 'Rectangle';
+  if (shape.type === 'ellipse') return 'Ellipse';
+  if (shape.type === 'pen') return 'Pen Stroke';
+  return shape.type || 'Shape';
+}
+
+function renderLayerPanel() {
+  if (!els.layerList) return;
+  const selected = new Set(typeof selectedShapeIds === 'function' ? selectedShapeIds() : []);
+  const board = currentArtboard();
+  const shapes = state.shapes;
+
+  els.layerList.innerHTML = '';
+
+  const artboardItem = document.createElement('div');
+  artboardItem.className = 'layer-item layer-artboard';
+  artboardItem.innerHTML = `<span>Artboard: ${board.name}</span><span class=\"meta\">base</span>`;
+  els.layerList.appendChild(artboardItem);
+
+  if (!shapes.length) {
+    const empty = document.createElement('div');
+    empty.className = 'layer-item layer-artboard';
+    empty.innerHTML = '<span>No shapes yet</span><span class=\"meta\">empty</span>';
+    els.layerList.appendChild(empty);
+    return;
+  }
+
+  for (let idx = shapes.length - 1; idx >= 0; idx -= 1) {
+    const shape = shapes[idx];
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'layer-item layer-shape';
+    btn.dataset.shapeId = shape.id;
+    if (selected.has(shape.id)) {
+      btn.classList.add('active');
+    }
+    const level = idx === shapes.length - 1 ? 'top' : idx === 0 ? 'bottom' : `z${idx}`;
+    btn.innerHTML = `<span>${shapeLayerLabel(shape)}</span><span class=\"meta\">${level}</span>`;
+    els.layerList.appendChild(btn);
   }
 }
 
@@ -1575,6 +1631,39 @@ function setupBindings() {
   // Z-order
   els.btnBringFwd.addEventListener('click', bringForward);
   els.btnSendBack.addEventListener('click', sendBackward);
+  if (els.btnLayerUp) {
+    els.btnLayerUp.addEventListener('click', bringForward);
+  }
+  if (els.btnLayerDown) {
+    els.btnLayerDown.addEventListener('click', sendBackward);
+  }
+  if (els.layerList) {
+    els.layerList.addEventListener('click', (event) => {
+      const button = event.target.closest('button.layer-shape');
+      if (!button || !els.layerList.contains(button)) {
+        return;
+      }
+      const id = button.dataset.shapeId;
+      if (!id) {
+        return;
+      }
+      const current = selectedShapeIds();
+      if (event.shiftKey) {
+        if (current.includes(id)) {
+          setSelection(current.filter((item) => item !== id));
+        } else {
+          setSelection(current.concat(id));
+        }
+      } else if (event.altKey) {
+        setSelection(current.filter((item) => item !== id));
+      } else {
+        setSelection([id]);
+      }
+      render();
+      const count = selectedShapeIds().length;
+      setStatus(count ? `Selected ${count} layer(s).` : 'Selection cleared.');
+    });
+  }
 
   // Selected-shape quick style edits
   els.btnLineSolid.addEventListener('click', () => setSelectedLineStyle('solid'));
@@ -2203,7 +2292,8 @@ function initControllers() {
     drawShape,
     selectedShapeIds,
     drawMarqueeOverlay,
-    drawEditHandlesOverlay
+    drawEditHandlesOverlay,
+    renderLayers: renderLayerPanel
   });
   ({ render } = renderController);
 

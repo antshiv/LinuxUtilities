@@ -10,7 +10,8 @@ export function createRenderController(deps) {
     drawShape,
     selectedShapeIds,
     drawMarqueeOverlay,
-    drawEditHandlesOverlay
+    drawEditHandlesOverlay,
+    renderLayers
   } = deps;
 
   function render() {
@@ -48,6 +49,9 @@ export function createRenderController(deps) {
     els.shapesPill.textContent = `${board.name}: ${state.shapes.length}`;
     els.undoPill.textContent = `Undo: ${state.historyIndex}/${state.history.length - 1}`;
     els.snapBadge.classList.toggle('on', state.snapGrid);
+    if (typeof renderLayers === 'function') {
+      renderLayers();
+    }
   }
 
   return {
