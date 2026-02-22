@@ -18,6 +18,11 @@ import { createHistoryController } from './history.js';
 import { createRenderController } from './render.js';
 
 const state = createInitialState();
+const COLLAPSIBLE_PANEL_KEYS = ['layers', 'shapes'];
+const COLLAPSIBLE_PANEL_LABELS = {
+  layers: 'Layers',
+  shapes: 'Shapes'
+};
 
 let setSelection;
 let clearSelection;
@@ -136,12 +141,63 @@ function currentArtboard() {
 }
 
 attachStateAccessors(state, currentArtboard);
+state.panelCollapsed = normalizeCollapsedPanels(state.panelCollapsed);
 
 function setStatus(msg) {
   els.status.textContent = msg;
 }
 
 // Selection/marquee and editable handles are provided by module controllers.
+
+function normalizeCollapsedPanels(raw) {
+  const normalized = {};
+  for (const key of COLLAPSIBLE_PANEL_KEYS) {
+    normalized[key] = !!(raw && raw[key]);
+  }
+  return normalized;
+}
+
+function panelSection(key) {
+  return document.querySelector(`.group.collapsible[data-panel="${key}"]`);
+}
+
+function panelToggleButton(key) {
+  return document.querySelector(`button.group-toggle[data-toggle-panel="${key}"]`);
+}
+
+function setPanelCollapsed(key, collapsed, options = {}) {
+  const section = panelSection(key);
+  const toggle = panelToggleButton(key);
+  if (!section || !toggle) {
+    return;
+  }
+  section.classList.toggle('collapsed', collapsed);
+  toggle.textContent = collapsed ? 'Show' : 'Hide';
+  toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  if (!options.skipState) {
+    state.panelCollapsed[key] = collapsed;
+  }
+  if (!options.skipSave) {
+    saveToLocalStorage();
+  }
+}
+
+function initPanelToggles() {
+  state.panelCollapsed = normalizeCollapsedPanels(state.panelCollapsed);
+  for (const key of COLLAPSIBLE_PANEL_KEYS) {
+    const toggle = panelToggleButton(key);
+    if (!toggle) {
+      continue;
+    }
+    setPanelCollapsed(key, state.panelCollapsed[key], { skipSave: true });
+    toggle.addEventListener('click', () => {
+      const next = !state.panelCollapsed[key];
+      setPanelCollapsed(key, next);
+      const label = COLLAPSIBLE_PANEL_LABELS[key] || 'Panel';
+      setStatus(next ? `${label} panel hidden.` : `${label} panel shown.`);
+    });
+  }
+}
 
 function renderArtboardTabs() {
   if (!els.artboardTabs) return;
@@ -420,7 +476,11 @@ function quickAddShape(type) {
   setSelection([shape.id]);
   trackRecentColor(shape.color);
   pushHistory();
-  render();
+  if (type === 'line' || type === 'arrow' || type === 'rect' || type === 'ellipse' || type === 'text' || type === 'icon') {
+    setTool(type);
+  } else {
+    render();
+  }
   const label = {
     rect: 'rectangle',
     ellipse: 'ellipse',
@@ -470,11 +530,15 @@ function constrainEndpoint(tempShape, world, shiftKey) {
   const dx = x - tempShape.x1;
   const dy = y - tempShape.y1;
   if (tempShape.type === 'line' || tempShape.type === 'arrow') {
-    if (Math.abs(dx) >= Math.abs(dy)) {
-      y = tempShape.y1;
-    } else {
-      x = tempShape.x1;
+    const length = Math.hypot(dx, dy);
+    if (length < 1e-6) {
+      return { x: tempShape.x1, y: tempShape.y1 };
     }
+    const step = Math.PI / 4; // Snap lines/arrows to 45° increments.
+    const angle = Math.atan2(dy, dx);
+    const snapped = Math.round(angle / step) * step;
+    x = tempShape.x1 + Math.cos(snapped) * length;
+    y = tempShape.y1 + Math.sin(snapped) * length;
     return { x, y };
   }
 
@@ -1145,7 +1209,8 @@ function saveToLocalStorage() {
         iconSize: state.iconSize,
         tool: state.tool,
         snapGrid: state.snapGrid,
-        recentColors: state.recentColors
+        recentColors: state.recentColors,
+        panelCollapsed: state.panelCollapsed
       }
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -1186,6 +1251,7 @@ function loadFromLocalStorage() {
       state.opacity = typeof payload.ui.opacity === 'number' ? payload.ui.opacity : 1;
       state.snapGrid = !!payload.ui.snapGrid;
       state.recentColors = Array.isArray(payload.ui.recentColors) ? payload.ui.recentColors : [];
+      state.panelCollapsed = normalizeCollapsedPanels(payload.ui.panelCollapsed || state.panelCollapsed);
     }
     clearSelection();
     renderArtboardTabs();
@@ -2449,6 +2515,7 @@ function init() {
   initRecentColors();
   initTools();
   const restored = loadFromLocalStorage();
+  initPanelToggles();
   if (!restored) {
     pushHistory();
     setStatus('New canvas ready.');

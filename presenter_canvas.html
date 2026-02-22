@@ -77,6 +77,41 @@
       color: var(--muted);
     }
 
+    .group-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .group-head h3 {
+      margin: 0;
+    }
+
+    .group-toggle {
+      flex: initial;
+      min-height: 26px;
+      border-radius: 999px;
+      padding: 3px 9px;
+      font-size: 10px;
+      background: #17233d;
+      border-color: #314567;
+      color: #cce0ff;
+    }
+
+    .group.collapsible .group-body {
+      display: block;
+    }
+
+    .group.collapsible.collapsed .group-head {
+      margin-bottom: 0;
+    }
+
+    .group.collapsible.collapsed .group-body {
+      display: none;
+    }
+
     .tool-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -414,33 +449,43 @@
         </div>
       </section>
 
-      <section class="group">
-        <h3>Layers</h3>
-        <div class="row">
-          <button id="btnLayerUp">Layer Up</button>
-          <button id="btnLayerDown">Layer Down</button>
+      <section class="group collapsible" data-panel="layers">
+        <div class="group-head">
+          <h3>Layers</h3>
+          <button type="button" class="group-toggle" data-toggle-panel="layers" aria-controls="layersBody" aria-expanded="true">Hide</button>
         </div>
-        <div class="layer-list" id="layerList"></div>
-        <p class="sub" style="margin:8px 0 0">Artboard is the base layer. Shape layers are ordered top to bottom.</p>
+        <div class="group-body" id="layersBody">
+          <div class="row">
+            <button id="btnLayerUp">Layer Up</button>
+            <button id="btnLayerDown">Layer Down</button>
+          </div>
+          <div class="layer-list" id="layerList"></div>
+          <p class="sub" style="margin:8px 0 0">Artboard is the base layer. Shape layers are ordered top to bottom.</p>
+        </div>
       </section>
 
-      <section class="group">
-        <h3>Shapes</h3>
-        <div class="mini-grid cols-2">
-          <button id="btnAddRect">Add Rect</button>
-          <button id="btnAddEllipse">Add Ellipse</button>
-          <button id="btnAddLine">Add Line</button>
-          <button id="btnAddArrow">Add Arrow</button>
-          <button id="btnAddText">Add Text</button>
-          <button id="btnAddIcon">Add Icon</button>
+      <section class="group collapsible" data-panel="shapes">
+        <div class="group-head">
+          <h3>Shapes</h3>
+          <button type="button" class="group-toggle" data-toggle-panel="shapes" aria-controls="shapesBody" aria-expanded="true">Hide</button>
         </div>
-        <p class="sub" style="margin:8px 0 0">Quick insert at viewport center using current style settings.</p>
+        <div class="group-body" id="shapesBody">
+          <div class="mini-grid cols-2">
+            <button id="btnAddRect">Add Rect</button>
+            <button id="btnAddEllipse">Add Ellipse</button>
+            <button id="btnAddLine">Add Line</button>
+            <button id="btnAddArrow">Add Arrow</button>
+            <button id="btnAddText">Add Text</button>
+            <button id="btnAddIcon">Add Icon</button>
+          </div>
+          <p class="sub" style="margin:8px 0 0">Quick insert at viewport center using current style settings.</p>
+        </div>
       </section>
 
       <section class="group">
         <h3>Tools</h3>
         <div class="tool-grid" id="toolGrid"></div>
-        <p class="sub" style="margin:8px 0 0">Quick keys: <span class="kbd">1..9</span> tools, <span class="kbd">Shift</span> lock axis/ratio, <span class="kbd">Del</span> delete, <span class="kbd">Ctrl+Z/Y</span>, <span class="kbd">F</span> focus, <span class="kbd">H</span> hide/show panel.</p>
+        <p class="sub" style="margin:8px 0 0">Quick keys: <span class="kbd">1..9</span> tools, <span class="kbd">Shift</span> snap angle/ratio, <span class="kbd">Del</span> delete, <span class="kbd">Ctrl+Z/Y</span>, <span class="kbd">F</span> focus, <span class="kbd">H</span> hide/show panel.</p>
       </section>
 
       <section class="group">
@@ -615,6 +660,7 @@
         <tr><td><span class="kbd">Ctrl+Shift+S</span></td><td>Export DSL Starter</td></tr>
         <tr><td><span class="kbd">Ctrl+O</span></td><td>Load JSON</td></tr>
         <tr><td><span class="kbd">Drag</span> on empty</td><td>Marquee select shapes that overlap the box</td></tr>
+        <tr><td><span class="kbd">Shift</span> + line/arrow drag</td><td>Snap to horizontal, vertical, or 45° diagonals</td></tr>
         <tr><td><span class="kbd">Shift+Click</span> / <span class="kbd">Shift+Drag</span></td><td>Add to selection</td></tr>
         <tr><td><span class="kbd">Alt+Drag</span></td><td>Subtract overlapped shapes from selection</td></tr>
         <tr><td><span class="kbd">Drag point handles</span></td><td>Edit selected line/rectangle geometry</td></tr>

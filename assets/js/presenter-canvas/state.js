@@ -106,7 +106,11 @@ export function createInitialState() {
     opacity: 1,
     snapGrid: false,
     recentColors: [],
-    laserTrails: []
+    laserTrails: [],
+    panelCollapsed: {
+      layers: false,
+      shapes: false
+    }
   };
 }
 
