@@ -141,6 +141,10 @@ Launch:
 ./launch_presenter_canvas.sh
 ```
 
+Notes:
+- Launcher serves the repo on `http://127.0.0.1:${PRESENTER_CANVAS_PORT:-38947}` for ES module loading.
+- Override port with `PRESENTER_CANVAS_PORT=39001 ./launch_presenter_canvas.sh`.
+
 In-app keys:
 
 | Key | Action |

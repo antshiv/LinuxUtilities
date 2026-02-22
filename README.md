@@ -196,6 +196,19 @@ Launch:
 ./launch_presenter_canvas.sh
 ```
 
+Note:
+- The launcher now serves the repo root on `http://127.0.0.1:${PRESENTER_CANVAS_PORT:-38947}` so ES module imports work reliably.
+- You can override the port per run, e.g. `PRESENTER_CANVAS_PORT=39001 ./launch_presenter_canvas.sh`.
+
+Code layout (ES modules):
+- `assets/js/presenter-canvas/state.js`: constants, state creation, artboard/state helpers
+- `assets/js/presenter-canvas/selection.js`: selection + marquee behavior
+- `assets/js/presenter-canvas/handles.js`: point/corner handle editing
+- `assets/js/presenter-canvas/pathfinder.js`: pathfinder operations
+- `assets/js/presenter-canvas/history.js`: undo/redo history stack
+- `assets/js/presenter-canvas/render.js`: frame rendering
+- `assets/js/presenter-canvas/main.js`: wiring and app orchestration
+
 Core controls inside the canvas:
 - `1..9` and `0`: switch tools (select, pen, line, arrow, rect, ellipse, text, icon, eraser, pan)
 - `Ctrl+S` / `Ctrl+O`: save/load canvas JSON
