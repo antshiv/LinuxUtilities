@@ -119,12 +119,12 @@ deps-check-build:
 >check_cmd pkg-config pkg-config; \
 >if command -v pkg-config >/dev/null 2>&1; then \
 >  check_pkg "x11 xext xfixes xrender cairo" "libx11-dev libxext-dev libxfixes-dev libxrender-dev libcairo2-dev"; \
->  check_pkg "gtk+-3.0" "libgtk-3-dev"; \
+>  check_pkg "gtk4" "libgtk-4-dev"; \
 >fi; \
 >if [ "$$missing" -ne 0 ]; then \
 >  echo ""; \
 >  echo "Build dependencies are missing. Install and retry."; \
->  echo "sudo apt install build-essential pkg-config libx11-dev libxext-dev libxfixes-dev libxrender-dev libcairo2-dev libgtk-3-dev"; \
+>  echo "sudo apt install build-essential pkg-config libx11-dev libxext-dev libxfixes-dev libxrender-dev libcairo2-dev libgtk-4-dev"; \
 >  exit 1; \
 >fi; \
 >echo "Build dependencies look good."

@@ -3,13 +3,13 @@
 
 <h1>Control Center</h1>
 
-<p>A native GTK3 desktop utility that consolidates frequently used desktop controls into a single tabbed window. Built in C with no runtime dependencies beyond GTK3.</p>
+<p>A native GTK4 desktop utility focused on screenshot workflow: browse images, filter/select/delete quickly, and annotate in-place using event-controller driven canvas tools.</p>
 
 <h2>Build &amp; Run</h2>
 
 <pre><code>cd LinuxUtilities
 ./build_linux_control_center.sh   # compiles linux_control_center.c
-./build/bin/linux_control_center              # launch the app
+./build/bin/linux_control_center  # launch the app
 # Optional install
 ./build_linux_control_center.sh --install
 ~/Programs/bin/linux_control_center</code></pre>
@@ -18,88 +18,46 @@
 
 <pre><code>mkdir -p build/bin
 gcc -o build/bin/linux_control_center linux_control_center.c \
-    $(pkg-config --cflags --libs gtk+-3.0) -lm</code></pre>
+    $(pkg-config --cflags --libs gtk4) -lm</code></pre>
 
-<h2>Features</h2>
+<h2>Current GTK4 Features</h2>
 
 <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin: 1.5rem 0;">
-
     <div class="card">
-        <h3><span class="wrn">🌙</span> Night Light</h3>
-        <p>Adjusts screen color temperature using <code>redshift</code>. Toggle between warm (3500K) for evening and neutral (6500K) for daytime — easy on the eyes during long sessions.</p>
-        <table>
-            <tr><td>Warm</td><td><code>redshift -O 3500</code></td></tr>
-            <tr><td>Neutral</td><td><code>redshift -x</code></td></tr>
-        </table>
+        <h3><span class="wrn">🖼</span> Screenshot Browser</h3>
+        <p>Loads images from <code>Screenshots/</code>, shows thumbnails in a multi-select grid, and supports instant search filtering.</p>
     </div>
 
     <div class="card">
-        <h3><span class="wrn">📸</span> Screenshots</h3>
-        <p>Quick access to common screenshot workflows — full screen, active window, or region selection. Saves to <code>~/Screenshots/</code> with timestamps.</p>
+        <h3><span class="wrn">⌨️</span> Keyboard Workflow</h3>
+        <p><code>Ctrl+A</code> selects all thumbnails, <code>Esc</code> clears selection, and <code>Delete</code> removes selected files.</p>
     </div>
 
     <div class="card">
-        <h3><span class="wrn">⌨️</span> Shortcuts Viewer</h3>
-        <p>In-app reference for all AwesomeWM keybindings. Displays the same shortcut tables from the <a href="shortcuts.html">Shortcuts</a> docs page in native GTK widgets.</p>
+        <h3><span class="wrn">✏️</span> Annotation Canvas</h3>
+        <p>Select an image to annotate with <strong>Select</strong>, <strong>Arrow</strong>, and <strong>Rect</strong> tools. Uses GTK4 event controllers for click/drag/move/scroll handling.</p>
     </div>
 
     <div class="card">
-        <h3><span class="wrn">🔊</span> Audio Controls</h3>
-        <p>PulseAudio / PipeWire volume sliders with per-application mixing. Switch outputs (speakers ↔ headphones) without opening pavucontrol.</p>
+        <h3><span class="wrn">🔍</span> Zoom + File Ops</h3>
+        <p><code>Ctrl+Scroll</code> zooms the canvas. Toolbar actions include refresh, open folder, and delete selected.</p>
     </div>
-
-    <div class="card">
-        <h3><span class="wrn">📝</span> Teleprompter Launch</h3>
-        <p>Utilities tab includes a one-click teleprompter launcher for ATEM workflows where laptop panel shows script and HDMI feed stays clean.</p>
-    </div>
-
-    <div class="card">
-        <h3><span class="wrn">🧭</span> Presenter Canvas</h3>
-        <p>Open a dedicated browser whiteboard for live drawing with pen/shape/icon tools, animated flow lines, and JSON save/load for reusable episode scenes.</p>
-    </div>
-
-    <div class="card">
-        <h3><span class="wrn">🎬</span> Storyboard DSL</h3>
-        <p>Launch a timeline parser/player to script bytebytego-style step-by-step animation from JSON DSL. Includes C-Kernel-Engine train/infer presets and canvas-import generation.</p>
-    </div>
-
 </div>
 
-<h2>Architecture</h2>
+<h2>Architecture (GTK4)</h2>
 
 <div class="card card-accent">
-    <div class="diagram">┌───────────────────────────────────────────────── Control Center ─────────────────────────────────────────────────┐
-│                                                                                                                  │
-│  ┌──────────── GtkNotebook (tabbed container) ────────────────────────────────────────────────────────────────┐  │
-│  │                                                                                                            │  │
-│  │   ┌─ Tab 1: Night Light ─┐  ┌─ Tab 2: Screenshots ─┐  ┌─ Tab 3: Shortcuts ─┐  ┌─ Tab 4: Audio ────┐    │  │
-│  │   │                      │  │                       │  │                     │  │                    │    │  │
-│  │   │  GtkScale (temp)     │  │  GtkButton (full)     │  │  GtkTreeView        │  │  GtkScale (vol)    │    │  │
-│  │   │  GtkSwitch (on/off)  │  │  GtkButton (region)   │  │  (shortcut list)    │  │  GtkComboBox       │    │  │
-│  │   │  GtkLabel (status)   │  │  GtkButton (window)   │  │                     │  │  (output device)   │    │  │
-│  │   │                      │  │                       │  │                     │  │                    │    │  │
-│  │   └──────────────────────┘  └───────────────────────┘  └─────────────────────┘  └────────────────────┘    │  │
-│  │                                                                                                            │  │
-│  └────────────────────────────────────────────────────────────────────────────────────────────────────────────┘  │
-│                                                                                                                  │
-│  System calls:   redshift    │    gnome-screenshot / maim    │    (internal)    │    pactl / pw-cli             │
-└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘</div>
+    <div class="diagram">┌──────────────────────────── Control Center (GTK4) ────────────────────────────┐
+│                                                                                 │
+│  Toolbar: Refresh | Open Folder | Delete Selected | Search                      │
+│                                                                                 │
+│  GtkPaned                                                                         │
+│   ├─ Browser section: GtkFlowBox thumbnails + selection/path info               │
+│   └─ Editor section: GtkDrawingArea + Select/Arrow/Rect tool row               │
+│                                                                                 │
+│  Event system: GtkGestureClick + GtkEventControllerMotion/Scroll/Key            │
+└─────────────────────────────────────────────────────────────────────────────────┘</div>
 </div>
-
-<h2>Configuration</h2>
-
-<p>The control center reads its configuration from the C source at compile time. To customize:</p>
-
-<table>
-    <thead>
-        <tr><th>Setting</th><th>Location in Source</th><th>Default</th></tr>
-    </thead>
-    <tbody>
-        <tr><td>Night Light warm temp</td><td><code>NIGHT_TEMP_WARM</code></td><td>3500K</td></tr>
-        <tr><td>Screenshot save dir</td><td><code>SCREENSHOT_DIR</code></td><td><code>~/Screenshots</code></td></tr>
-        <tr><td>Window size</td><td><code>gtk_window_set_default_size</code></td><td>600×400</td></tr>
-    </tbody>
-</table>
 
 <h2>AwesomeWM Integration</h2>
 

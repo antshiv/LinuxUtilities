@@ -369,16 +369,17 @@ For the full list of shortcuts (AwesomeWM keys, gromit/presenter controls, mouse
 
 ## Desktop GUI Control Center
 
-- `linux_control_center.c`: GTK desktop app with:
-  - Night Light tab (manual/auto Redshift controls)
-  - Shortcuts tab (presenter workflow + grouped key/mouse/shell cheat sheet)
-  - Screenshots tab (thumbnail browser, path/prompt copy, open folder)
-- `build_linux_control_center.sh`: Build helper for the GTK app.
+- `linux_control_center.c`: GTK4 desktop app with:
+  - Screenshot browser (multi-select thumbnails, search, open folder, delete selected)
+  - Event-controller annotation canvas (Select/Arrow/Rect tools)
+  - Keyboard shortcuts: `Ctrl+A` select all, `Delete`, `Esc`, `Ctrl+Scroll` zoom
+- `build_linux_control_center.sh`: Build helper for the GTK4 app.
+- GTK4 migration notes: `docs/GTK4_MIGRATION_NOTES.md`
 
 Build/run:
 
 ```bash
-sudo apt install libgtk-3-dev pkg-config
+sudo apt install libgtk-4-dev pkg-config
 ./build_linux_control_center.sh
 ./build/bin/linux_control_center
 # optional install target for AwesomeWM/global launchers
@@ -388,7 +389,7 @@ sudo apt install libgtk-3-dev pkg-config
 
 ## GTK DSL Starter (Box/Grid Mapping)
 
-- `gtk_dsl_demo.c`: A small declarative GTK runtime that reads a `.gdsl` file and maps:
+- `gtk_dsl_demo.c`: A small declarative GTK4 runtime that reads a `.gdsl` file and maps:
   - `type=box` -> `GtkBox`
   - `type=grid` -> `GtkGrid`
   - `type=label|button|switch|scale|separator` -> matching GTK widgets
@@ -398,6 +399,7 @@ sudo apt install libgtk-3-dev pkg-config
 Build/run:
 
 ```bash
+sudo apt install libgtk-4-dev pkg-config
 ./build_gtk_dsl_demo.sh
 ./build/bin/gtk_dsl_demo dsl/workbench.gdsl
 # optional install target

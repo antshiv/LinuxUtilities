@@ -8,16 +8,16 @@
 <h2>Build Issues</h2>
 
 <details open>
-    <summary><strong>gcc: error: gtk+-3.0 not found</strong></summary>
-    <p>GTK3 development headers are missing. Install them:</p>
-    <pre><code>sudo apt install libgtk-3-dev</code></pre>
+    <summary><strong>gcc: error: gtk4 not found</strong></summary>
+    <p>GTK4 development headers are missing (needed for <code>linux_control_center</code> and <code>gtk_dsl_demo</code>). Install them:</p>
+    <pre><code>sudo apt install libgtk-4-dev</code></pre>
 </details>
 
 <details>
-    <summary><strong>pkg-config --libs gtk+-3.0 fails</strong></summary>
-    <p>Ensure <code>pkg-config</code> is installed and GTK3 <code>.pc</code> files are on the path:</p>
-    <pre><code>sudo apt install pkg-config libgtk-3-dev
-pkg-config --modversion gtk+-3.0   # should print e.g. 3.24.33</code></pre>
+    <summary><strong>pkg-config --libs gtk4 fails</strong></summary>
+    <p>Ensure <code>pkg-config</code> is installed and GTK4 <code>.pc</code> files are on the path:</p>
+    <pre><code>sudo apt install pkg-config libgtk-4-dev
+pkg-config --modversion gtk4</code></pre>
 </details>
 
 <details>
@@ -192,6 +192,6 @@ done</code></pre>
     <p>Include the following in your report:</p>
     <pre><code>uname -a
 awesome --version
-pkg-config --modversion gtk+-3.0
+pkg-config --modversion gtk4
 echo $XDG_SESSION_TYPE</code></pre>
 </details>

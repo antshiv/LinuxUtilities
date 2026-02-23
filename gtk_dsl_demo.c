@@ -113,7 +113,7 @@ static GtkAlign parse_align(const gchar *text, GtkAlign fallback) {
         return GTK_ALIGN_CENTER;
     }
     if (g_ascii_strcasecmp(text, "baseline") == 0) {
-        return GTK_ALIGN_BASELINE;
+        return GTK_ALIGN_BASELINE_FILL;
     }
     return fallback;
 }
@@ -150,18 +150,16 @@ static void on_dsl_switch_notify(GObject *obj, GParamSpec *pspec, gpointer user_
 }
 
 static void add_style_classes(GtkWidget *widget, const gchar *class_list) {
-    GtkStyleContext *ctx = NULL;
     gchar **tokens = NULL;
 
     if (!widget || !class_list || *class_list == '\0') {
         return;
     }
 
-    ctx = gtk_widget_get_style_context(widget);
     tokens = g_strsplit_set(class_list, ",; ", -1);
     for (gint i = 0; tokens && tokens[i]; ++i) {
         if (tokens[i][0] != '\0') {
-            gtk_style_context_add_class(ctx, tokens[i]);
+            gtk_widget_add_css_class(widget, tokens[i]);
         }
     }
     g_strfreev(tokens);
@@ -229,7 +227,7 @@ static GtkWidget *create_widget_for_group(GKeyFile *kf, const gchar *group, GErr
             gtk_label_set_text(GTK_LABEL(widget), text);
         }
         gtk_label_set_xalign(GTK_LABEL(widget), (gfloat)xalign);
-        gtk_label_set_line_wrap(GTK_LABEL(widget), wrap);
+        gtk_label_set_wrap(GTK_LABEL(widget), wrap);
         g_free(text);
     } else if (g_ascii_strcasecmp(type, "button") == 0) {
         gchar *text = kf_get_string_default(kf, group, "text", group);
@@ -304,18 +302,23 @@ static gboolean attach_widget_to_parent(GKeyFile *kf, const gchar *group, GHashT
     }
 
     if (GTK_IS_BOX(parent)) {
-        gboolean expand = kf_get_bool_default(kf, group, "expand", FALSE);
-        gboolean fill = kf_get_bool_default(kf, group, "fill", expand);
-        guint padding = (guint)kf_get_int_default(kf, group, "padding", 0);
-        gtk_box_pack_start(GTK_BOX(parent), child, expand, fill, padding);
+        gtk_box_append(GTK_BOX(parent), child);
     } else if (GTK_IS_GRID(parent)) {
         gint left = kf_get_int_default(kf, group, "left", 0);
         gint top = kf_get_int_default(kf, group, "top", 0);
         gint width = MAX(1, kf_get_int_default(kf, group, "width", 1));
         gint height = MAX(1, kf_get_int_default(kf, group, "height", 1));
         gtk_grid_attach(GTK_GRID(parent), child, left, top, width, height);
-    } else if (GTK_IS_CONTAINER(parent)) {
-        gtk_container_add(GTK_CONTAINER(parent), child);
+    } else if (GTK_IS_WINDOW(parent)) {
+        gtk_window_set_child(GTK_WINDOW(parent), child);
+    } else if (GTK_IS_SCROLLED_WINDOW(parent)) {
+        gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(parent), child);
+    } else if (GTK_IS_FRAME(parent)) {
+        gtk_frame_set_child(GTK_FRAME(parent), child);
+    } else if (GTK_IS_REVEALER(parent)) {
+        gtk_revealer_set_child(GTK_REVEALER(parent), child);
+    } else if (GTK_IS_OVERLAY(parent)) {
+        gtk_overlay_set_child(GTK_OVERLAY(parent), child);
     } else {
         g_set_error(error, dsl_error_quark(), 3, "Parent '%s' is not a container for [%s]", parent_id, group);
         g_free(parent_id);
@@ -422,15 +425,9 @@ static void apply_demo_css(void) {
         "  background: #35455d;"
         "}";
     GtkCssProvider *provider = gtk_css_provider_new();
-    GError *error = NULL;
-
-    gtk_css_provider_load_from_data(provider, css, -1, &error);
-    if (error) {
-        g_warning("CSS load failed: %s", error->message);
-        g_clear_error(&error);
-    }
-    gtk_style_context_add_provider_for_screen(
-        gdk_screen_get_default(),
+    gtk_css_provider_load_from_string(provider, css);
+    gtk_style_context_add_provider_for_display(
+        gdk_display_get_default(),
         GTK_STYLE_PROVIDER(provider),
         GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
     g_object_unref(provider);
@@ -454,21 +451,21 @@ static void on_activate(GtkApplication *app, gpointer user_data) {
         error_label = gtk_label_new(message);
         gtk_label_set_xalign(GTK_LABEL(error_label), 0.0f);
         gtk_label_set_yalign(GTK_LABEL(error_label), 0.0f);
-        gtk_label_set_line_wrap(GTK_LABEL(error_label), TRUE);
+        gtk_label_set_wrap(GTK_LABEL(error_label), TRUE);
         gtk_widget_set_margin_top(error_label, 16);
         gtk_widget_set_margin_bottom(error_label, 16);
         gtk_widget_set_margin_start(error_label, 16);
         gtk_widget_set_margin_end(error_label, 16);
-        gtk_container_add(GTK_CONTAINER(window), error_label);
+        gtk_window_set_child(GTK_WINDOW(window), error_label);
         g_clear_error(&error);
         g_free(message);
     } else {
         gtk_window_set_title(GTK_WINDOW(window), title ? title : "GTK DSL Demo");
-        gtk_container_add(GTK_CONTAINER(window), root);
+        gtk_window_set_child(GTK_WINDOW(window), root);
     }
 
     g_free(title);
-    gtk_widget_show_all(window);
+    gtk_window_present(GTK_WINDOW(window));
 }
 
 int main(int argc, char **argv) {

@@ -16,7 +16,7 @@
         <tr><td>pkg-config</td><td><code>pkg-config</code></td><td>Build scripts</td></tr>
         <tr><td>X11 / XFixes / XRender</td><td><code>libx11-dev libxext-dev libxfixes-dev libxrender-dev</code></td><td>Cursor Spotlight</td></tr>
         <tr><td>Cairo</td><td><code>libcairo2-dev</code></td><td>Cursor Spotlight</td></tr>
-        <tr><td>GTK3</td><td><code>libgtk-3-dev</code></td><td>Control Center, GTK DSL</td></tr>
+        <tr><td>GTK4</td><td><code>libgtk-4-dev</code></td><td>Control Center + GTK DSL demo</td></tr>
         <tr><td>Gromit-MPX</td><td><code>gromit-mpx</code></td><td>Presenter drawing</td></tr>
         <tr><td>xdotool</td><td><code>xdotool</code></td><td>Presenter dash overlay</td></tr>
     </tbody>
@@ -26,7 +26,7 @@
 
 <pre><code>sudo apt install build-essential pkg-config \
     libx11-dev libxext-dev libxfixes-dev libxrender-dev libcairo2-dev \
-    libgtk-3-dev gromit-mpx xdotool
+    libgtk-4-dev gromit-mpx xdotool
 ./install_gromit_profile.sh   # installs compat profile by default</code></pre>
 
 <h2>Building Tools</h2>
@@ -48,7 +48,7 @@
 # Optional install
 ./build_linux_control_center.sh --install
 ~/Programs/bin/linux_control_center</code></pre>
-        <p>GTK3 app with Night Light, Shortcuts, and Screenshots tabs.</p>
+        <p>GTK4 app with screenshot browser, multi-select controls, and annotation canvas.</p>
     </div>
     <div class="card card-blue">
         <h3>GTK DSL Demo</h3>
@@ -57,7 +57,7 @@
 # Optional install
 ./build_gtk_dsl_demo.sh --install
 ~/Programs/bin/gtk_dsl_demo dsl/workbench.gdsl</code></pre>
-        <p>Edit <code>dsl/workbench.gdsl</code> to customise the launcher.</p>
+        <p>GTK4 DSL runtime. Edit <code>dsl/workbench.gdsl</code> to customise the launcher.</p>
     </div>
     <div class="card">
         <h3>Presenter Dash</h3>

@@ -41,7 +41,7 @@ if [[ "$rc" -eq 0 ]]; then
     exit 0
 fi
 
-if [[ -f "$LOG_FILE" ]] && grep -qi "cannot open display" "$LOG_FILE"; then
+if [[ -f "$LOG_FILE" ]] && grep -Eqi "cannot open display|failed to open display" "$LOG_FILE"; then
     echo "Smoke test skipped: display server unavailable in this environment."
     exit 0
 fi

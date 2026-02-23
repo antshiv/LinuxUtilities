@@ -6,7 +6,7 @@
     <p>A collection of pure C programs, shell scripts, and Lua configs that turn a stock Linux Mint + AwesomeWM setup into a streamlined daily-driver for presentations, development, and AI tooling.</p>
     <div class="hero-stats">
         <span class="hero-stat"><strong>C</strong> cursor spotlight</span>
-        <span class="hero-stat"><strong>GTK3</strong> control center</span>
+        <span class="hero-stat"><strong>GTK4</strong> control center</span>
         <span class="hero-stat"><strong>Lua</strong> AwesomeWM config</span>
         <span class="hero-stat"><strong>Bash</strong> workflow scripts</span>
         <span class="hero-stat"><strong>0</strong> npm dependencies</span>
@@ -57,7 +57,7 @@
     <div class="overview-badges">
         <span class="overview-badge" style="--accent:#c4a7ff">C</span>
         <span class="overview-badge" style="--accent:#47b475">Bash</span>
-        <span class="overview-badge" style="--accent:#07adf8">GTK3</span>
+        <span class="overview-badge" style="--accent:#07adf8">GTK4</span>
         <span class="overview-badge" style="--accent:#bc8cff">Lua</span>
         <span class="overview-badge" style="--accent:#f85149">X11</span>
     </div>
@@ -105,7 +105,7 @@
         <div class="card card-blue">
             <div class="feature-icon blue">🖥</div>
             <h3>Desktop Control Center</h3>
-            <p>GTK3 desktop app with Night Light (Redshift), Shortcuts cheat sheet, and Screenshot browser tabs. Pure C, no Electron.</p>
+            <p>GTK4 desktop app with screenshot browser, annotation canvas, and keyboard-first screenshot management. Pure C, no Electron.</p>
             <div class="card-arrow">Explore →</div>
         </div>
     </a>
@@ -113,7 +113,7 @@
         <div class="card">
             <div class="feature-icon grey">⚙</div>
             <h3>GTK DSL Launcher</h3>
-            <p>Declarative <code>.gdsl</code> file format → GTK3 widgets at runtime. Box/Grid layout, buttons, switches, scales — no recompile for UI changes.</p>
+            <p>Declarative <code>.gdsl</code> file format → GTK4 widgets at runtime. Box/Grid layout, buttons, switches, scales — no recompile for UI changes.</p>
             <div class="card-arrow">Explore →</div>
         </div>
     </a>
@@ -148,7 +148,7 @@ sudo apt install pkg-config libx11-dev libxext-dev libxfixes-dev libxrender-dev 
 ./build_cursor_spotlight.sh --install   # optional: ~/Programs/bin/cursor_spotlight
 
 # Control center
-sudo apt install libgtk-3-dev pkg-config
+sudo apt install libgtk-4-dev pkg-config
 ./build_linux_control_center.sh
 ./build_linux_control_center.sh --install   # optional: ~/Programs/bin/linux_control_center
 
@@ -186,7 +186,7 @@ cp rc.lua ~/.config/awesome/rc.lua
     <span class="alert-icon">⚡</span>
     <div>
         <strong>Zero bloat.</strong> No Electron, no npm, no Python GUI frameworks.
-        Everything is C + GTK3, Bash, or Lua — tools that are already on your system
+        Everything is C + GTK4, Bash, or Lua — tools that are already on your system
         or one <code>apt install</code> away.
     </div>
 </div>

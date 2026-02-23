@@ -45,9 +45,9 @@ if ! command -v pkg-config >/dev/null 2>&1; then
     exit 1
 fi
 
-if ! pkg-config --exists gtk+-3.0; then
-    echo "Error: GTK 3 development headers are missing."
-    echo "Install with: sudo apt install libgtk-3-dev"
+if ! pkg-config --exists gtk4; then
+    echo "Error: GTK 4 development headers are missing."
+    echo "Install with: sudo apt install libgtk-4-dev"
     exit 1
 fi
 
@@ -55,7 +55,7 @@ mkdir -p "${BUILD_DIR}"
 
 cc -O2 -g -Wall -Wextra -Wpedantic \
    -o "${OUT}" "${SRC}" \
-   $(pkg-config --cflags --libs gtk+-3.0) \
+   $(pkg-config --cflags --libs gtk4) \
    -lm
 
 if [[ "${INSTALL_BIN}" -eq 1 ]]; then
