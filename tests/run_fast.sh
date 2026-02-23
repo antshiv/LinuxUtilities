@@ -38,6 +38,13 @@ else
     echo "[fast] Skipping make -n wacom-switch (no active X11 display)"
 fi
 
+if command -v node >/dev/null 2>&1; then
+    echo "[fast] Presenter canvas JS tests"
+    node --test "$ROOT_DIR/tests/presenter_canvas_logic.test.mjs"
+else
+    echo "[fast] Skipping presenter canvas JS tests (node not installed)"
+fi
+
 echo "[fast] Build + GUI smoke"
 "$ROOT_DIR/test_linux_control_center_smoke.sh"
 

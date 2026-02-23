@@ -76,6 +76,23 @@ Override default HDMI output name if needed:
 make wacom WACOM_OUTPUT=HDMI-A-1
 ```
 
+Live presentation launcher (reveal.js + canvas + optional code tab):
+
+```bash
+# reveal + presenter canvas
+make present-live REVEAL_URL=http://127.0.0.1:8000
+
+# also open a code/doc window and auto-map tablet to first external display
+make present-live REVEAL_URL=http://127.0.0.1:8000 CODE_URL=https://github.com/your/repo PRESENT_WACOM_MODE=external
+```
+
+`PRESENT_WACOM_MODE` options:
+- `none` (default): do not change mapping
+- `default`: run `make wacom`
+- `external`: run `make wacom-external`
+- `switch`: run `make wacom-switch`
+- `<output>`: map directly to that output, e.g. `PRESENT_WACOM_MODE=HDMI-1`
+
 ## Scripts:
 
 - `import_screenshots.sh`: A utility to manage screenshots and phone photos, moving them to designated directories and generating prompts for AI CLI tools.
@@ -85,6 +102,7 @@ make wacom WACOM_OUTPUT=HDMI-A-1
 - `rescue-windows.sh`: A script potentially used for recovery or specific interactions with a Windows environment, possibly in a dual-boot or virtualized setup.
 - `cursor_spotlight.c`: Lightweight X11 cursor spotlight overlay utility.
 - `build_cursor_spotlight.sh`: Build helper for `cursor_spotlight`.
+- `launch_present_live.sh`: Opens reveal.js + Presenter Canvas (+ optional code URL) for live presentation flow.
 
 ## Cursor Spotlight Utility
 
@@ -215,9 +233,47 @@ Core controls inside the canvas:
 - `Ctrl+Shift+S`: export DSL starter JSON for storyboard timeline player
 - `Ctrl+Z` / `Ctrl+Y`: undo/redo
 - `Delete`: delete selected shape
+- `K`: play/pause timeline transcript mode
+- `X`: split selected timeline caption clip at playhead
+- `S`: toggle snap (grid + shape center/edge guides)
 - `F` / `H`: focus mode and show/hide controls
 - Mouse wheel: zoom at cursor
 - Middle mouse drag or `0` pan tool: move camera
+
+Timeline + transcript mode:
+- Open `Timeline / Transcript` in the left panel.
+- `Load Transcript JSON`: load timed text segments.
+- `Load Audio`: optional audio track for time sync.
+- `Play` (or `K`) to scrub time and show live text overlay on canvas.
+- `Add Caption At Time`: inserts current segment text as editable text object.
+- Caption template panel supports preset styles (`Typewriter`, `Karaoke`, `Impact`, etc.) and `Custom` style controls.
+- Karaoke/current-word highlight follows active timeline/audio progress when enabled.
+- Template buttons now render as style cards (`name + meta`) for faster scanning.
+- Sidebar sections are collapsible (layers/shapes/timeline/tools/style/canvas/align/pathfinder/save/notes) so the UI stays compact during longer sessions.
+- Tool/action buttons use icon + label styling to reduce visual clutter.
+- Bottom timeline editor supports phase-1 clip editing:
+  - Drag clip body to move in time.
+  - Drag clip edges to trim start/end.
+  - `Shift+Click` for multi-select clips.
+  - `Split` button (or `X`) at playhead.
+  - `Delete Clip` button (or `Delete` when only clips are selected).
+  - Snap (`Off/0.1/0.25/0.5/1.0s`) and zoom controls.
+
+Transcript JSON format (supported):
+
+```json
+{
+  "segments": [
+    { "start": 0.0, "end": 1.6, "text": "How can I make all this work?" },
+    { "start": 1.6, "end": 3.0, "text": "We animate ideas with timeline captions." }
+  ]
+}
+```
+
+You can also pass the same segment objects as a top-level JSON array.
+
+Starter sample:
+- `assets/examples/presenter-transcript.sample.json`
 
 Presenter Canvas UI (captured on February 21, 2026):
 
@@ -237,6 +293,41 @@ Wacom + Presenter Canvas quick flow:
 2. Run `make wacom`.
 3. Launch `./launch_presenter_canvas.sh`.
 4. Use pen tool (`2`) or arrow tool (`4`) and draw live while recording.
+
+Reveal.js + Presenter Canvas live flow:
+1. Start your reveal.js deck (`npm start` in your reveal repo, usually at `http://127.0.0.1:8000`).
+2. Run `make present-live REVEAL_URL=http://127.0.0.1:8000 PRESENT_WACOM_MODE=external`.
+3. Keep reveal.js on the audience output and Presenter Canvas on the pen display.
+4. Optional: add `CODE_URL=<url>` to open code/docs in a third window.
+
+## Shorts Studio (Transcript -> MP4)
+
+Goal: record voice, transcribe it, style captions via JSON, and export short-form video.
+
+```bash
+# 1) Record microphone audio (PulseAudio/PipeWire default source)
+make shorts-record SHORTS_RECORD_OUTPUT=/tmp/voice.wav SHORTS_RECORD_DURATION=60
+
+# 2) Transcribe to timestamped JSON
+make shorts-transcribe SHORTS_AUDIO=/tmp/voice.wav SHORTS_TRANSCRIPT=/tmp/voice.json
+
+# 3) Render captions onto a source video using style template
+make shorts-render SHORTS_VIDEO=input.mp4 SHORTS_TRANSCRIPT=/tmp/voice.json SHORTS_STYLE=config/shorts_style_default.json SHORTS_OUTPUT=/tmp/short.mp4
+```
+
+Notes:
+- Style controls live in `config/shorts_style_default.json` (font, colors, background box, alignment, margins, clip window, aspect).
+- Rendering uses `ffmpeg` and outputs H.264/AAC MP4.
+- Transcription uses `faster-whisper` or `openai-whisper` if installed.
+
+Install transcription backend (one option):
+
+```bash
+pip install faster-whisper
+```
+
+Tool entrypoint:
+- `scripts/shorts_studio.py` (`transcribe` and `render` subcommands)
 
 ## Storyboard DSL Player (Timeline + Parser)
 

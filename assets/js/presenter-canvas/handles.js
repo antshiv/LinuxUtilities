@@ -21,6 +21,9 @@ export function createHandleController(deps) {
     if (!shape) {
       return null;
     }
+    if (shape.hidden || shape.locked) {
+      return null;
+    }
     if (shape.type === 'line' || shape.type === 'arrow' || shape.type === 'rect') {
       return shape;
     }
@@ -156,6 +159,10 @@ export function createHandleController(deps) {
     }
     const shape = state.shapes.find((item) => item.id === drag.shapeId);
     if (!shape) {
+      state.pointer.handleDrag = null;
+      return false;
+    }
+    if (shape.hidden || shape.locked) {
       state.pointer.handleDrag = null;
       return false;
     }

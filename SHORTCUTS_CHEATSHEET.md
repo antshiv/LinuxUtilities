@@ -169,6 +169,38 @@ make wacom-external        # auto-detect external output (prefers HDMI)
 make wacom-help
 ```
 
+Reveal.js + Canvas launch (single command):
+
+```bash
+# reveal.js + presenter canvas
+make present-live REVEAL_URL=http://127.0.0.1:8000
+
+# optional third window (code/docs) + external tablet remap
+make present-live REVEAL_URL=http://127.0.0.1:8000 CODE_URL=https://github.com/your/repo PRESENT_WACOM_MODE=external
+```
+
+`PRESENT_WACOM_MODE`:
+- `none` (default), `default`, `external`, `switch`, or explicit output name like `HDMI-1`.
+
+### Shorts Studio (transcript-driven captions)
+
+```bash
+# record audio
+make shorts-record SHORTS_RECORD_OUTPUT=/tmp/voice.wav SHORTS_RECORD_DURATION=60
+
+# transcribe audio/video into JSON
+make shorts-transcribe SHORTS_AUDIO=/tmp/voice.wav SHORTS_TRANSCRIPT=/tmp/voice.json
+
+# render MP4 with styled captions
+make shorts-render SHORTS_VIDEO=input.mp4 SHORTS_TRANSCRIPT=/tmp/voice.json SHORTS_STYLE=config/shorts_style_default.json SHORTS_OUTPUT=/tmp/short.mp4
+```
+
+Main style file:
+- `config/shorts_style_default.json`
+
+Main tool:
+- `scripts/shorts_studio.py`
+
 ### Storyboard DSL Player (timeline parser/player)
 
 Launch:

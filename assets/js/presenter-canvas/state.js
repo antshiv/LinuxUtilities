@@ -1,15 +1,15 @@
 export const TOOLS = [
-  { id: 'select', label: 'Select', hotkey: '1' },
-  { id: 'pen', label: 'Pen', hotkey: '2' },
-  { id: 'line', label: 'Line', hotkey: '3' },
-  { id: 'arrow', label: 'Arrow', hotkey: '4' },
-  { id: 'rect', label: 'Rect', hotkey: '5' },
-  { id: 'ellipse', label: 'Ellipse', hotkey: '6' },
-  { id: 'text', label: 'Text', hotkey: '7' },
-  { id: 'icon', label: 'Icon', hotkey: '8' },
-  { id: 'eraser', label: 'Eraser', hotkey: '9' },
-  { id: 'laser', label: 'Laser', hotkey: 'L' },
-  { id: 'pan', label: 'Pan', hotkey: '0' }
+  { id: 'select', label: 'Select', hotkey: '1', icon: '▣' },
+  { id: 'pen', label: 'Pen', hotkey: '2', icon: '✎' },
+  { id: 'line', label: 'Line', hotkey: '3', icon: '╱' },
+  { id: 'arrow', label: 'Arrow', hotkey: '4', icon: '➜' },
+  { id: 'rect', label: 'Rect', hotkey: '5', icon: '▭' },
+  { id: 'ellipse', label: 'Ellipse', hotkey: '6', icon: '◯' },
+  { id: 'text', label: 'Text', hotkey: '7', icon: 'T' },
+  { id: 'icon', label: 'Icon', hotkey: '8', icon: '⌁' },
+  { id: 'eraser', label: 'Eraser', hotkey: '9', icon: '⌫' },
+  { id: 'laser', label: 'Laser', hotkey: 'L', icon: '◎' },
+  { id: 'pan', label: 'Pan', hotkey: '0', icon: '✥' }
 ];
 
 export const STORAGE_KEY = 'linuxutilities.presenter_canvas.v1';
@@ -27,7 +27,11 @@ export function clamp(val, min, max) {
 }
 
 export function uid() {
-  return `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  // Prefer platform UUIDs for collision-safe ids across sessions/imports.
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export function makeArtboard(name, base) {
@@ -97,8 +101,10 @@ export function createInitialState() {
       temp: null,
       lastWorld: null,
       marquee: null,
-      handleDrag: null
+      handleDrag: null,
+      selectionDrag: null
     },
+    snapGuides: { x: null, y: null },
     history: [],
     historyIndex: -1,
     dashTick: 0,
@@ -109,7 +115,43 @@ export function createInitialState() {
     laserTrails: [],
     panelCollapsed: {
       layers: false,
-      shapes: false
+      shapes: false,
+      timeline: false,
+      tools: false,
+      style: false,
+      canvas: false,
+      selected: true,
+      align: true,
+      pathfinder: true,
+      save: false,
+      notes: true
+    },
+    timeline: {
+      currentTime: 0,
+      duration: 30,
+      playing: false,
+      lastTickMs: 0,
+      zoomPxPerSec: 120,
+      snapSec: 0.25,
+      captionStyle: {
+        template: 'karaoke_classic',
+        mode: 'karaoke',
+        textColor: '#f7fbff',
+        strokeColor: '#05070d',
+        strokeWidth: 4,
+        highlightColor: '#ffe05d',
+        highlightTextColor: '#121315',
+        overlayBgColor: '#0b1018',
+        overlayBgOpacity: 0.76,
+        fontSize: 22,
+        fontWeight: 800,
+        lineHeight: 1.34,
+        letterSpacing: 0,
+        wordHighlight: true
+      },
+      transcriptSegments: [],
+      transcriptName: '',
+      audioName: ''
     }
   };
 }

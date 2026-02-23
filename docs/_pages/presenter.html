@@ -111,6 +111,20 @@
 make wacom-switch          # cycle mapping across connected outputs
 make wacom-help</code></pre>
 
+<h3>Timeline + Transcript Workflow</h3>
+<p>The canvas now includes a <strong>Timeline / Transcript</strong> panel so you can play timed captions during narration.</p>
+<ol>
+    <li>Open <code>./launch_presenter_canvas.sh</code>.</li>
+    <li>In <strong>Timeline / Transcript</strong>, click <code>Load Transcript JSON</code>.</li>
+    <li>Optionally click <code>Load Audio</code> to sync timeline to voice track.</li>
+    <li>Press <kbd>K</kbd> (or Play) to run timeline and show live caption overlay.</li>
+    <li>Use <code>Add Caption At Time</code> to insert the current segment as editable canvas text.</li>
+</ol>
+
+<p>Transcript JSON can be <code>{ "segments": [...] }</code> or a top-level array where each segment has <code>start</code>, <code>end</code>, and <code>text</code>.</p>
+<p>The bottom timeline editor includes caption clip drag/trim/split, multi-select (<kbd>Shift</kbd>+click), snap presets, and zoom for precise narration timing.</p>
+<p>Recent UI updates: collapsible sidebar sections keep controls compact, tool/action buttons are icon-labeled, and caption presets render as quick style cards with short descriptors.</p>
+
 <div class="card">
     <h3>Pipeline</h3>
     <div class="diagram"><span class="wrn">1.</span> Draw your scene in <strong>Presenter Canvas</strong>

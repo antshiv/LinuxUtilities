@@ -1,0 +1,19 @@
+{
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 1.8,
+      "text": "How can I make all this work?"
+    },
+    {
+      "start": 1.8,
+      "end": 3.9,
+      "text": "Use timeline captions and draw while you narrate."
+    },
+    {
+      "start": 3.9,
+      "end": 6.2,
+      "text": "Presenter Canvas keeps transcript and visuals in sync."
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "font_family": "DejaVu Sans",
+  "font_size": 64,
+  "text_color": "#FFFFFF",
+  "outline_color": "#000000",
+  "outline_size": 0,
+  "background_color": "#88000000",
+  "bold": true,
+  "italic": false,
+  "alignment": "bottom_center",
+  "margin_h": 80,
+  "margin_v": 150,
+  "target_width": 1080,
+  "target_height": 1920,
+  "max_words_per_caption": 6,
+  "uppercase": false,
+  "replace": {
+    " uh ": " ",
+    " um ": " ",
+    " you know ": " "
+  },
+  "clip_start_sec": 0,
+  "clip_duration_sec": 30,
+  "crf": 18,
+  "audio_bitrate": "192k"
+}

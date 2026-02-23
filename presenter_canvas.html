@@ -131,23 +131,137 @@
     button {
       cursor: pointer;
       min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: border-color 0.14s ease, transform 0.08s ease, background 0.14s ease, box-shadow 0.14s ease;
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
     }
 
     button:hover, select:hover, input[type="number"]:hover, input[type="text"]:hover {
       border-color: #8ebfff;
+      background: #243354;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    button:focus-visible, select:focus-visible, input:focus-visible {
+      outline: 2px solid rgba(126, 191, 255, 0.72);
+      outline-offset: 1px;
     }
 
     button.tool {
-      min-height: 40px;
+      min-height: 50px;
       font-size: 11px;
-      padding: 6px;
+      padding: 7px 8px;
       line-height: 1.15;
+      justify-content: flex-start;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 4px;
+      background: linear-gradient(180deg, #1e2b46, #1a253c);
+    }
+
+    button.tool .tool-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      justify-content: space-between;
+    }
+
+    button.tool .tool-icon {
+      min-width: 20px;
+      height: 20px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: #e8f2ff;
+      background: linear-gradient(140deg, #2f4f74, #2b3e61);
+      border: 1px solid rgba(140, 184, 250, 0.42);
+    }
+
+    button.tool .tool-label {
+      flex: 1;
+      text-align: left;
+      color: #dbe8ff;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    button.tool .tool-hotkey {
+      margin-left: auto;
+      border: 1px solid rgba(140, 166, 214, 0.42);
+      border-radius: 6px;
+      background: #152036;
+      color: #bdd2f4;
+      padding: 1px 5px;
+      font-family: "JetBrains Mono", "Fira Mono", monospace;
+      font-size: 10px;
+      line-height: 1.2;
     }
 
     button.tool.active {
-      background: linear-gradient(120deg, #2a5276, #404089);
+      background: linear-gradient(120deg, #2f5c84, #3f468f);
       border-color: #84b8ff;
       color: #eef6ff;
+      box-shadow: 0 0 0 1px rgba(137, 191, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    button.tool.active .tool-icon {
+      background: linear-gradient(140deg, #3c6ca0, #3a5d94);
+      border-color: rgba(176, 215, 255, 0.7);
+    }
+
+    button.with-icon {
+      justify-content: flex-start;
+      text-align: left;
+      padding-left: 8px;
+    }
+
+    button.with-icon .btn-ico {
+      width: 18px;
+      min-width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: #e5efff;
+      background: linear-gradient(150deg, #2b4267, #243552);
+      border: 1px solid rgba(148, 189, 245, 0.4);
+    }
+
+    button.with-icon .btn-ico.svg {
+      padding: 1px;
+    }
+
+    button.with-icon .btn-ico.svg svg {
+      width: 12px;
+      height: 12px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      display: block;
+    }
+
+    button.with-icon .btn-label {
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     button.primary {
@@ -252,6 +366,34 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .motion-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .motion-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .motion-field label {
+      margin: 0;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #afbfde;
+    }
+
+    .motion-field input[type="number"],
+    .motion-field select {
+      min-height: 30px;
+      font-size: 11px;
+      padding: 5px 7px;
+    }
+
     label {
       font-size: 12px;
       color: var(--muted);
@@ -317,6 +459,157 @@
       min-height: 34px;
     }
 
+    .timeline-scrub {
+      width: 100%;
+      margin-top: 6px;
+    }
+
+    .timeline-time {
+      margin-top: 6px;
+      font-size: 11px;
+      color: #c9d9ff;
+      font-family: "JetBrains Mono", "Fira Mono", monospace;
+    }
+
+    .transcript-now {
+      margin-top: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #131d33;
+      padding: 8px;
+      font-size: 12px;
+      min-height: 50px;
+      line-height: 1.35;
+      color: #e8f0ff;
+    }
+
+    .transcript-list {
+      margin-top: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #111a2f;
+      max-height: 190px;
+      overflow: auto;
+      padding: 4px;
+    }
+
+    .transcript-item {
+      width: 100%;
+      text-align: left;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      background: #16213a;
+      color: #d9e5ff;
+      padding: 6px 8px;
+      margin: 3px 0;
+      font-size: 11px;
+      line-height: 1.3;
+      display: flex;
+      gap: 7px;
+      align-items: flex-start;
+    }
+
+    .transcript-item .time {
+      color: #8fb2eb;
+      font-family: "JetBrains Mono", "Fira Mono", monospace;
+      min-width: 58px;
+      flex: initial;
+      white-space: nowrap;
+    }
+
+    .transcript-item.active {
+      border-color: #7ab6ff;
+      background: linear-gradient(120deg, #223f68, #2c4a78);
+      color: #eff7ff;
+    }
+
+    .caption-template-list {
+      margin-top: 8px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .caption-template-list button {
+      min-height: 38px;
+      font-size: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 2px;
+      padding: 6px 7px;
+      text-align: left;
+      line-height: 1.15;
+    }
+
+    .caption-template-list button .name {
+      font-weight: 800;
+      color: #e8f1ff;
+      letter-spacing: 0.02em;
+      font-size: 10px;
+    }
+
+    .caption-template-list button .meta {
+      color: #9fb7de;
+      font-weight: 600;
+      font-size: 9px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .caption-template-list button.active {
+      border-color: #88d8bf;
+      background: linear-gradient(130deg, #22483f, #1d3a35);
+      color: #e8fff5;
+      box-shadow: 0 0 0 1px rgba(136, 216, 191, 0.36);
+    }
+
+    .caption-custom {
+      margin-top: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #10192c;
+      padding: 8px;
+      display: none;
+    }
+
+    .caption-custom.active {
+      display: block;
+    }
+
+    .caption-custom .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 8px;
+      align-items: center;
+    }
+
+    .caption-custom .grid label {
+      margin: 0;
+      font-size: 11px;
+      color: #c9dcff;
+    }
+
+    .caption-custom .grid input[type="color"] {
+      width: 100%;
+      min-height: 28px;
+      padding: 2px;
+    }
+
+    .caption-custom .grid input[type="number"],
+    .caption-custom .grid select {
+      min-height: 28px;
+      font-size: 11px;
+    }
+
+    .caption-custom .grid input[type="checkbox"] {
+      justify-self: start;
+      margin: 0;
+    }
+
     .kbd {
       border: 1px solid var(--border);
       border-radius: 6px;
@@ -358,6 +651,19 @@
       body.menu-open .sidebar { transform: translateX(0); }
       .menu-btn {
         display: inline-flex;
+      }
+      .timeline-dock {
+        width: calc(100% - 12px);
+        bottom: 6px;
+        padding: 7px;
+      }
+      .timeline-toolbar .time {
+        margin-left: 0;
+        width: 100%;
+        text-align: left;
+      }
+      .caption-template-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
 
@@ -430,6 +736,321 @@
       display: none;
     }
     .snap-badge.on { display: block; }
+
+    .timeline-dock {
+      --timeline-label-width: 78px;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 10px;
+      z-index: 10;
+      width: min(1180px, calc(100% - 24px));
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(12, 18, 30, 0.92);
+      backdrop-filter: blur(5px);
+      padding: 8px 9px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .timeline-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .timeline-toolbar button {
+      min-height: 30px;
+      font-size: 11px;
+      flex: initial;
+      white-space: nowrap;
+    }
+
+    .timeline-toolbar .inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: #c5d7ff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 6px;
+      background: rgba(16, 24, 41, 0.86);
+    }
+
+    .timeline-toolbar .inline select,
+    .timeline-toolbar .inline input[type="range"] {
+      margin: 0;
+      min-height: 26px;
+    }
+
+    .timeline-toolbar .inline input[type="range"] {
+      width: 110px;
+      padding: 0;
+    }
+
+    .timeline-toolbar .time {
+      margin-left: auto;
+      font-size: 11px;
+      color: #d7e3ff;
+      font-family: "JetBrains Mono", "Fira Mono", monospace;
+      min-width: 132px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .timeline-editor-scroll {
+      position: relative;
+      border: 1px solid rgba(132, 168, 230, 0.24);
+      border-radius: 9px;
+      background: rgba(10, 14, 24, 0.88);
+      max-height: 190px;
+      overflow: auto hidden;
+      padding: 0;
+    }
+
+    .timeline-editor-content {
+      position: relative;
+      min-height: 124px;
+      padding-bottom: 8px;
+      user-select: none;
+    }
+
+    .timeline-ruler {
+      position: relative;
+      height: 26px;
+      display: grid;
+      grid-template-columns: var(--timeline-label-width) 1fr;
+      align-items: stretch;
+      border-bottom: 1px solid rgba(123, 154, 214, 0.2);
+      background: rgba(16, 23, 40, 0.86);
+    }
+
+    .timeline-ruler-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #a9c0ec;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border-right: 1px solid rgba(123, 154, 214, 0.2);
+    }
+
+    .timeline-ruler-body {
+      position: relative;
+      height: 100%;
+    }
+
+    .timeline-ruler-tick {
+      position: absolute;
+      top: 0;
+      width: 1px;
+      background: rgba(145, 177, 235, 0.38);
+      height: 56%;
+    }
+
+    .timeline-ruler-tick.major {
+      height: 100%;
+      background: rgba(145, 177, 235, 0.68);
+    }
+
+    .timeline-ruler-tick-label {
+      position: absolute;
+      top: 2px;
+      transform: translateX(3px);
+      font-size: 10px;
+      color: #c9dcff;
+      font-family: "JetBrains Mono", "Fira Mono", monospace;
+      white-space: nowrap;
+    }
+
+    .timeline-track {
+      position: relative;
+      display: grid;
+      grid-template-columns: var(--timeline-label-width) 1fr;
+      min-height: 42px;
+      border-bottom: 1px solid rgba(123, 154, 214, 0.15);
+    }
+
+    .timeline-track-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #adbfdf;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border-right: 1px solid rgba(123, 154, 214, 0.2);
+      background: rgba(18, 27, 46, 0.78);
+    }
+
+    .timeline-track-body {
+      position: relative;
+      min-height: 42px;
+      background: rgba(12, 18, 32, 0.85);
+    }
+
+    .timeline-track-body.captions {
+      background: linear-gradient(180deg, rgba(14, 22, 37, 0.9), rgba(11, 17, 30, 0.9));
+      cursor: crosshair;
+    }
+
+    .timeline-audio-clip,
+    .timeline-shape-clip {
+      position: absolute;
+      top: 7px;
+      height: 28px;
+      border-radius: 7px;
+      border: 1px solid rgba(120, 170, 255, 0.45);
+      background: linear-gradient(135deg, rgba(35, 70, 126, 0.88), rgba(30, 48, 90, 0.92));
+      color: #e7f0ff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 6px 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      pointer-events: none;
+    }
+
+    .timeline-shape-clip {
+      border-color: rgba(130, 214, 185, 0.45);
+      background: linear-gradient(135deg, rgba(35, 102, 87, 0.88), rgba(22, 72, 62, 0.92));
+    }
+
+    .timeline-shape-clip.motion {
+      height: 16px;
+      padding: 2px 6px;
+      font-size: 9px;
+      border-color: rgba(116, 228, 196, 0.65);
+      background: linear-gradient(135deg, rgba(22, 114, 95, 0.95), rgba(14, 82, 69, 0.98));
+      box-shadow: inset 0 0 0 1px rgba(174, 242, 221, 0.2);
+    }
+
+    .timeline-clip {
+      position: absolute;
+      top: 7px;
+      height: 28px;
+      border-radius: 7px;
+      border: 1px solid rgba(130, 175, 255, 0.48);
+      background: linear-gradient(135deg, #2e4f7f, #233a62);
+      color: #e9f1ff;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      min-width: 14px;
+      overflow: hidden;
+      cursor: grab;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    }
+
+    .timeline-clip:active {
+      cursor: grabbing;
+    }
+
+    .timeline-clip.active {
+      border-color: #9ed1ff;
+      box-shadow: 0 0 0 1px rgba(131, 192, 255, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+      background: linear-gradient(135deg, #3a639a, #2b4b7c);
+    }
+
+    .timeline-clip.current {
+      border-color: #78f0c9;
+      box-shadow: 0 0 0 1px rgba(80, 236, 187, 0.62);
+    }
+
+    .timeline-clip-label {
+      display: block;
+      padding: 0 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 100%;
+      pointer-events: none;
+    }
+
+    .timeline-clip-handle {
+      position: absolute;
+      top: 0;
+      width: 7px;
+      height: 100%;
+      cursor: ew-resize;
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .timeline-clip-handle.left {
+      left: 0;
+      border-top-left-radius: 7px;
+      border-bottom-left-radius: 7px;
+    }
+
+    .timeline-clip-handle.right {
+      right: 0;
+      border-top-right-radius: 7px;
+      border-bottom-right-radius: 7px;
+    }
+
+    .timeline-playhead {
+      position: absolute;
+      top: 0;
+      width: 2px;
+      background: linear-gradient(180deg, rgba(132, 230, 255, 0.95), rgba(95, 158, 255, 0.7));
+      pointer-events: none;
+      box-shadow: 0 0 0 1px rgba(104, 172, 255, 0.32);
+      border-radius: 2px;
+    }
+
+    .timeline-dock input[type="range"] {
+      margin: 0;
+      width: 100%;
+    }
+
+    .live-transcript-overlay {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: clamp(88px, 24vh, 220px);
+      z-index: 9;
+      min-width: min(780px, calc(100% - 60px));
+      max-width: min(920px, calc(100% - 36px));
+      text-align: center;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(3, 6, 12, 0.72);
+      color: #eef5ff;
+      font-size: 22px;
+      line-height: 1.35;
+      font-weight: 700;
+      text-shadow: 0 1px 1px rgba(0, 0, 0, 0.45);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.12s;
+      white-space: pre-wrap;
+    }
+
+    .live-transcript-overlay.active {
+      opacity: 1;
+    }
+
+    .live-transcript-overlay .word {
+      display: inline-block;
+      padding: 0 0.06em;
+      border-radius: 0.22em;
+      transition: background 0.1s ease, color 0.1s ease, transform 0.08s ease;
+    }
+
+    .live-transcript-overlay .word.active {
+      background: var(--caption-highlight-bg, #ffe05d);
+      color: var(--caption-highlight-color, #0f1118);
+      transform: translateY(-0.02em);
+    }
   </style>
 </head>
 <body>
@@ -459,8 +1080,18 @@
             <button id="btnLayerUp">Layer Up</button>
             <button id="btnLayerDown">Layer Down</button>
           </div>
+          <div class="row">
+            <button id="btnGroupSelection">Group</button>
+            <button id="btnUngroupSelection">Ungroup</button>
+          </div>
+          <div class="row">
+            <button id="btnHideSelection">Hide</button>
+            <button id="btnShowSelection">Show</button>
+            <button id="btnLockSelection">Lock</button>
+            <button id="btnUnlockSelection">Unlock</button>
+          </div>
           <div class="layer-list" id="layerList"></div>
-          <p class="sub" style="margin:8px 0 0">Artboard is the base layer. Shape layers are ordered top to bottom.</p>
+          <p class="sub" style="margin:8px 0 0">Artboard is the base layer. Shape layers are ordered top to bottom. Click a grouped shape to select its group; Ctrl+click selects only that layer.</p>
         </div>
       </section>
 
@@ -482,146 +1113,309 @@
         </div>
       </section>
 
-      <section class="group">
-        <h3>Tools</h3>
-        <div class="tool-grid" id="toolGrid"></div>
-        <p class="sub" style="margin:8px 0 0">Quick keys: <span class="kbd">1..9</span> tools, <span class="kbd">Shift</span> snap angle/ratio, <span class="kbd">Del</span> delete, <span class="kbd">Ctrl+Z/Y</span>, <span class="kbd">F</span> focus, <span class="kbd">H</span> hide/show panel.</p>
-      </section>
-
-      <section class="group">
-        <h3>Style</h3>
-        <div class="row tight">
-          <label for="strokeColor" style="margin:0">Color</label>
-          <input id="strokeColor" type="color" value="#6ec8ff" style="flex:initial;width:72px;padding:2px;height:34px">
-          <label for="bgColor" style="margin:0">Canvas</label>
-          <input id="bgColor" type="color" value="#06080f" style="flex:initial;width:72px;padding:2px;height:34px">
+      <section class="group collapsible" data-panel="timeline">
+        <div class="group-head">
+          <h3>Timeline / Transcript</h3>
+          <button type="button" class="group-toggle" data-toggle-panel="timeline" aria-controls="timelineBody" aria-expanded="true">Hide</button>
         </div>
-        <div class="palette" id="palette"></div>
-        <div class="recent-row" id="recentColors"></div>
-
-        <label for="lineWidth">Line Width <span id="lineWidthValue"></span></label>
-        <input id="lineWidth" type="range" min="1" max="24" value="4">
-
-        <label for="opacity">Opacity <span id="opacityValue">1.00</span></label>
-        <input id="opacity" type="range" min="0.1" max="1" step="0.05" value="1">
-
-        <label for="lineStyle">Line Style</label>
-        <select id="lineStyle">
-          <option value="solid">Solid</option>
-          <option value="dashed">Dashed</option>
-          <option value="dotted">Dotted</option>
-        </select>
-
-        <div class="row tight" style="margin-top:9px">
-          <input id="animated" type="checkbox">
-          <label for="animated" style="margin:0">Animated stroke (flow + reveal)</label>
-        </div>
-
-        <label for="textSize">Text Size</label>
-        <input id="textSize" type="number" min="12" max="128" value="34">
-
-        <label for="textContent">Text / Label</label>
-        <input id="textContent" type="text" value="Idea" maxlength="160">
-
-        <label for="iconType">Icon Type</label>
-        <select id="iconType">
-          <option value="server">Server</option>
-          <option value="database">Database</option>
-          <option value="cloud">Cloud</option>
-          <option value="user">User</option>
-          <option value="api">API</option>
-          <option value="dataset">Dataset</option>
-          <option value="gpu">GPU</option>
-          <option value="tensor">Tensor</option>
-          <option value="gear">Gear</option>
-          <option value="box">Box</option>
-          <option value="check">Check</option>
-        </select>
-
-        <label for="iconSize">Icon Size</label>
-        <input id="iconSize" type="number" min="20" max="240" value="88">
-      </section>
-
-      <section class="group">
-        <h3>Canvas</h3>
-        <div class="row">
-          <button id="btnUndo">Undo</button>
-          <button id="btnRedo">Redo</button>
-          <button id="btnDelete" class="warn">Delete</button>
-        </div>
-        <div class="row">
-          <button id="btnDuplicate">Duplicate</button>
-          <button id="btnBringFwd">Bring Fwd</button>
-          <button id="btnSendBack">Send Back</button>
-        </div>
-        <div class="row">
-          <button id="btnClear" class="warn">Clear</button>
-          <button id="btnCenter">Center View</button>
-          <button id="btnFit">Fit Content</button>
-        </div>
-        <div class="row">
-          <button id="btnGrid">Toggle Grid</button>
-          <button id="btnSnap">Snap: Off</button>
-          <button id="btnFocus">Focus Mode</button>
-          <button id="btnFullscreen">Fullscreen</button>
+        <div class="group-body" id="timelineBody">
+          <div class="row">
+            <button id="btnTimelinePlay" class="primary">Play</button>
+            <button id="btnTimelineStop">Stop</button>
+            <button id="btnTimelineLoadTranscript">Load Transcript</button>
+          </div>
+          <div class="row">
+            <button id="btnTimelineLoadAudio">Load Audio</button>
+            <button id="btnTimelineAddCaption">Add Caption At Time</button>
+          </div>
+          <input id="timelineScrub" class="timeline-scrub" type="range" min="0" max="1000" value="0">
+          <div class="timeline-time" id="timelineTimeLabel">00:00.00 / 00:00.00</div>
+          <div class="transcript-now" id="transcriptNow">Load transcript JSON to preview timed text.</div>
+          <div class="transcript-list" id="transcriptList"></div>
+          <div class="caption-template-list" id="captionTemplateList">
+            <button type="button" data-caption-template="typewriter"><span class="name">Typewriter</span><span class="meta">char reveal</span></button>
+            <button type="button" data-caption-template="karaoke_classic"><span class="name">Karaoke</span><span class="meta">active word</span></button>
+            <button type="button" data-caption-template="impact_yellow"><span class="name">Impact Yellow</span><span class="meta">bold + punch</span></button>
+            <button type="button" data-caption-template="clean_paragraph"><span class="name">Clean Paragraph</span><span class="meta">minimal subtitle</span></button>
+            <button type="button" data-caption-template="bold_two_words"><span class="name">Bold Two Words</span><span class="meta">headline style</span></button>
+            <button type="button" data-caption-template="custom"><span class="name">Custom</span><span class="meta">manual controls</span></button>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <button id="btnCaptionApplyAll">Apply To All Clips</button>
+            <button id="btnCaptionApplySelected">Apply To Selected Clip(s)</button>
+          </div>
+          <div class="caption-custom" id="captionCustomControls">
+            <div class="grid">
+              <label for="captionTextColor">Text</label>
+              <input id="captionTextColor" type="color" value="#f7fbff">
+              <label for="captionStrokeColor">Stroke</label>
+              <input id="captionStrokeColor" type="color" value="#05070d">
+              <label for="captionHighlightColor">Highlight</label>
+              <input id="captionHighlightColor" type="color" value="#ffe05d">
+              <label for="captionOverlayBg">Background</label>
+              <input id="captionOverlayBg" type="color" value="#111111">
+              <label for="captionFontSize">Font Size</label>
+              <input id="captionFontSize" type="number" min="14" max="96" value="22">
+              <label for="captionStrokeWidth">Stroke Width</label>
+              <input id="captionStrokeWidth" type="number" min="0" max="8" step="0.5" value="4">
+              <label for="captionLineHeight">Line Height</label>
+              <input id="captionLineHeight" type="number" min="1" max="2.2" step="0.05" value="1.34">
+              <label for="captionLetterSpacing">Letter Spacing</label>
+              <input id="captionLetterSpacing" type="number" min="-1" max="5" step="0.1" value="0">
+              <label for="captionOverlayOpacity">BG Opacity</label>
+              <input id="captionOverlayOpacity" type="number" min="0" max="1" step="0.05" value="0.76">
+              <label for="captionActionMode">Action</label>
+              <select id="captionActionMode">
+                <option value="plain">Plain</option>
+                <option value="karaoke" selected>Karaoke Word Highlight</option>
+                <option value="typewriter">Typewriter</option>
+              </select>
+              <label for="captionFontWeight">Font Weight</label>
+              <select id="captionFontWeight">
+                <option value="500">Medium</option>
+                <option value="600">Semi Bold</option>
+                <option value="700" selected>Bold</option>
+                <option value="800">Extra Bold</option>
+                <option value="900">Black</option>
+              </select>
+              <label for="captionWordHighlight">Word Highlight</label>
+              <input id="captionWordHighlight" type="checkbox" checked>
+            </div>
+          </div>
+          <p class="sub" style="margin:8px 0 0">Bottom timeline editor: drag clips to move, drag edges to trim, <span class="kbd">Shift+Click</span> multi-select, <span class="kbd">X</span> split at playhead.</p>
+          <input id="timelineTranscriptLoader" type="file" accept=".json,application/json" style="display:none">
+          <input id="timelineAudioLoader" type="file" accept="audio/*" style="display:none">
         </div>
       </section>
 
-      <section class="group">
-        <h3>Selected Shape</h3>
-        <div class="mini-grid">
-          <button id="btnLineSolid">Solid</button>
-          <button id="btnLineDashed">Dashed</button>
-          <button id="btnLineDotted">Dotted</button>
+      <section class="group collapsible" data-panel="tools">
+        <div class="group-head">
+          <h3>Tools</h3>
+          <button type="button" class="group-toggle" data-toggle-panel="tools" aria-controls="toolsBody" aria-expanded="true">Hide</button>
         </div>
-        <div class="row">
-          <button id="btnToggleArrow">Line ↔ Arrow</button>
-          <button id="btnRectRadius">Set Rect Radius</button>
-        </div>
-        <p class="sub" style="margin:8px 0 0">Tip: Shift+Click or drag to multi-select. Alt+drag subtracts. Select one line/rect to reveal editable points.</p>
-      </section>
-
-      <section class="group">
-        <h3>Align</h3>
-        <div class="mini-grid">
-          <button id="btnAlignLeft">Left</button>
-          <button id="btnAlignCenter">Center</button>
-          <button id="btnAlignRight">Right</button>
-          <button id="btnAlignTop">Top</button>
-          <button id="btnAlignMiddle">Middle</button>
-          <button id="btnAlignBottom">Bottom</button>
-        </div>
-        <div class="mini-grid cols-2" style="margin-top:6px">
-          <button id="btnDistH">Distribute H</button>
-          <button id="btnDistV">Distribute V</button>
+        <div class="group-body" id="toolsBody">
+          <div class="tool-grid" id="toolGrid"></div>
+          <p class="sub" style="margin:8px 0 0">Quick keys: <span class="kbd">1..9</span> tools, <span class="kbd">Shift</span> snap angle/ratio, <span class="kbd">Del</span> delete, <span class="kbd">Ctrl+Z/Y</span>, <span class="kbd">F</span> focus, <span class="kbd">H</span> hide/show panel. With Snap On, drag snaps to grid and nearby shape centers/edges.</p>
         </div>
       </section>
 
-      <section class="group">
-        <h3>Pathfinder (Objects)</h3>
-        <div class="mini-grid cols-2">
-          <button id="btnPathUnion">Union</button>
-          <button id="btnPathIntersect">Intersect</button>
-          <button id="btnPathSubtract">Subtract</button>
+      <section class="group collapsible" data-panel="style">
+        <div class="group-head">
+          <h3>Style</h3>
+          <button type="button" class="group-toggle" data-toggle-panel="style" aria-controls="styleBody" aria-expanded="true">Hide</button>
         </div>
-        <p class="sub" style="margin:8px 0 0">Rectangles use exact boolean pieces. Other objects use bounds approximation. Subtract uses the last selected object as primary; if more than two are selected, the last two are used.</p>
+        <div class="group-body" id="styleBody">
+          <div class="row tight">
+            <label for="strokeColor" style="margin:0">Color</label>
+            <input id="strokeColor" type="color" value="#6ec8ff" style="flex:initial;width:72px;padding:2px;height:34px">
+            <label for="bgColor" style="margin:0">Canvas</label>
+            <input id="bgColor" type="color" value="#06080f" style="flex:initial;width:72px;padding:2px;height:34px">
+          </div>
+          <div class="palette" id="palette"></div>
+          <div class="recent-row" id="recentColors"></div>
+
+          <label for="lineWidth">Line Width <span id="lineWidthValue"></span></label>
+          <input id="lineWidth" type="range" min="1" max="24" value="4">
+
+          <label for="opacity">Opacity <span id="opacityValue">1.00</span></label>
+          <input id="opacity" type="range" min="0.1" max="1" step="0.05" value="1">
+
+          <label for="lineStyle">Line Style</label>
+          <select id="lineStyle">
+            <option value="solid">Solid</option>
+            <option value="dashed">Dashed</option>
+            <option value="dotted">Dotted</option>
+          </select>
+
+          <div class="row tight" style="margin-top:9px">
+            <input id="animated" type="checkbox">
+            <label for="animated" style="margin:0">Animated stroke (flow + reveal)</label>
+          </div>
+
+          <label for="textSize">Text Size</label>
+          <input id="textSize" type="number" min="12" max="128" value="34">
+
+          <label for="textContent">Text / Label</label>
+          <input id="textContent" type="text" value="Idea" maxlength="160">
+
+          <label for="iconType">Icon Type</label>
+          <select id="iconType">
+            <option value="server">Server</option>
+            <option value="database">Database</option>
+            <option value="cloud">Cloud</option>
+            <option value="user">User</option>
+            <option value="api">API</option>
+            <option value="dataset">Dataset</option>
+            <option value="gpu">GPU</option>
+            <option value="tensor">Tensor</option>
+            <option value="gear">Gear</option>
+            <option value="box">Box</option>
+            <option value="check">Check</option>
+          </select>
+
+          <label for="iconSize">Icon Size</label>
+          <input id="iconSize" type="number" min="20" max="240" value="88">
+        </div>
       </section>
 
-      <section class="group">
-        <h3>Save / Load</h3>
-        <div class="row">
-          <button id="btnSaveJson" class="primary">Save JSON</button>
-          <button id="btnLoadJson">Load JSON</button>
-          <button id="btnExportDsl">Export DSL Starter</button>
-          <button id="btnExportPng">Export PNG</button>
+      <section class="group collapsible" data-panel="canvas">
+        <div class="group-head">
+          <h3>Canvas</h3>
+          <button type="button" class="group-toggle" data-toggle-panel="canvas" aria-controls="canvasBody" aria-expanded="true">Hide</button>
         </div>
-        <input id="fileLoader" type="file" accept="application/json" style="display:none">
-        <p class="sub" style="margin:8px 0 0">Save canvas JSON for edits, or export a storyboard DSL starter for timeline animation in the Storyboard Player.</p>
+        <div class="group-body" id="canvasBody">
+          <div class="row">
+            <button id="btnUndo">Undo</button>
+            <button id="btnRedo">Redo</button>
+            <button id="btnDelete" class="warn">Delete</button>
+          </div>
+          <div class="row">
+            <button id="btnDuplicate">Duplicate</button>
+            <button id="btnBringFwd">Bring Fwd</button>
+            <button id="btnSendBack">Send Back</button>
+          </div>
+          <div class="row">
+            <button id="btnClear" class="warn">Clear</button>
+            <button id="btnCenter">Center View</button>
+            <button id="btnFit">Fit Content</button>
+          </div>
+          <div class="row">
+            <button id="btnGrid">Toggle Grid</button>
+            <button id="btnSnap">Snap: Off</button>
+            <button id="btnFocus">Focus Mode</button>
+            <button id="btnFullscreen">Fullscreen</button>
+          </div>
+        </div>
       </section>
 
-      <section class="group">
-        <h3>Recording Notes</h3>
-        <p class="sub" style="margin:0">Use this window full-screen on the feed you record. For system-wide overlay over terminal/browser, keep using Gromit-MPX.</p>
+      <section class="group collapsible" data-panel="selected">
+        <div class="group-head">
+          <h3>Selected Shape</h3>
+          <button type="button" class="group-toggle" data-toggle-panel="selected" aria-controls="selectedBody" aria-expanded="true">Hide</button>
+        </div>
+        <div class="group-body" id="selectedBody">
+          <div class="mini-grid">
+            <button id="btnLineSolid">Solid</button>
+            <button id="btnLineDashed">Dashed</button>
+            <button id="btnLineDotted">Dotted</button>
+          </div>
+          <div class="row">
+            <button id="btnToggleArrow">Line ↔ Arrow</button>
+            <button id="btnRectRadius">Set Rect Radius</button>
+          </div>
+          <div class="motion-grid">
+            <div class="motion-field">
+              <label for="motionStart">Motion Start (s)</label>
+              <input id="motionStart" type="number" min="0" max="600" step="0.05" value="0">
+            </div>
+            <div class="motion-field">
+              <label for="motionDuration">Motion Duration (s)</label>
+              <input id="motionDuration" type="number" min="0.05" max="600" step="0.05" value="1.2">
+            </div>
+            <div class="motion-field">
+              <label for="motionFromX">From X Offset</label>
+              <input id="motionFromX" type="number" min="-4000" max="4000" step="1" value="0">
+            </div>
+            <div class="motion-field">
+              <label for="motionFromY">From Y Offset</label>
+              <input id="motionFromY" type="number" min="-4000" max="4000" step="1" value="0">
+            </div>
+            <div class="motion-field">
+              <label for="motionToX">To X Offset</label>
+              <input id="motionToX" type="number" min="-4000" max="4000" step="1" value="140">
+            </div>
+            <div class="motion-field">
+              <label for="motionToY">To Y Offset</label>
+              <input id="motionToY" type="number" min="-4000" max="4000" step="1" value="0">
+            </div>
+            <div class="motion-field">
+              <label for="motionFromOpacity">From Opacity</label>
+              <input id="motionFromOpacity" type="number" min="0" max="1" step="0.05" value="1">
+            </div>
+            <div class="motion-field">
+              <label for="motionToOpacity">To Opacity</label>
+              <input id="motionToOpacity" type="number" min="0" max="1" step="0.05" value="1">
+            </div>
+            <div class="motion-field" style="grid-column: 1 / -1;">
+              <label for="motionEase">Easing</label>
+              <select id="motionEase">
+                <option value="easeInOutCubic">Ease In/Out Cubic</option>
+                <option value="easeOutCubic">Ease Out Cubic</option>
+                <option value="easeInCubic">Ease In Cubic</option>
+                <option value="linear">Linear</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <button id="btnMotionApply">Apply Motion</button>
+            <button id="btnMotionClear">Clear Motion</button>
+          </div>
+          <p class="sub" style="margin:8px 0 0">Apply to selected unlocked shapes. Scrub/play timeline to preview movement and fade.</p>
+          <p class="sub" style="margin:8px 0 0">Tip: Shift+Click or drag to multi-select. Alt+drag subtracts. Select one line/rect to reveal editable points.</p>
+        </div>
+      </section>
+
+      <section class="group collapsible" data-panel="align">
+        <div class="group-head">
+          <h3>Align</h3>
+          <button type="button" class="group-toggle" data-toggle-panel="align" aria-controls="alignBody" aria-expanded="true">Hide</button>
+        </div>
+        <div class="group-body" id="alignBody">
+          <div class="mini-grid">
+            <button id="btnAlignLeft">Left</button>
+            <button id="btnAlignCenter">Center</button>
+            <button id="btnAlignRight">Right</button>
+            <button id="btnAlignTop">Top</button>
+            <button id="btnAlignMiddle">Middle</button>
+            <button id="btnAlignBottom">Bottom</button>
+          </div>
+          <div class="mini-grid cols-2" style="margin-top:6px">
+            <button id="btnDistH">Distribute H</button>
+            <button id="btnDistV">Distribute V</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="group collapsible" data-panel="pathfinder">
+        <div class="group-head">
+          <h3>Pathfinder (Objects)</h3>
+          <button type="button" class="group-toggle" data-toggle-panel="pathfinder" aria-controls="pathfinderBody" aria-expanded="true">Hide</button>
+        </div>
+        <div class="group-body" id="pathfinderBody">
+          <div class="mini-grid cols-2">
+            <button id="btnPathUnion">Union</button>
+            <button id="btnPathIntersect">Intersect</button>
+            <button id="btnPathSubtract">Subtract</button>
+          </div>
+          <p class="sub" style="margin:8px 0 0">Exact rectangle boolean operations only. Subtract uses the last selected object as primary; if more than two are selected, the last two are used.</p>
+        </div>
+      </section>
+
+      <section class="group collapsible" data-panel="save">
+        <div class="group-head">
+          <h3>Save / Load</h3>
+          <button type="button" class="group-toggle" data-toggle-panel="save" aria-controls="saveBody" aria-expanded="true">Hide</button>
+        </div>
+        <div class="group-body" id="saveBody">
+          <div class="row">
+            <button id="btnSaveJson" class="primary">Save JSON</button>
+            <button id="btnLoadJson">Load JSON</button>
+            <button id="btnExportDsl">Export DSL Starter</button>
+            <button id="btnExportPng">Export PNG</button>
+          </div>
+          <input id="fileLoader" type="file" accept="application/json" style="display:none">
+          <p class="sub" style="margin:8px 0 0">Save canvas JSON for edits, or export a storyboard DSL starter for timeline animation in the Storyboard Player.</p>
+        </div>
+      </section>
+
+      <section class="group collapsible" data-panel="notes">
+        <div class="group-head">
+          <h3>Recording Notes</h3>
+          <button type="button" class="group-toggle" data-toggle-panel="notes" aria-controls="notesBody" aria-expanded="true">Hide</button>
+        </div>
+        <div class="group-body" id="notesBody">
+          <p class="sub" style="margin:0">Use this window full-screen on the feed you record. For system-wide overlay over terminal/browser, keep using Gromit-MPX.</p>
+        </div>
       </section>
 
       <div class="status" id="status"></div>
@@ -640,6 +1434,52 @@
       </div>
       <div class="snap-badge" id="snapBadge">▦ Snap to Grid</div>
       <div class="laser-dot" id="laserDot"></div>
+      <div class="live-transcript-overlay" id="liveTranscriptOverlay"></div>
+      <div class="timeline-dock" id="timelineDock">
+        <div class="timeline-toolbar">
+          <button id="btnTimelineDockPlay">Play</button>
+          <button id="btnTimelineDockStop">Stop</button>
+          <button id="btnTimelineSplit">Split</button>
+          <button id="btnTimelineDeleteClip" class="warn">Delete Clip</button>
+          <label class="inline" for="timelineSnap">
+            Snap
+            <select id="timelineSnap">
+              <option value="0">Off</option>
+              <option value="0.1">0.10s</option>
+              <option value="0.25" selected>0.25s</option>
+              <option value="0.5">0.50s</option>
+              <option value="1">1.00s</option>
+            </select>
+          </label>
+          <label class="inline" for="timelineZoom">
+            Zoom
+            <input id="timelineZoom" type="range" min="50" max="260" step="10" value="120">
+          </label>
+          <div class="time" id="timelineDockTime">00:00.00 / 00:00.00</div>
+        </div>
+        <div class="timeline-editor-scroll" id="timelineEditorScroll">
+          <div class="timeline-editor-content" id="timelineEditorContent">
+            <div class="timeline-ruler" id="timelineRuler">
+              <div class="timeline-ruler-label">Time</div>
+              <div class="timeline-ruler-body" id="timelineRulerBody"></div>
+            </div>
+            <div class="timeline-track">
+              <div class="timeline-track-label">Audio</div>
+              <div class="timeline-track-body" id="timelineTrackAudioBody"></div>
+            </div>
+            <div class="timeline-track">
+              <div class="timeline-track-label">Shapes</div>
+              <div class="timeline-track-body" id="timelineTrackShapeBody"></div>
+            </div>
+            <div class="timeline-track">
+              <div class="timeline-track-label">Captions</div>
+              <div class="timeline-track-body captions" id="timelineTrackCaptionBody"></div>
+            </div>
+            <div class="timeline-playhead" id="timelinePlayhead"></div>
+          </div>
+        </div>
+        <input id="timelineDockScrub" type="range" min="0" max="1000" value="0" aria-label="Timeline scrubber">
+      </div>
     </main>
   </div>
 
@@ -654,6 +1494,10 @@
         <tr><td><span class="kbd">Space</span> hold</td><td>Temporary pan</td></tr>
         <tr><td><span class="kbd">Del</span> / <span class="kbd">Backspace</span></td><td>Delete selected</td></tr>
         <tr><td><span class="kbd">Ctrl+D</span></td><td>Duplicate selected</td></tr>
+        <tr><td><span class="kbd">Ctrl+G</span></td><td>Group selected shapes</td></tr>
+        <tr><td><span class="kbd">Ctrl+Shift+G</span></td><td>Ungroup selected shapes</td></tr>
+        <tr><td><span class="kbd">K</span></td><td>Play/Pause timeline</td></tr>
+        <tr><td><span class="kbd">X</span></td><td>Split selected timeline clip at playhead</td></tr>
         <tr><td><span class="kbd">Ctrl+Z</span></td><td>Undo</td></tr>
         <tr><td><span class="kbd">Ctrl+Shift+Z</span> / <span class="kbd">Ctrl+Y</span></td><td>Redo</td></tr>
         <tr><td><span class="kbd">Ctrl+S</span></td><td>Save JSON</td></tr>
@@ -661,6 +1505,8 @@
         <tr><td><span class="kbd">Ctrl+O</span></td><td>Load JSON</td></tr>
         <tr><td><span class="kbd">Drag</span> on empty</td><td>Marquee select shapes that overlap the box</td></tr>
         <tr><td><span class="kbd">Shift</span> + line/arrow drag</td><td>Snap to horizontal, vertical, or 45° diagonals</td></tr>
+        <tr><td>Click grouped shape</td><td>Select and move whole group</td></tr>
+        <tr><td><span class="kbd">Ctrl</span> + click grouped shape</td><td>Select only that shape inside group</td></tr>
         <tr><td><span class="kbd">Shift+Click</span> / <span class="kbd">Shift+Drag</span></td><td>Add to selection</td></tr>
         <tr><td><span class="kbd">Alt+Drag</span></td><td>Subtract overlapped shapes from selection</td></tr>
         <tr><td><span class="kbd">Drag point handles</span></td><td>Edit selected line/rectangle geometry</td></tr>
@@ -668,7 +1514,7 @@
         <tr><td><span class="kbd">F</span></td><td>Focus mode</td></tr>
         <tr><td><span class="kbd">H</span></td><td>Toggle sidebar</td></tr>
         <tr><td><span class="kbd">G</span></td><td>Toggle grid</td></tr>
-        <tr><td><span class="kbd">S</span></td><td>Toggle snap-to-grid</td></tr>
+        <tr><td><span class="kbd">S</span></td><td>Toggle snap (grid + shape guides)</td></tr>
         <tr><td><span class="kbd">+</span> / <span class="kbd">–</span></td><td>Zoom in / out</td></tr>
         <tr><td>Scroll wheel</td><td>Zoom at cursor</td></tr>
         <tr><td>Pinch gesture</td><td>Zoom (touch/trackpad)</td></tr>

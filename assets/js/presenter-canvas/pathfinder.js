@@ -2,7 +2,6 @@ export function createPathfinderController(deps) {
   const {
     state,
     uid,
-    getBounds,
     selectedShapeIds,
     setSelection,
     pushHistory,
@@ -22,23 +21,7 @@ export function createPathfinderController(deps) {
   }
 
   function pathfinderBoxFromShape(shape) {
-    if (!shape) {
-      return null;
-    }
-    if (shape.type === 'rect') {
-      return normalizeRectFromShape(shape);
-    }
-    const bounds = getBounds(shape);
-    if (!bounds) {
-      return null;
-    }
-    const strokePad = Math.max(0.5, (shape.width || 1) * 0.5);
-    return {
-      x1: bounds.x - strokePad,
-      y1: bounds.y - strokePad,
-      x2: bounds.x + bounds.w + strokePad,
-      y2: bounds.y + bounds.h + strokePad
-    };
+    return normalizeRectFromShape(shape);
   }
 
   function rectArea(box) {
@@ -172,7 +155,19 @@ export function createPathfinderController(deps) {
     if (ids.length < 2) {
       return { error: 'Select two objects first.' };
     }
-    const existing = ids.filter((id) => state.shapes.some((shape) => shape.id === id));
+    const existing = [];
+    let lockedIgnoredCount = 0;
+    for (const id of ids) {
+      const shape = state.shapes.find((item) => item.id === id);
+      if (!shape) {
+        continue;
+      }
+      if (shape.locked) {
+        lockedIgnoredCount += 1;
+        continue;
+      }
+      existing.push(id);
+    }
     if (existing.length < 2) {
       return { error: 'Select two objects first.' };
     }
@@ -194,7 +189,12 @@ export function createPathfinderController(deps) {
     if (!primary || !secondary) {
       return { error: 'Select two objects first.' };
     }
-    return { primary, secondary, ignoredCount: Math.max(0, existing.length - 2) };
+    return {
+      primary,
+      secondary,
+      ignoredCount: Math.max(0, existing.length - 2),
+      lockedIgnoredCount
+    };
   }
 
   function replacePairWithResults(shapeA, shapeB, toAdd) {
@@ -233,7 +233,10 @@ export function createPathfinderController(deps) {
 
     const topShape = pair.primary;
     const other = pair.secondary;
-    const approximate = topShape.type !== 'rect' || other.type !== 'rect';
+    if (topShape.type !== 'rect' || other.type !== 'rect') {
+      setStatus('Pathfinder currently supports rectangles only for exact results.');
+      return;
+    }
     const a = pathfinderBoxFromShape(topShape);
     const b = pathfinderBoxFromShape(other);
     if (!a || !b || rectArea(a) <= EPS || rectArea(b) <= EPS) {
@@ -253,7 +256,7 @@ export function createPathfinderController(deps) {
       return;
     }
 
-    const keepRadius = !approximate && mode === 'intersect' && pieces.length === 1;
+    const keepRadius = mode === 'intersect' && pieces.length === 1;
     const toAdd = pieces.map((box) => makeRectFromBox(box, topShape, { keepRadius }));
 
     replacePairWithResults(topShape, other, toAdd);
@@ -261,9 +264,9 @@ export function createPathfinderController(deps) {
     pushHistory();
     render();
 
-    const approxMsg = approximate ? ' (bounds approximation)' : ' (exact for rectangles)';
     const ignoredMsg = pair.ignoredCount > 0 ? `; used last 2 of ${pair.ignoredCount + 2} selected` : '';
-    setStatus(`Pathfinder ${mode} complete: ${toAdd.length} result shape(s)${approxMsg}${ignoredMsg}.`);
+    const lockedMsg = pair.lockedIgnoredCount > 0 ? `; ignored ${pair.lockedIgnoredCount} locked` : '';
+    setStatus(`Pathfinder ${mode} complete: ${toAdd.length} result shape(s) (exact for rectangles)${ignoredMsg}${lockedMsg}.`);
   }
 
   return {

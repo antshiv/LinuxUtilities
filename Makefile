@@ -11,10 +11,26 @@ SYSTEM_RC_BACKUP ?= $(AWESOME_RC).bak.$(BACKUP_TAG)
 BUILD_BIN_DIR ?= build/bin
 PROGRAMS_BIN ?= $(HOME)/Programs/bin
 DOCS_PORT ?= 8080
+PRESENTER_CANVAS_PORT ?= 38947
 WACOM_OUTPUT ?= HDMI-1
 WACOM_STATE_FILE ?= $(HOME)/.cache/linuxutilities/wacom_output_last
+REVEAL_URL ?= http://127.0.0.1:8000
+CODE_URL ?=
+PRESENT_WACOM_MODE ?= none
+PRESENT_LIVE_DELAY_SEC ?= 0.35
+SHORTS_AUDIO ?=
+SHORTS_VIDEO ?=
+SHORTS_TRANSCRIPT ?= /tmp/shorts_transcript.json
+SHORTS_STYLE ?= config/shorts_style_default.json
+SHORTS_OUTPUT ?= /tmp/shorts_output.mp4
+SHORTS_MODEL ?= small
+SHORTS_LANGUAGE ?= en
+SHORTS_RECORD_OUTPUT ?= /tmp/shorts_record.wav
+SHORTS_RECORD_DURATION ?= 60
+SHORTS_START ?=
+SHORTS_DURATION ?=
 
-.PHONY: help rc-backup awesome-backup awesome-update apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external
+.PHONY: help rc-backup awesome-backup awesome-update apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve present-live shorts-help shorts-record shorts-transcribe shorts-render wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external
 
 help:
 >@echo "Targets:"
@@ -32,6 +48,8 @@ help:
 >@echo "  make linuxutils-install Check deps, build all, install to $(PROGRAMS_BIN)"
 >@echo "  make docs                Build docs into docs/build"
 >@echo "  make docs-serve          Build docs and serve locally on http://localhost:$(DOCS_PORT)"
+>@echo "  make present-live        Launch reveal.js + Presenter Canvas (+ optional code tab)"
+>@echo "  make shorts-help         Show transcript-driven shorts pipeline commands"
 >@echo "  make wacom-help          Show quick Wacom mapping cheatsheet"
 >@echo "  make wacom               Map tablet to default HDMI output ($(WACOM_OUTPUT))"
 >@echo "  make wacom-list-outputs  List connected display outputs (xrandr)"
@@ -171,6 +189,53 @@ docs:
 docs-serve: docs
 >@echo "Serving docs on http://localhost:$(DOCS_PORT)"
 >@cd docs/build && python3 -m http.server $(DOCS_PORT)
+
+present-live:
+>@REVEAL_URL="$(REVEAL_URL)" \
+>CODE_URL="$(CODE_URL)" \
+>PRESENT_WACOM_MODE="$(PRESENT_WACOM_MODE)" \
+>PRESENT_LIVE_DELAY_SEC="$(PRESENT_LIVE_DELAY_SEC)" \
+>PRESENTER_CANVAS_PORT="$(PRESENTER_CANVAS_PORT)" \
+>./launch_present_live.sh
+
+shorts-help:
+>@echo "Shorts pipeline:"
+>@echo "  make shorts-record SHORTS_RECORD_OUTPUT=/tmp/voice.wav SHORTS_RECORD_DURATION=60"
+>@echo "  make shorts-transcribe SHORTS_AUDIO=/tmp/voice.wav SHORTS_TRANSCRIPT=/tmp/voice.json"
+>@echo "  make shorts-render SHORTS_VIDEO=input.mp4 SHORTS_TRANSCRIPT=/tmp/voice.json SHORTS_STYLE=$(SHORTS_STYLE) SHORTS_OUTPUT=/tmp/short.mp4"
+>@echo "Options:"
+>@echo "  SHORTS_MODEL=$(SHORTS_MODEL) SHORTS_LANGUAGE=$(SHORTS_LANGUAGE)"
+>@echo "  SHORTS_START=<seconds> SHORTS_DURATION=<seconds> (for clip window override)"
+
+shorts-record:
+>@if [ -z "$(SHORTS_RECORD_OUTPUT)" ]; then echo "Set SHORTS_RECORD_OUTPUT=<path.wav>"; exit 1; fi
+>@if ! command -v ffmpeg >/dev/null 2>&1; then echo "Missing ffmpeg"; exit 1; fi
+>@echo "Recording microphone to $(SHORTS_RECORD_OUTPUT) for $(SHORTS_RECORD_DURATION)s..."
+>@ffmpeg -y -f pulse -i default -t "$(SHORTS_RECORD_DURATION)" -ac 1 -ar 16000 "$(SHORTS_RECORD_OUTPUT)"
+
+shorts-transcribe:
+>@if [ -z "$(SHORTS_AUDIO)" ]; then echo "Set SHORTS_AUDIO=<path audio/video>"; exit 1; fi
+>@python3 scripts/shorts_studio.py transcribe \
+>  --audio "$(SHORTS_AUDIO)" \
+>  --output "$(SHORTS_TRANSCRIPT)" \
+>  --model "$(SHORTS_MODEL)" \
+>  --language "$(SHORTS_LANGUAGE)"
+
+shorts-render:
+>@if [ -z "$(SHORTS_VIDEO)" ]; then echo "Set SHORTS_VIDEO=<input.mp4>"; exit 1; fi
+>@if [ -z "$(SHORTS_TRANSCRIPT)" ]; then echo "Set SHORTS_TRANSCRIPT=<transcript.json>"; exit 1; fi
+>@if [ -z "$(SHORTS_STYLE)" ]; then echo "Set SHORTS_STYLE=<style.json>"; exit 1; fi
+>@if [ -z "$(SHORTS_OUTPUT)" ]; then echo "Set SHORTS_OUTPUT=<output.mp4>"; exit 1; fi
+>@set -euo pipefail; \
+>args=(); \
+>if [ -n "$(SHORTS_START)" ]; then args+=(--start "$(SHORTS_START)"); fi; \
+>if [ -n "$(SHORTS_DURATION)" ]; then args+=(--duration "$(SHORTS_DURATION)"); fi; \
+>python3 scripts/shorts_studio.py render \
+>  --video "$(SHORTS_VIDEO)" \
+>  --transcript "$(SHORTS_TRANSCRIPT)" \
+>  --style "$(SHORTS_STYLE)" \
+>  --output "$(SHORTS_OUTPUT)" \
+>  "$${args[@]}"
 
 wacom-help:
 >@echo "Wacom mapping quick commands:"

@@ -1,7 +1,21 @@
 export function createSelectionController(deps) {
-  const { state, getBounds, setStatus, ctx } = deps;
+  const {
+    state,
+    getBounds,
+    setStatus,
+    ctx,
+    isShapeSelectable,
+    onSelectionChanged
+  } = deps;
+
+  function selectionChanged(nextIds) {
+    if (typeof onSelectionChanged === 'function') {
+      onSelectionChanged(nextIds);
+    }
+  }
 
   function setSelection(ids) {
+    const prev = selectedShapeIds();
     const safeIds = [];
     for (const id of ids || []) {
       if (!id || safeIds.includes(id)) continue;
@@ -11,11 +25,18 @@ export function createSelectionController(deps) {
     }
     state.selectedIds = safeIds;
     state.selectedId = safeIds.length ? safeIds[safeIds.length - 1] : null;
+    if (prev.length !== safeIds.length || prev.some((id, idx) => id !== safeIds[idx])) {
+      selectionChanged(safeIds.slice());
+    }
   }
 
   function clearSelection() {
+    if (!state.selectedId && (!state.selectedIds || !state.selectedIds.length)) {
+      return;
+    }
     state.selectedId = null;
     state.selectedIds = [];
+    selectionChanged([]);
   }
 
   function selectedShapeIds() {
@@ -55,6 +76,9 @@ export function createSelectionController(deps) {
     }
     const ids = [];
     for (const shape of state.shapes) {
+      if (typeof isShapeSelectable === 'function' && !isShapeSelectable(shape)) {
+        continue;
+      }
       const bounds = getBounds(shape);
       if (!bounds) {
         continue;

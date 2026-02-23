@@ -7,11 +7,13 @@ export function createRenderController(deps) {
     TOOLS,
     currentArtboard,
     drawGrid,
+    drawSnapGuides,
     drawShape,
     selectedShapeIds,
     drawMarqueeOverlay,
     drawEditHandlesOverlay,
-    renderLayers
+    renderLayers,
+    shouldRenderLayers
   } = deps;
 
   function render() {
@@ -36,6 +38,9 @@ export function createRenderController(deps) {
     if (state.pointer.temp) {
       drawShape(state.pointer.temp, false);
     }
+    if (typeof drawSnapGuides === 'function') {
+      drawSnapGuides();
+    }
     drawMarqueeOverlay();
     drawEditHandlesOverlay();
 
@@ -49,7 +54,7 @@ export function createRenderController(deps) {
     els.shapesPill.textContent = `${board.name}: ${state.shapes.length}`;
     els.undoPill.textContent = `Undo: ${state.historyIndex}/${state.history.length - 1}`;
     els.snapBadge.classList.toggle('on', state.snapGrid);
-    if (typeof renderLayers === 'function') {
+    if (typeof renderLayers === 'function' && (typeof shouldRenderLayers !== 'function' || shouldRenderLayers())) {
       renderLayers();
     }
   }
