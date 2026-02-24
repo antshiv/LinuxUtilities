@@ -405,3 +405,6 @@ Buttons available:
 - Teleprompter
 - Presenter Canvas
 - Storyboard DSL
+- Manim Workspace
+- Manim Version
+- Manim Smoke

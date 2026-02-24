@@ -29,8 +29,13 @@ SHORTS_RECORD_OUTPUT ?= /tmp/shorts_record.wav
 SHORTS_RECORD_DURATION ?= 60
 SHORTS_START ?=
 SHORTS_DURATION ?=
+MANIM_DIR ?= $(HOME)/Workspace/manim
+MANIM_VENV ?= $(MANIM_DIR)/.venv/bin/activate
+MANIM_FILE ?= smoke.py
+MANIM_SCENE ?= Smoke
+MANIM_QUALITY ?= ql
 
-.PHONY: help rc-backup awesome-backup awesome-update apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve present-live shorts-help shorts-record shorts-transcribe shorts-render wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external
+.PHONY: help rc-backup awesome-backup awesome-update apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve present-live shorts-help shorts-record shorts-transcribe shorts-render manim-help manim-version manim-smoke manim-scene manim-shell wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external
 
 help:
 >@echo "Targets:"
@@ -50,6 +55,7 @@ help:
 >@echo "  make docs-serve          Build docs and serve locally on http://localhost:$(DOCS_PORT)"
 >@echo "  make present-live        Launch reveal.js + Presenter Canvas (+ optional code tab)"
 >@echo "  make shorts-help         Show transcript-driven shorts pipeline commands"
+>@echo "  make manim-help          Show Manim helper commands (uses $(MANIM_DIR))"
 >@echo "  make wacom-help          Show quick Wacom mapping cheatsheet"
 >@echo "  make wacom               Map tablet to default HDMI output ($(WACOM_OUTPUT))"
 >@echo "  make wacom-list-outputs  List connected display outputs (xrandr)"
@@ -236,6 +242,37 @@ shorts-render:
 >  --style "$(SHORTS_STYLE)" \
 >  --output "$(SHORTS_OUTPUT)" \
 >  "$${args[@]}"
+
+manim-help:
+>@echo "Manim helpers (workspace: $(MANIM_DIR))"
+>@echo "  make manim-version"
+>@echo "  make manim-smoke"
+>@echo "  make manim-scene MANIM_FILE=smoke.py MANIM_SCENE=Smoke MANIM_QUALITY=ql"
+>@echo "  make manim-shell"
+>@echo "Env overrides:"
+>@echo "  MANIM_DIR, MANIM_VENV, MANIM_FILE, MANIM_SCENE, MANIM_QUALITY"
+
+manim-version:
+>@MANIM_DIR="$(MANIM_DIR)" MANIM_VENV="$(MANIM_VENV)" ./manim_tools.sh version
+
+manim-smoke:
+>@MANIM_DIR="$(MANIM_DIR)" \
+>  MANIM_VENV="$(MANIM_VENV)" \
+>  MANIM_FILE=smoke.py \
+>  MANIM_SCENE=Smoke \
+>  MANIM_QUALITY="$(MANIM_QUALITY)" \
+>  ./manim_tools.sh smoke
+
+manim-scene:
+>@MANIM_DIR="$(MANIM_DIR)" \
+>  MANIM_VENV="$(MANIM_VENV)" \
+>  MANIM_FILE="$(MANIM_FILE)" \
+>  MANIM_SCENE="$(MANIM_SCENE)" \
+>  MANIM_QUALITY="$(MANIM_QUALITY)" \
+>  ./manim_tools.sh scene
+
+manim-shell:
+>@MANIM_DIR="$(MANIM_DIR)" MANIM_VENV="$(MANIM_VENV)" ./manim_tools.sh term-shell
 
 wacom-help:
 >@echo "Wacom mapping quick commands:"

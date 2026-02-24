@@ -93,6 +93,16 @@ make present-live REVEAL_URL=http://127.0.0.1:8000 CODE_URL=https://github.com/y
 - `switch`: run `make wacom-switch`
 - `<output>`: map directly to that output, e.g. `PRESENT_WACOM_MODE=HDMI-1`
 
+Manim helpers:
+
+```bash
+make manim-help
+make manim-version
+make manim-smoke
+make manim-scene MANIM_FILE=smoke.py MANIM_SCENE=Smoke MANIM_QUALITY=ql
+make manim-shell
+```
+
 ## Scripts:
 
 - `import_screenshots.sh`: A utility to manage screenshots and phone photos, moving them to designated directories and generating prompts for AI CLI tools.
@@ -103,6 +113,7 @@ make present-live REVEAL_URL=http://127.0.0.1:8000 CODE_URL=https://github.com/y
 - `cursor_spotlight.c`: Lightweight X11 cursor spotlight overlay utility.
 - `build_cursor_spotlight.sh`: Build helper for `cursor_spotlight`.
 - `launch_present_live.sh`: Opens reveal.js + Presenter Canvas (+ optional code URL) for live presentation flow.
+- `manim_tools.sh`: Manim helper launcher (version/smoke/scene/shell, terminal modes included).
 
 ## Cursor Spotlight Utility
 
@@ -133,6 +144,9 @@ The `Utilities` tab now includes:
 - `Presenter Canvas` (live whiteboard with shape/icon tools + JSON save/load)
 - `Storyboard DSL` (timeline parser/player for scripted animations)
 - `Teleprompter` (local script reader window)
+- `Manim Workspace` (open Manim project shell with venv)
+- `Manim Version` (run `manim --version`)
+- `Manim Smoke` (run `manim -pql smoke.py Smoke`)
 
 ## Presenter Drawing (Epic Pen Style)
 
@@ -167,6 +181,9 @@ AwesomeWM hotkeys in `rc.lua`:
 - `Storyboard DSL` (opens `presenter_storyboard.html` via `launch_presenter_storyboard.sh`)
 - `Teleprompter` (opens `teleprompter.html` via `launch_teleprompter.sh`)
 - `Shortcut Cheat Sheet` (open complete keyboard/mouse/shell mapping)
+- `Manim Workspace` (opens terminal in `~/Workspace/manim` with venv)
+- `Manim Version` (runs `manim --version` in terminal)
+- `Manim Smoke` (runs default smoke render in terminal)
 
 Gromit draw tools in draw mode (compat profile, default):
 - hold `Shift`: marker
