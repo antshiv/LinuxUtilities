@@ -192,6 +192,8 @@ typedef struct {
     GtkWidget *editor_toggle_styles_btn;
     GtkWidget *editor_toggle_thumbs_btn;
     GtkWidget *editor_dock_toggle_btn;
+    GtkWidget *editor_dock_width_scale;
+    GtkWidget *editor_dock_preset_dropdown;
     GtkWidget *arrow_style_combo;
     GtkWidget *arrow_head_scale;
     GtkWidget *arrow_angle_scale;
@@ -272,7 +274,11 @@ typedef struct {
     gint studio_split_pos_saved;
     gint studio_dock_width_saved;
     gboolean thumb_ui_syncing;
+    gboolean dock_ui_syncing;
     guint ui_state_save_source_id;
+    guint thumb_anim_source_id;
+    gint thumb_anim_target_pos;
+    gboolean thumb_anim_hide_on_end;
     gboolean editor_styles_visible;
     gboolean editor_thumbs_visible;
     gboolean editor_dock_right;
@@ -416,6 +422,39 @@ static guint gtk4_thumb_preset_for_width(gint width) {
     return 1;
 }
 
+static gint gtk4_dock_width_for_preset(guint preset) {
+    switch (preset) {
+        case 0:
+            return 240;
+        case 2:
+            return 360;
+        case 1:
+        default:
+            return 280;
+    }
+}
+
+static guint gtk4_dock_preset_for_width(gint width) {
+    if (width <= 255) {
+        return 0;
+    }
+    if (width >= 330) {
+        return 2;
+    }
+    return 1;
+}
+
+static gint gtk4_studio_shell_width(Gtk4State *state) {
+    gint width = 1260;
+    if (state && state->editor_studio_shell) {
+        gint measured = gtk_widget_get_width(state->editor_studio_shell);
+        if (measured > 0) {
+            width = measured;
+        }
+    }
+    return width;
+}
+
 static gint gtk4_clamp_editor_split_position(Gtk4State *state, gint pos) {
     gint height = 820;
     const gint min_top = 240;
@@ -432,31 +471,19 @@ static gint gtk4_clamp_editor_split_position(Gtk4State *state, gint pos) {
 }
 
 static gint gtk4_clamp_studio_split_position(Gtk4State *state, gint pos) {
-    gint width = 1260;
+    gint width = gtk4_studio_shell_width(state);
     const gint min_main = 360;
     const gint min_dock = 250;
     gint max_main = 0;
-    if (state && state->editor_studio_shell) {
-        gint measured = gtk_widget_get_width(state->editor_studio_shell);
-        if (measured > 0) {
-            width = measured;
-        }
-    }
     max_main = MAX(min_main, width - min_dock);
     return CLAMP(pos, min_main, max_main);
 }
 
 static gint gtk4_clamp_studio_dock_width(Gtk4State *state, gint dock_width) {
-    gint width = 1260;
+    gint width = gtk4_studio_shell_width(state);
     const gint min_main = 360;
     const gint min_dock = 220;
     gint max_dock = 0;
-    if (state && state->editor_studio_shell) {
-        gint measured = gtk_widget_get_width(state->editor_studio_shell);
-        if (measured > 0) {
-            width = measured;
-        }
-    }
     max_dock = MAX(min_dock, width - min_main);
     return CLAMP(dock_width, min_dock, max_dock);
 }
@@ -515,6 +542,10 @@ static void gtk4_ui_state_load(Gtk4State *state) {
     }
     if (dock_w > 0) {
         state->studio_dock_width_saved = gtk4_clamp_studio_dock_width(state, dock_w);
+    } else if (studio_pos > 0) {
+        gint shell_w = gtk4_studio_shell_width(state);
+        gint derived_w = dock_right ? (shell_w - state->studio_split_pos_saved) : state->studio_split_pos_saved;
+        state->studio_dock_width_saved = gtk4_clamp_studio_dock_width(state, derived_w);
     }
     state->editor_dock_right = dock_right;
     state->editor_thumbs_visible = thumbs_visible;
@@ -542,8 +573,10 @@ static void gtk4_ui_state_save(Gtk4State *state) {
     if (state->editor_studio_shell) {
         studio_pos = gtk_paned_get_position(GTK_PANED(state->editor_studio_shell));
         if (studio_pos > 0) {
+            gint shell_w = gtk4_studio_shell_width(state);
             if (state->editor_dock_right) {
                 state->studio_split_pos_saved = gtk4_clamp_studio_split_position(state, studio_pos);
+                state->studio_dock_width_saved = gtk4_clamp_studio_dock_width(state, shell_w - state->studio_split_pos_saved);
             } else {
                 state->studio_dock_width_saved = gtk4_clamp_studio_dock_width(state, studio_pos);
             }
@@ -2179,36 +2212,137 @@ static void gtk4_on_apply_text_clicked(GtkButton *button, gpointer user_data) {
     g_free(text);
 }
 
-static void gtk4_apply_thumb_layout(Gtk4State *state) {
-    gint pos = 0;
-    if (!state || !state->editor_split) {
+static void gtk4_sync_dock_width_controls(Gtk4State *state) {
+    gdouble current = 0.0;
+    guint preset_idx = 1;
+    if (!state) {
         return;
     }
-    if (state->editor_thumbs_visible) {
-        pos = gtk4_clamp_editor_split_position(state, state->split_pos_saved > 0 ? state->split_pos_saved : 430);
-        state->split_pos_saved = pos;
-        gtk_paned_set_position(GTK_PANED(state->editor_split), pos);
-    } else {
-        pos = gtk_paned_get_position(GTK_PANED(state->editor_split));
-        if (pos > 0) {
-            state->split_pos_saved = gtk4_clamp_editor_split_position(state, pos);
+    state->studio_dock_width_saved = gtk4_clamp_studio_dock_width(
+        state,
+        state->studio_dock_width_saved > 0 ? state->studio_dock_width_saved : 280);
+    preset_idx = gtk4_dock_preset_for_width(state->studio_dock_width_saved);
+    state->dock_ui_syncing = TRUE;
+    if (state->editor_dock_width_scale) {
+        current = gtk_range_get_value(GTK_RANGE(state->editor_dock_width_scale));
+        if (fabs(current - (gdouble)state->studio_dock_width_saved) > 0.1) {
+            gtk_range_set_value(GTK_RANGE(state->editor_dock_width_scale), (gdouble)state->studio_dock_width_saved);
         }
-        gtk_paned_set_position(GTK_PANED(state->editor_split), gtk4_clamp_editor_split_position(state, 99999));
+    }
+    if (state->editor_dock_preset_dropdown) {
+        if (gtk_drop_down_get_selected(GTK_DROP_DOWN(state->editor_dock_preset_dropdown)) != preset_idx) {
+            gtk_drop_down_set_selected(GTK_DROP_DOWN(state->editor_dock_preset_dropdown), preset_idx);
+        }
+    }
+    state->dock_ui_syncing = FALSE;
+}
+
+static void gtk4_update_thumb_toggle_label(Gtk4State *state) {
+    if (!state || !state->editor_toggle_thumbs_btn) {
+        return;
+    }
+    gtk_button_set_label(GTK_BUTTON(state->editor_toggle_thumbs_btn),
+                         state->editor_thumbs_visible ? "Collapse Thumbs" : "Expand Thumbs");
+}
+
+static void gtk4_thumb_cancel_animation(Gtk4State *state) {
+    if (!state) {
+        return;
+    }
+    if (state->thumb_anim_source_id != 0) {
+        g_source_remove(state->thumb_anim_source_id);
+        state->thumb_anim_source_id = 0;
     }
 }
 
+static gboolean gtk4_thumb_animate_step_cb(gpointer data) {
+    Gtk4State *state = data;
+    gint current = 0;
+    gint target = 0;
+    gint diff = 0;
+    gint step = 0;
+    if (!state || !state->editor_split) {
+        return G_SOURCE_REMOVE;
+    }
+    current = gtk_paned_get_position(GTK_PANED(state->editor_split));
+    target = state->thumb_anim_target_pos;
+    diff = target - current;
+    if (ABS(diff) <= 8) {
+        gtk_paned_set_position(GTK_PANED(state->editor_split), target);
+        if (state->thumb_anim_hide_on_end && state->editor_browser_box) {
+            gtk_widget_set_visible(state->editor_browser_box, FALSE);
+        }
+        state->thumb_anim_source_id = 0;
+        return G_SOURCE_REMOVE;
+    }
+    step = MAX(6, ABS(diff) / 4);
+    gtk_paned_set_position(GTK_PANED(state->editor_split), current + (diff > 0 ? step : -step));
+    return G_SOURCE_CONTINUE;
+}
+
+static void gtk4_thumb_animate_to(Gtk4State *state, gint target_pos, gboolean hide_on_end) {
+    if (!state || !state->editor_split) {
+        return;
+    }
+    gtk4_thumb_cancel_animation(state);
+    state->thumb_anim_target_pos = target_pos;
+    state->thumb_anim_hide_on_end = hide_on_end;
+    state->thumb_anim_source_id = g_timeout_add(16, gtk4_thumb_animate_step_cb, state);
+}
+
+static void gtk4_set_thumb_panel_visible(Gtk4State *state, gboolean visible, gboolean animated) {
+    gint current_pos = 0;
+    gint target_pos = 0;
+    if (!state || !state->editor_split || !state->editor_browser_box) {
+        return;
+    }
+    current_pos = gtk_paned_get_position(GTK_PANED(state->editor_split));
+    if (visible) {
+        if (!gtk_widget_get_visible(state->editor_browser_box)) {
+            gtk_widget_set_visible(state->editor_browser_box, TRUE);
+        }
+        state->editor_thumbs_visible = TRUE;
+        target_pos = gtk4_clamp_editor_split_position(state, state->split_pos_saved > 0 ? state->split_pos_saved : 430);
+        state->split_pos_saved = target_pos;
+        if (animated) {
+            gtk4_thumb_animate_to(state, target_pos, FALSE);
+        } else {
+            gtk4_thumb_cancel_animation(state);
+            gtk_paned_set_position(GTK_PANED(state->editor_split), target_pos);
+        }
+    } else {
+        if (current_pos > 0) {
+            state->split_pos_saved = gtk4_clamp_editor_split_position(state, current_pos);
+        }
+        state->editor_thumbs_visible = FALSE;
+        target_pos = gtk4_clamp_editor_split_position(state, 99999);
+        if (animated) {
+            gtk4_thumb_animate_to(state, target_pos, TRUE);
+        } else {
+            gtk4_thumb_cancel_animation(state);
+            gtk_paned_set_position(GTK_PANED(state->editor_split), target_pos);
+            gtk_widget_set_visible(state->editor_browser_box, FALSE);
+        }
+    }
+    gtk4_update_thumb_toggle_label(state);
+}
+
 static void gtk4_apply_dock_layout(Gtk4State *state) {
+    gint shell_w = 0;
     gint target_pos = 0;
     if (!state || !state->editor_studio_shell || !state->editor_dock || !state->editor_main_box) {
         return;
     }
+    shell_w = gtk4_studio_shell_width(state);
+    state->studio_dock_width_saved = gtk4_clamp_studio_dock_width(
+        state,
+        state->studio_dock_width_saved > 0 ? state->studio_dock_width_saved : 280);
     if (state->editor_dock_right) {
         gtk_paned_set_start_child(GTK_PANED(state->editor_studio_shell), state->editor_main_box);
         gtk_paned_set_end_child(GTK_PANED(state->editor_studio_shell), state->editor_dock);
-        target_pos = gtk4_clamp_studio_split_position(
-            state,
-            state->studio_split_pos_saved > 0 ? state->studio_split_pos_saved : 840);
+        target_pos = gtk4_clamp_studio_split_position(state, shell_w - state->studio_dock_width_saved);
         state->studio_split_pos_saved = target_pos;
+        state->studio_dock_width_saved = gtk4_clamp_studio_dock_width(state, shell_w - target_pos);
         gtk_paned_set_position(GTK_PANED(state->editor_studio_shell), target_pos);
         if (state->editor_dock_toggle_btn) {
             gtk_button_set_label(GTK_BUTTON(state->editor_dock_toggle_btn), "Dock Left");
@@ -2216,14 +2350,24 @@ static void gtk4_apply_dock_layout(Gtk4State *state) {
     } else {
         gtk_paned_set_start_child(GTK_PANED(state->editor_studio_shell), state->editor_dock);
         gtk_paned_set_end_child(GTK_PANED(state->editor_studio_shell), state->editor_main_box);
-        target_pos = gtk4_clamp_studio_dock_width(
-            state,
-            state->studio_dock_width_saved > 0 ? state->studio_dock_width_saved : 280);
-        state->studio_dock_width_saved = target_pos;
+        target_pos = state->studio_dock_width_saved;
         gtk_paned_set_position(GTK_PANED(state->editor_studio_shell), target_pos);
         if (state->editor_dock_toggle_btn) {
             gtk_button_set_label(GTK_BUTTON(state->editor_dock_toggle_btn), "Dock Right");
         }
+    }
+    gtk4_sync_dock_width_controls(state);
+}
+
+static void gtk4_set_dock_width(Gtk4State *state, gint width, gboolean apply_layout) {
+    if (!state) {
+        return;
+    }
+    state->studio_dock_width_saved = gtk4_clamp_studio_dock_width(state, width);
+    if (apply_layout) {
+        gtk4_apply_dock_layout(state);
+    } else {
+        gtk4_sync_dock_width_controls(state);
     }
 }
 
@@ -2238,14 +2382,7 @@ static void gtk4_apply_editor_panel_visibility(Gtk4State *state) {
         gtk_button_set_label(GTK_BUTTON(state->editor_toggle_styles_btn),
                              state->editor_styles_visible ? "Hide Styles" : "Show Styles");
     }
-    if (state->editor_browser_box) {
-        gtk_widget_set_visible(state->editor_browser_box, state->editor_thumbs_visible);
-    }
-    if (state->editor_toggle_thumbs_btn) {
-        gtk_button_set_label(GTK_BUTTON(state->editor_toggle_thumbs_btn),
-                             state->editor_thumbs_visible ? "Hide Thumbs" : "Show Thumbs");
-    }
-    gtk4_apply_thumb_layout(state);
+    gtk4_set_thumb_panel_visible(state, state->editor_thumbs_visible, FALSE);
 }
 
 static void gtk4_on_toggle_styles_clicked(GtkButton *button, gpointer user_data) {
@@ -2264,15 +2401,16 @@ static void gtk4_on_toggle_styles_clicked(GtkButton *button, gpointer user_data)
 
 static void gtk4_on_toggle_thumbs_clicked(GtkButton *button, gpointer user_data) {
     Gtk4State *state = user_data;
+    gboolean showing = FALSE;
     (void)button;
     if (!state || !state->editor_browser_box || !state->editor_toggle_thumbs_btn) {
         return;
     }
-    state->editor_thumbs_visible = !state->editor_thumbs_visible;
-    gtk4_apply_editor_panel_visibility(state);
+    showing = !state->editor_thumbs_visible;
+    gtk4_set_thumb_panel_visible(state, showing, TRUE);
     gtk4_ui_state_schedule_save(state);
     gtk4_set_status(state->editor_status,
-                    state->editor_thumbs_visible ? "Thumbnail browser shown." : "Thumbnail browser hidden.",
+                    showing ? "Thumbnail browser shown." : "Thumbnail browser collapsed.",
                     "Thumbnail visibility changed.");
 }
 
@@ -2370,6 +2508,29 @@ static void gtk4_on_thumb_preset_selected(GObject *object, GParamSpec *pspec, gp
     gtk4_ui_state_schedule_save(state);
 }
 
+static void gtk4_on_dock_width_changed(GtkRange *range, gpointer user_data) {
+    Gtk4State *state = user_data;
+    gint width = 0;
+    if (!state || !range || state->dock_ui_syncing) {
+        return;
+    }
+    width = (gint)lrint(gtk_range_get_value(range));
+    gtk4_set_dock_width(state, width, TRUE);
+    gtk4_ui_state_schedule_save(state);
+}
+
+static void gtk4_on_dock_preset_selected(GObject *object, GParamSpec *pspec, gpointer user_data) {
+    Gtk4State *state = user_data;
+    guint sel = 1;
+    (void)pspec;
+    if (!state || !object || state->dock_ui_syncing) {
+        return;
+    }
+    sel = gtk_drop_down_get_selected(GTK_DROP_DOWN(object));
+    gtk4_set_dock_width(state, gtk4_dock_width_for_preset(sel), TRUE);
+    gtk4_ui_state_schedule_save(state);
+}
+
 static void gtk4_on_split_position_notify(GObject *object, GParamSpec *pspec, gpointer user_data) {
     Gtk4State *state = user_data;
     gint pos = 0;
@@ -2386,11 +2547,14 @@ static void gtk4_on_split_position_notify(GObject *object, GParamSpec *pspec, gp
             state->split_pos_saved = gtk4_clamp_editor_split_position(state, pos);
         }
     } else if (object == G_OBJECT(state->editor_studio_shell)) {
+        gint shell_w = gtk4_studio_shell_width(state);
         if (state->editor_dock_right) {
             state->studio_split_pos_saved = gtk4_clamp_studio_split_position(state, pos);
+            state->studio_dock_width_saved = gtk4_clamp_studio_dock_width(state, shell_w - state->studio_split_pos_saved);
         } else {
             state->studio_dock_width_saved = gtk4_clamp_studio_dock_width(state, pos);
         }
+        gtk4_sync_dock_width_controls(state);
     }
     gtk4_ui_state_schedule_save(state);
 }
@@ -2411,14 +2575,17 @@ static void gtk4_on_zoom_reset_clicked(GtkButton *button, gpointer user_data) {
 static void gtk4_on_dock_toggle_clicked(GtkButton *button, gpointer user_data) {
     Gtk4State *state = user_data;
     gint current_pos = 0;
+    gint shell_w = 0;
     (void)button;
     if (!state || !state->editor_studio_shell || !state->editor_dock || !state->editor_main_box || !state->editor_dock_toggle_btn) {
         return;
     }
     current_pos = gtk_paned_get_position(GTK_PANED(state->editor_studio_shell));
+    shell_w = gtk4_studio_shell_width(state);
     if (state->editor_dock_right) {
         if (current_pos > 0) {
             state->studio_split_pos_saved = gtk4_clamp_studio_split_position(state, current_pos);
+            state->studio_dock_width_saved = gtk4_clamp_studio_dock_width(state, shell_w - state->studio_split_pos_saved);
         }
         state->editor_dock_right = FALSE;
     } else {
@@ -3819,6 +3986,7 @@ static gboolean gtk4_on_window_key(GtkEventControllerKey *controller,
 
 static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     static const char *thumb_presets[] = { "Small", "Medium", "Large", NULL };
+    static const char *dock_presets[] = { "Compact", "Default", "Wide", NULL };
     GtkWidget *root = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
     GtkWidget *title = gtk_label_new("Screenshot Studio");
     GtkWidget *toolbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
@@ -3834,8 +4002,11 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     GtkWidget *editor_top_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
     GtkWidget *editor_top_actions = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
     GtkWidget *btn_dock_toggle = gtk_button_new_with_label("Dock Left");
+    GtkWidget *dock_width_label = gtk_label_new("Dock");
+    GtkWidget *dock_width_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 220.0, 520.0, 5.0);
+    GtkWidget *dock_preset_dropdown = gtk_drop_down_new_from_strings(dock_presets);
     GtkWidget *btn_toggle_styles = gtk_button_new_with_label("Hide Styles");
-    GtkWidget *btn_toggle_thumbs = gtk_button_new_with_label("Hide Thumbs");
+    GtkWidget *btn_toggle_thumbs = gtk_button_new_with_label("Collapse Thumbs");
     GtkWidget *btn_thumbs_bigger = gtk_button_new_with_label("Thumbs +");
     GtkWidget *btn_thumbs_smaller = gtk_button_new_with_label("Thumbs -");
     GtkWidget *btn_zoom_reset = gtk_button_new_with_label("Fit 100%");
@@ -3975,6 +4146,7 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     gtk_label_set_xalign(GTK_LABEL(editor_status), 0.0f);
     gtk_label_set_xalign(GTK_LABEL(style_label), 0.0f);
     gtk_label_set_xalign(GTK_LABEL(stroke_label), 0.0f);
+    gtk_label_set_xalign(GTK_LABEL(dock_width_label), 0.0f);
     gtk_label_set_xalign(GTK_LABEL(thumb_size_label), 0.0f);
     gtk_label_set_xalign(GTK_LABEL(thumb_preset_label), 0.0f);
     gtk_label_set_xalign(GTK_LABEL(dock_title), 0.0f);
@@ -3988,9 +4160,13 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     gtk_widget_set_size_request(browser_box, -1, 220);
     gtk_widget_set_tooltip_text(split, "Drag the horizontal divider to resize editor and thumbnail browser.");
     gtk_widget_set_tooltip_text(studio_shell, "Drag the vertical divider to resize canvas and properties dock.");
+    gtk_widget_set_tooltip_text(btn_toggle_thumbs, "Animate collapse/expand of thumbnail pane.");
     gtk_scale_set_draw_value(GTK_SCALE(thumb_size_scale), TRUE);
     gtk_widget_set_hexpand(thumb_size_scale, TRUE);
     gtk_drop_down_set_selected(GTK_DROP_DOWN(thumb_preset_dropdown), 1);
+    gtk_scale_set_draw_value(GTK_SCALE(dock_width_scale), FALSE);
+    gtk_widget_set_size_request(dock_width_scale, 120, -1);
+    gtk_drop_down_set_selected(GTK_DROP_DOWN(dock_preset_dropdown), 1);
 
     gtk_editable_set_text(GTK_EDITABLE(search), "");
     gtk_search_entry_set_placeholder_text(GTK_SEARCH_ENTRY(search), "Filter thumbnails by filename...");
@@ -4003,6 +4179,9 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     gtk_box_append(GTK_BOX(toolbar), search);
 
     gtk_box_append(GTK_BOX(editor_top_actions), btn_dock_toggle);
+    gtk_box_append(GTK_BOX(editor_top_actions), dock_width_label);
+    gtk_box_append(GTK_BOX(editor_top_actions), dock_width_scale);
+    gtk_box_append(GTK_BOX(editor_top_actions), dock_preset_dropdown);
     gtk_box_append(GTK_BOX(editor_top_actions), btn_toggle_styles);
     gtk_box_append(GTK_BOX(editor_top_actions), btn_toggle_thumbs);
     gtk_box_append(GTK_BOX(editor_top_actions), btn_thumbs_bigger);
@@ -4435,6 +4614,8 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     state->editor_toggle_styles_btn = btn_toggle_styles;
     state->editor_toggle_thumbs_btn = btn_toggle_thumbs;
     state->editor_dock_toggle_btn = btn_dock_toggle;
+    state->editor_dock_width_scale = dock_width_scale;
+    state->editor_dock_preset_dropdown = dock_preset_dropdown;
     state->arrow_style_combo = arrow_style_combo;
     state->arrow_head_scale = arrow_head_scale;
     state->arrow_angle_scale = arrow_angle_scale;
@@ -4498,6 +4679,8 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     g_signal_connect(btn_open_folder, "clicked", G_CALLBACK(gtk4_on_open_folder_clicked), state);
     g_signal_connect(btn_delete, "clicked", G_CALLBACK(gtk4_on_delete_clicked), state);
     g_signal_connect(btn_dock_toggle, "clicked", G_CALLBACK(gtk4_on_dock_toggle_clicked), state);
+    g_signal_connect(dock_width_scale, "value-changed", G_CALLBACK(gtk4_on_dock_width_changed), state);
+    g_signal_connect(dock_preset_dropdown, "notify::selected", G_CALLBACK(gtk4_on_dock_preset_selected), state);
     g_signal_connect(btn_toggle_styles, "clicked", G_CALLBACK(gtk4_on_toggle_styles_clicked), state);
     g_signal_connect(btn_toggle_thumbs, "clicked", G_CALLBACK(gtk4_on_toggle_thumbs_clicked), state);
     g_signal_connect(btn_thumbs_bigger, "clicked", G_CALLBACK(gtk4_on_thumb_region_bigger), state);
@@ -4681,6 +4864,7 @@ static gboolean gtk4_on_window_close_request(GtkWindow *window, gpointer user_da
     if (!state) {
         return FALSE;
     }
+    gtk4_thumb_cancel_animation(state);
     if (state->ui_state_save_source_id != 0) {
         g_source_remove(state->ui_state_save_source_id);
         state->ui_state_save_source_id = 0;
@@ -4693,6 +4877,7 @@ static void gtk4_state_free(Gtk4State *state) {
     if (!state) {
         return;
     }
+    gtk4_thumb_cancel_animation(state);
     if (state->ui_state_save_source_id != 0) {
         g_source_remove(state->ui_state_save_source_id);
         state->ui_state_save_source_id = 0;
