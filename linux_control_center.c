@@ -393,6 +393,21 @@ static gchar *gtk4_repo_shell(Gtk4State *state, const gchar *snippet) {
     return cmd;
 }
 
+static gchar *gtk4_launcher_action_cmd(Gtk4State *state, const gchar *label) {
+    gchar *quoted = NULL;
+    gchar *snippet = NULL;
+    gchar *cmd = NULL;
+    if (!state || !label || !*label) {
+        return NULL;
+    }
+    quoted = g_shell_quote(label);
+    snippet = g_strdup_printf("./scripts/awesome_program_launcher.sh %s", quoted);
+    cmd = gtk4_repo_shell(state, snippet);
+    g_free(quoted);
+    g_free(snippet);
+    return cmd;
+}
+
 static gchar *gtk4_default_ui_state_path(void) {
     gchar *dir = g_build_filename(g_get_user_config_dir(), "linuxutilities", NULL);
     gchar *path = g_build_filename(dir, "control_center_gtk4.ini", NULL);
@@ -3166,6 +3181,8 @@ static void gtk4_mark_utility_clicked(GtkWidget *button) {
     g_timeout_add(220, gtk4_clear_utility_click_indicator, g_object_ref(button));
 }
 
+static void gtk4_open_bluetooth_center(Gtk4State *state);
+
 static void gtk4_on_utility_clicked(GtkButton *button, gpointer user_data) {
     Gtk4State *state = user_data;
     const gchar *cmd = g_object_get_data(G_OBJECT(button), "cmd");
@@ -3173,6 +3190,10 @@ static void gtk4_on_utility_clicked(GtkButton *button, gpointer user_data) {
     gtk4_mark_utility_clicked(GTK_WIDGET(button));
     if (!cmd) {
         gtk4_set_global_status(state, "This utility has no command configured.");
+        return;
+    }
+    if (g_strcmp0(cmd, "internal:bluetooth-center") == 0) {
+        gtk4_open_bluetooth_center(state);
         return;
     }
     gtk4_spawn_with_feedback(state, cmd, status ? status : "Utility launched.");
@@ -3208,6 +3229,291 @@ static GtkWidget *gtk4_make_utility_button(Gtk4State *state,
     }
     g_signal_connect(button, "clicked", G_CALLBACK(gtk4_on_utility_clicked), state);
     return button;
+}
+
+static GtkWidget *gtk4_make_bt_center_action(Gtk4State *state,
+                                             const gchar *label,
+                                             const gchar *cmd,
+                                             const gchar *status) {
+    GtkWidget *button = gtk_button_new_with_label(label);
+    gtk_widget_set_hexpand(button, TRUE);
+    gtk_widget_set_halign(button, GTK_ALIGN_FILL);
+    if (cmd) {
+        g_object_set_data_full(G_OBJECT(button), "cmd", g_strdup(cmd), g_free);
+    }
+    if (status) {
+        g_object_set_data_full(G_OBJECT(button), "status", g_strdup(status), g_free);
+    }
+    g_signal_connect(button, "clicked", G_CALLBACK(gtk4_on_utility_clicked), state);
+    return button;
+}
+
+static void gtk4_open_bluetooth_center(Gtk4State *state) {
+    GtkWidget *win = NULL;
+    GtkWidget *root = NULL;
+    GtkWidget *title = NULL;
+    GtkWidget *subtitle = NULL;
+    GtkWidget *notebook = NULL;
+    GtkWidget *recover_tab = NULL;
+    GtkWidget *recover_info = NULL;
+    GtkWidget *recover_grid = NULL;
+    GtkWidget *pair_tab = NULL;
+    GtkWidget *pair_info = NULL;
+    GtkWidget *pair_grid = NULL;
+    GtkWidget *audio_tab = NULL;
+    GtkWidget *audio_info = NULL;
+    GtkWidget *audio_grid = NULL;
+    GtkWidget *footer = NULL;
+    GtkWidget *btn_close = NULL;
+    gchar *cmd_bt_refresh = NULL;
+    gchar *cmd_bt_ui_reset = NULL;
+    gchar *cmd_bt_trust = NULL;
+    const gchar *cmd_scan_on = "bluetoothctl scan on";
+    const gchar *cmd_scan_off = "bluetoothctl scan off";
+    const gchar *cmd_pairable = "bash -lc \"bluetoothctl pairable on >/dev/null 2>&1 || true; bluetoothctl discoverable on >/dev/null 2>&1 || true\"";
+    const gchar *cmd_power_cycle = "bash -lc \"bluetoothctl power off >/dev/null 2>&1 || true; sleep 1; bluetoothctl power on >/dev/null 2>&1 || true\"";
+
+    if (!state || !state->window) {
+        return;
+    }
+
+    cmd_bt_refresh = gtk4_repo_shell(state, "./scripts/bluetooth_refresh.sh refresh");
+    cmd_bt_ui_reset = gtk4_repo_shell(state, "./scripts/bluetooth_refresh.sh ui");
+    cmd_bt_trust = gtk4_repo_shell(state, "./scripts/bluetooth_refresh.sh trust");
+
+    win = gtk_window_new();
+    gtk_window_set_title(GTK_WINDOW(win), "Bluetooth Center");
+    gtk_window_set_default_size(GTK_WINDOW(win), 820, 560);
+    gtk_window_set_transient_for(GTK_WINDOW(win), GTK_WINDOW(state->window));
+    gtk_window_set_modal(GTK_WINDOW(win), TRUE);
+
+    root = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    gtk_widget_set_margin_top(root, 12);
+    gtk_widget_set_margin_bottom(root, 12);
+    gtk_widget_set_margin_start(root, 12);
+    gtk_widget_set_margin_end(root, 12);
+
+    title = gtk_label_new("Bluetooth Center");
+    subtitle = gtk_label_new("Use this panel when clicks on tiny auth prompts fail or auto-connect becomes flaky.");
+    gtk_widget_add_css_class(title, "title-2");
+    gtk_label_set_xalign(GTK_LABEL(title), 0.0f);
+    gtk_label_set_xalign(GTK_LABEL(subtitle), 0.0f);
+    gtk_label_set_wrap(GTK_LABEL(subtitle), TRUE);
+    gtk_widget_add_css_class(subtitle, "dim-label");
+
+    notebook = gtk_notebook_new();
+    gtk_widget_set_vexpand(notebook, TRUE);
+    gtk_widget_add_css_class(notebook, "lcu-panel");
+
+    recover_tab = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    gtk_widget_set_margin_top(recover_tab, 8);
+    gtk_widget_set_margin_bottom(recover_tab, 8);
+    gtk_widget_set_margin_start(recover_tab, 8);
+    gtk_widget_set_margin_end(recover_tab, 8);
+    recover_info = gtk_label_new("Quick fixes for adapter + tray behavior.");
+    gtk_label_set_xalign(GTK_LABEL(recover_info), 0.0f);
+    gtk_label_set_wrap(GTK_LABEL(recover_info), TRUE);
+    gtk_widget_add_css_class(recover_info, "dim-label");
+    recover_grid = gtk_grid_new();
+    gtk_grid_set_row_spacing(GTK_GRID(recover_grid), 8);
+    gtk_grid_set_column_spacing(GTK_GRID(recover_grid), 8);
+    gtk_grid_attach(GTK_GRID(recover_grid),
+                    gtk4_make_bt_center_action(state, "Soft Refresh + Reconnect", cmd_bt_refresh, "Bluetooth refresh started."),
+                    0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(recover_grid),
+                    gtk4_make_bt_center_action(state, "Reset Blueman UI", cmd_bt_ui_reset, "Bluetooth UI reset started."),
+                    1, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(recover_grid),
+                    gtk4_make_bt_center_action(state, "Open Blueman Manager", "blueman-manager", "Opening Blueman manager..."),
+                    0, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(recover_grid),
+                    gtk4_make_bt_center_action(state, "Open Bluetooth Adapter Settings", "blueman-adapters", "Opening Bluetooth adapter settings..."),
+                    1, 1, 1, 1);
+    gtk_box_append(GTK_BOX(recover_tab), recover_info);
+    gtk_box_append(GTK_BOX(recover_tab), recover_grid);
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), recover_tab, gtk_label_new("Recover"));
+
+    pair_tab = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    gtk_widget_set_margin_top(pair_tab, 8);
+    gtk_widget_set_margin_bottom(pair_tab, 8);
+    gtk_widget_set_margin_start(pair_tab, 8);
+    gtk_widget_set_margin_end(pair_tab, 8);
+    pair_info = gtk_label_new("If pairing dialogs are flaky, run these in order: Power Cycle -> Pairable -> Scan On.");
+    gtk_label_set_xalign(GTK_LABEL(pair_info), 0.0f);
+    gtk_label_set_wrap(GTK_LABEL(pair_info), TRUE);
+    gtk_widget_add_css_class(pair_info, "dim-label");
+    pair_grid = gtk_grid_new();
+    gtk_grid_set_row_spacing(GTK_GRID(pair_grid), 8);
+    gtk_grid_set_column_spacing(GTK_GRID(pair_grid), 8);
+    gtk_grid_attach(GTK_GRID(pair_grid),
+                    gtk4_make_bt_center_action(state, "Power Cycle Adapter", cmd_power_cycle, "Bluetooth power cycled."),
+                    0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(pair_grid),
+                    gtk4_make_bt_center_action(state, "Pairable + Discoverable On", cmd_pairable, "Pairable/discoverable enabled."),
+                    1, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(pair_grid),
+                    gtk4_make_bt_center_action(state, "Scan On", cmd_scan_on, "Bluetooth scanning enabled."),
+                    0, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(pair_grid),
+                    gtk4_make_bt_center_action(state, "Scan Off", cmd_scan_off, "Bluetooth scanning disabled."),
+                    1, 1, 1, 1);
+    gtk_box_append(GTK_BOX(pair_tab), pair_info);
+    gtk_box_append(GTK_BOX(pair_tab), pair_grid);
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), pair_tab, gtk_label_new("Pairing"));
+
+    audio_tab = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    gtk_widget_set_margin_top(audio_tab, 8);
+    gtk_widget_set_margin_bottom(audio_tab, 8);
+    gtk_widget_set_margin_start(audio_tab, 8);
+    gtk_widget_set_margin_end(audio_tab, 8);
+    audio_info = gtk_label_new("Headset recovery: trust + reconnect paired audio endpoints.");
+    gtk_label_set_xalign(GTK_LABEL(audio_info), 0.0f);
+    gtk_label_set_wrap(GTK_LABEL(audio_info), TRUE);
+    gtk_widget_add_css_class(audio_info, "dim-label");
+    audio_grid = gtk_grid_new();
+    gtk_grid_set_row_spacing(GTK_GRID(audio_grid), 8);
+    gtk_grid_set_column_spacing(GTK_GRID(audio_grid), 8);
+    gtk_grid_attach(GTK_GRID(audio_grid),
+                    gtk4_make_bt_center_action(state, "Trust + Reconnect Paired Audio", cmd_bt_trust, "Trusted/reconnect requested."),
+                    0, 0, 2, 1);
+    gtk_grid_attach(GTK_GRID(audio_grid),
+                    gtk4_make_bt_center_action(state, "Open Audio Mixer", "pavucontrol", "Opening audio mixer..."),
+                    0, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(audio_grid),
+                    gtk4_make_bt_center_action(state, "Open Device Pairing", "blueman-manager", "Opening pairing manager..."),
+                    1, 1, 1, 1);
+    gtk_box_append(GTK_BOX(audio_tab), audio_info);
+    gtk_box_append(GTK_BOX(audio_tab), audio_grid);
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), audio_tab, gtk_label_new("Headset"));
+
+    footer = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    gtk_widget_set_halign(footer, GTK_ALIGN_END);
+    btn_close = gtk_button_new_with_label("Close");
+    g_signal_connect_swapped(btn_close, "clicked", G_CALLBACK(gtk_window_destroy), win);
+    gtk_box_append(GTK_BOX(footer), btn_close);
+
+    gtk_box_append(GTK_BOX(root), title);
+    gtk_box_append(GTK_BOX(root), subtitle);
+    gtk_box_append(GTK_BOX(root), notebook);
+    gtk_box_append(GTK_BOX(root), footer);
+    gtk_window_set_child(GTK_WINDOW(win), root);
+    gtk_widget_set_visible(win, TRUE);
+
+    g_free(cmd_bt_refresh);
+    g_free(cmd_bt_ui_reset);
+    g_free(cmd_bt_trust);
+}
+
+static void gtk4_on_command_palette_run(GtkButton *button, gpointer user_data) {
+    Gtk4State *state = user_data;
+    GtkWidget *entry = g_object_get_data(G_OBJECT(button), "palette-entry");
+    const gchar *text = NULL;
+
+    if (!entry || !GTK_IS_EDITABLE(entry)) {
+        gtk4_set_global_status(state, "Command input not available.");
+        return;
+    }
+
+    text = gtk_editable_get_text(GTK_EDITABLE(entry));
+    if (!text || text[0] == '\0') {
+        gtk4_set_global_status(state, "Enter a command first.");
+        return;
+    }
+
+    gtk4_spawn_with_feedback(state, text, "Palette command launched.");
+}
+
+static void gtk4_on_command_palette_entry_activate(GtkEntry *entry, gpointer user_data) {
+    GtkButton *run_button = GTK_BUTTON(user_data);
+    (void)entry;
+    if (run_button) {
+        g_signal_emit_by_name(run_button, "clicked");
+    }
+}
+
+static GtkWidget *gtk4_build_command_palette_tab(Gtk4State *state) {
+    GtkWidget *root = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    GtkWidget *title = gtk_label_new("Command Palette");
+    GtkWidget *subtitle = gtk_label_new("Fast launcher matching Mod4+r favorites/recents flow. Use buttons or run any shell command.");
+    GtkWidget *quick_panel = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    GtkWidget *quick_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    GtkWidget *quick_entry = gtk_entry_new();
+    GtkWidget *quick_run = gtk_button_new_with_label("Run Command");
+    GtkWidget *scroll = gtk_scrolled_window_new();
+    GtkWidget *grid = gtk_grid_new();
+    GtkWidget *buttons[14];
+    gchar *cmds[14] = { 0 };
+    const gchar *titles[14] = {
+        "Presentation Prep", "Presentation Live",
+        "LinuxUtilities Control Center", "Presenter Canvas",
+        "Teleprompter", "Storyboard DSL",
+        "Bluetooth Manager", "Network Connections",
+        "Audio Mixer", "Shortcut Cheat Sheet",
+        "Manim Workspace", "Manim Smoke",
+        "LinuxUtilities Folder", "Screenshots Folder"
+    };
+    const gchar *subs[14] = {
+        "Apply profile: audio + bluetooth + wacom + support apps", "Prep profile + launch reveal/canvas workflow",
+        "Open GTK4 control center", "Open live whiteboard canvas",
+        "Open teleprompter window", "Open storyboard player/editor",
+        "Open device pairing/management", "Open connection editor",
+        "Open PulseAudio mixer", "Open markdown shortcut docs",
+        "Open Manim shell with venv", "Render smoke scene helper",
+        "Open LinuxUtilities workspace", "Open Screenshots folder"
+    };
+    const gchar *action_labels[14] = {
+        "Presentation Prep (audio+bluetooth+wacom)", "Presentation Live (launch workflow)",
+        "LinuxUtilities Control Center", "Presenter Canvas",
+        "Teleprompter", "Storyboard DSL",
+        "Bluetooth Manager", "Network Connections",
+        "Audio Mixer", "Shortcut Cheat Sheet",
+        "Manim Workspace", "Manim Smoke",
+        "LinuxUtilities Folder", "Screenshots Folder"
+    };
+
+    gtk_widget_set_margin_top(root, 12);
+    gtk_widget_set_margin_bottom(root, 12);
+    gtk_widget_set_margin_start(root, 12);
+    gtk_widget_set_margin_end(root, 12);
+    gtk_widget_add_css_class(title, "title-2");
+    gtk_label_set_xalign(GTK_LABEL(title), 0.0f);
+    gtk_label_set_xalign(GTK_LABEL(subtitle), 0.0f);
+    gtk_label_set_wrap(GTK_LABEL(subtitle), TRUE);
+    gtk_widget_add_css_class(subtitle, "dim-label");
+    gtk_widget_add_css_class(quick_panel, "lcu-panel");
+
+    gtk_entry_set_placeholder_text(GTK_ENTRY(quick_entry), "Example: make present-profile-live REVEAL_URL=http://127.0.0.1:8000");
+    gtk_widget_set_hexpand(quick_entry, TRUE);
+    g_object_set_data(G_OBJECT(quick_run), "palette-entry", quick_entry);
+    g_signal_connect(quick_run, "clicked", G_CALLBACK(gtk4_on_command_palette_run), state);
+    g_signal_connect(quick_entry, "activate", G_CALLBACK(gtk4_on_command_palette_entry_activate), quick_run);
+
+    gtk_box_append(GTK_BOX(quick_row), quick_entry);
+    gtk_box_append(GTK_BOX(quick_row), quick_run);
+    gtk_box_append(GTK_BOX(quick_panel), gtk_label_new("Run raw shell command"));
+    gtk_box_append(GTK_BOX(quick_panel), quick_row);
+
+    gtk_grid_set_row_spacing(GTK_GRID(grid), 8);
+    gtk_grid_set_column_spacing(GTK_GRID(grid), 8);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+    gtk_widget_set_vexpand(scroll, TRUE);
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), grid);
+
+    for (gint i = 0; i < 14; i += 1) {
+        cmds[i] = gtk4_launcher_action_cmd(state, action_labels[i]);
+        buttons[i] = gtk4_make_utility_button(state, titles[i], subs[i], cmds[i], titles[i]);
+        gtk_grid_attach(GTK_GRID(grid), buttons[i], i % 2, i / 2, 1, 1);
+    }
+
+    gtk_box_append(GTK_BOX(root), title);
+    gtk_box_append(GTK_BOX(root), subtitle);
+    gtk_box_append(GTK_BOX(root), quick_panel);
+    gtk_box_append(GTK_BOX(root), scroll);
+
+    for (gint i = 0; i < 14; i += 1) {
+        g_free(cmds[i]);
+    }
+    return root;
 }
 
 static GtkWidget *gtk4_make_tool_button(const gchar *tool_id, const gchar *label, const gchar *icon_path) {
@@ -3662,28 +3968,41 @@ static GtkWidget *gtk4_build_utilities_tab(Gtk4State *state) {
     gchar *cmd_arrow = gtk4_repo_shell(state, "./presenter_dash.sh arrow");
     gchar *cmd_install_gromit = gtk4_repo_shell(state, "./install_gromit_profile.sh");
     gchar *cmd_shortcuts = gtk4_repo_shell(state, "xdg-open SHORTCUTS_CHEATSHEET.md");
+    gchar *cmd_teleprompter = gtk4_repo_shell(state, "./launch_teleprompter.sh");
+    gchar *cmd_presenter_canvas = gtk4_repo_shell(state, "./launch_presenter_canvas.sh");
+    gchar *cmd_storyboard_dsl = gtk4_repo_shell(state, "./launch_presenter_storyboard.sh");
+    gchar *cmd_present_prep = gtk4_repo_shell(state, "./scripts/presentation_mode.sh prep");
+    gchar *cmd_present_live = gtk4_repo_shell(state, "./scripts/presentation_mode.sh live");
     gchar *cmd_manim_shell = gtk4_repo_shell(state, "./manim_tools.sh term-shell");
     gchar *cmd_manim_version = gtk4_repo_shell(state, "./manim_tools.sh term-version");
     gchar *cmd_manim_smoke = gtk4_repo_shell(state, "./manim_tools.sh term-smoke");
-    GtkWidget *buttons[21];
-    const gchar *titles[21] = {
-        "Pavucontrol", "CC Switch", "Flameshot", "Network", "Bluetooth", "Workspace",
-        "Screenshots", "Terminator", "Cursor Spotlight", "Build Spotlight", "Gromit Draw",
-        "Gromit Clear", "Dash Anchor", "Dash Segment", "Dot Segment", "Arrow Segment",
-        "Install Gromit Profile", "Shortcut Cheat Sheet", "Manim Workspace", "Manim Version", "Manim Smoke"
+    gchar *cmd_bt_refresh = gtk4_repo_shell(state, "./scripts/bluetooth_refresh.sh refresh");
+    gchar *cmd_bt_ui_reset = gtk4_repo_shell(state, "./scripts/bluetooth_refresh.sh ui");
+    GtkWidget *buttons[28];
+    const gchar *titles[28] = {
+        "Pavucontrol", "CC Switch", "Flameshot", "Network", "Bluetooth", "Bluetooth Refresh",
+        "Bluetooth UI Reset", "Workspace", "Screenshots", "Terminator", "Cursor Spotlight", "Build Spotlight",
+        "Gromit Draw", "Gromit Clear", "Dash Anchor", "Dash Segment", "Dot Segment", "Arrow Segment",
+        "Install Gromit Profile", "Shortcut Cheat Sheet", "Teleprompter", "Presenter Canvas", "Storyboard DSL",
+        "Presentation Prep", "Presentation Live", "Manim Workspace", "Manim Version", "Manim Smoke"
     };
-    const gchar *subs[21] = {
+    const gchar *subs[28] = {
         "Audio mixer and routing", "Project/context switch helper", "Capture area screenshot", "Connection editor and details",
-        "Devices and pairing", "Open LinuxUtilities folder", "Open Screenshots folder", "Open terminal workspace",
+        "Devices and pairing", "Soft reset adapter + reconnect paired audio", "Restart Blueman tray + manager",
+        "Open LinuxUtilities folder", "Open Screenshots folder", "Open terminal workspace",
         "Toggle cursor highlight overlay", "Compile spotlight binary", "Toggle screen drawing mode", "Clear all current strokes",
         "Set animated path anchor", "Animated dashed segment to cursor", "Animated dotted segment to cursor",
         "Animated arrow segment to cursor", "Install compatible draw profile", "Open full key/mouse/shell shortcuts",
+        "Open local script prompter window", "Open live whiteboard canvas with shape + JSON tools",
+        "Open timeline parser/player for scripted animation scenes",
+        "One-click prep profile: audio + bluetooth + wacom + support apps",
+        "Prep profile + launch reveal/canvas workflow",
         "Open ~/Workspace/manim with venv activated", "Run manim --version in terminal", "Render smoke.py Smoke in terminal"
     };
-    const gchar *cmds[21] = {
+    const gchar *cmds[28] = {
         "pavucontrol", "bash -lc \"command -v cc-switch >/dev/null 2>&1 && cc-switch || true\"",
-        "flameshot gui", "nm-connection-editor", "blueman-manager", NULL, NULL, "terminator",
-        NULL, NULL, "gromit-mpx --toggle", "gromit-mpx --clear", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+        "flameshot gui", "nm-connection-editor", "internal:bluetooth-center", NULL, NULL, NULL, NULL, "terminator",
+        NULL, NULL, "gromit-mpx --toggle", "gromit-mpx --clear", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
     };
 
     gtk_widget_set_margin_top(root, 12);
@@ -3699,33 +4018,47 @@ static GtkWidget *gtk4_build_utilities_tab(Gtk4State *state) {
     gtk_widget_set_vexpand(scroll, TRUE);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), grid);
 
-    for (gint i = 0; i < 21; i += 1) {
+    for (gint i = 0; i < 28; i += 1) {
         const gchar *command = cmds[i];
         if (i == 5) {
-            command = cmd_workspace;
+            command = cmd_bt_refresh;
         } else if (i == 6) {
-            command = cmd_screens;
+            command = cmd_bt_ui_reset;
+        } else if (i == 7) {
+            command = cmd_workspace;
         } else if (i == 8) {
+            command = cmd_screens;
+        } else if (i == 10) {
             command = cmd_spot;
-        } else if (i == 9) {
+        } else if (i == 11) {
             command = cmd_build_spot;
-        } else if (i == 12) {
-            command = cmd_anchor;
-        } else if (i == 13) {
-            command = cmd_dash;
         } else if (i == 14) {
-            command = cmd_dot;
+            command = cmd_anchor;
         } else if (i == 15) {
-            command = cmd_arrow;
+            command = cmd_dash;
         } else if (i == 16) {
-            command = cmd_install_gromit;
+            command = cmd_dot;
         } else if (i == 17) {
-            command = cmd_shortcuts;
+            command = cmd_arrow;
         } else if (i == 18) {
-            command = cmd_manim_shell;
+            command = cmd_install_gromit;
         } else if (i == 19) {
-            command = cmd_manim_version;
+            command = cmd_shortcuts;
         } else if (i == 20) {
+            command = cmd_teleprompter;
+        } else if (i == 21) {
+            command = cmd_presenter_canvas;
+        } else if (i == 22) {
+            command = cmd_storyboard_dsl;
+        } else if (i == 23) {
+            command = cmd_present_prep;
+        } else if (i == 24) {
+            command = cmd_present_live;
+        } else if (i == 25) {
+            command = cmd_manim_shell;
+        } else if (i == 26) {
+            command = cmd_manim_version;
+        } else if (i == 27) {
             command = cmd_manim_smoke;
         }
         buttons[i] = gtk4_make_utility_button(state, titles[i], subs[i], command, titles[i]);
@@ -3748,9 +4081,16 @@ static GtkWidget *gtk4_build_utilities_tab(Gtk4State *state) {
     g_free(cmd_arrow);
     g_free(cmd_install_gromit);
     g_free(cmd_shortcuts);
+    g_free(cmd_teleprompter);
+    g_free(cmd_presenter_canvas);
+    g_free(cmd_storyboard_dsl);
+    g_free(cmd_present_prep);
+    g_free(cmd_present_live);
     g_free(cmd_manim_shell);
     g_free(cmd_manim_version);
     g_free(cmd_manim_smoke);
+    g_free(cmd_bt_refresh);
+    g_free(cmd_bt_ui_reset);
     return root;
 }
 
@@ -4803,6 +5143,7 @@ static GtkWidget *gtk4_build_ui(Gtk4State *state) {
     GtkWidget *tab_night = gtk4_build_night_tab(state);
     GtkWidget *tab_audio = gtk4_build_audio_tab(state);
     GtkWidget *tab_utils = gtk4_build_utilities_tab(state);
+    GtkWidget *tab_commands = gtk4_build_command_palette_tab(state);
     GtkWidget *tab_shortcuts = gtk4_build_shortcuts_tab(state);
     GtkWidget *tab_screens = gtk4_build_screenshots_tab(state);
 
@@ -4828,6 +5169,7 @@ static GtkWidget *gtk4_build_ui(Gtk4State *state) {
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_night, gtk_label_new("Night Light"));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_audio, gtk_label_new("Audio"));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_utils, gtk_label_new("Utilities"));
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_commands, gtk_label_new("Commands"));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_shortcuts, gtk_label_new("Shortcuts"));
     state->screenshots_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_screens, gtk_label_new("Screenshots"));
     gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), state->screenshots_page);

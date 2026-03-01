@@ -1,0 +1,94 @@
+* {
+  bg: #0b1220;
+  bg-alt: #111a2c;
+  fg: #e5f0ff;
+  fg-muted: #9fb5d4;
+  border: #2b4f88;
+  accent: #2ea7ff;
+  accent-2: #4ec9f5;
+  urgent: #ff6b7d;
+  selected: #17345d;
+  radius: 12px;
+  spacing: 8px;
+  font: "JetBrains Mono 11";
+}
+
+window {
+  width: 62%;
+  border: 2px;
+  border-color: @border;
+  border-radius: @radius;
+  background-color: @bg;
+  padding: 14px;
+}
+
+mainbox {
+  spacing: 10px;
+}
+
+inputbar {
+  children: [ prompt, entry ];
+  spacing: 10px;
+  padding: 10px 12px;
+  border: 1px;
+  border-color: @border;
+  border-radius: 10px;
+  background-color: @bg-alt;
+}
+
+prompt {
+  text-color: @accent-2;
+  font: "JetBrains Mono Bold 11";
+}
+
+entry {
+  text-color: @fg;
+  placeholder: "Search command/app...";
+  placeholder-color: @fg-muted;
+}
+
+listview {
+  lines: 12;
+  columns: 1;
+  cycle: false;
+  fixed-height: false;
+  dynamic: true;
+  scrollbar: true;
+  spacing: 5px;
+}
+
+element {
+  padding: 9px 10px;
+  border-radius: 10px;
+  background-color: transparent;
+  text-color: @fg;
+}
+
+element normal.normal {
+  background-color: transparent;
+  text-color: @fg;
+}
+
+element selected.normal {
+  background-color: @selected;
+  text-color: @fg;
+}
+
+element selected.active {
+  background-color: @accent;
+  text-color: #081220;
+}
+
+element normal.urgent {
+  background-color: rgba(255, 107, 125, 0.12);
+  text-color: @urgent;
+}
+
+element-icon {
+  size: 1.0em;
+  margin: 0 10px 0 0;
+}
+
+element-text {
+  text-color: inherit;
+}

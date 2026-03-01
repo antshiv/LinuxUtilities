@@ -34,8 +34,12 @@ MANIM_VENV ?= $(MANIM_DIR)/.venv/bin/activate
 MANIM_FILE ?= smoke.py
 MANIM_SCENE ?= Smoke
 MANIM_QUALITY ?= ql
+SMB_530_HOST ?= 10.0.0.119
+SMB_530_SHARE ?= shared
+SMB_530_MOUNT ?= /mnt/w530
+SMB_530_CREDENTIALS ?= $(HOME)/.smbcredentials-530
 
-.PHONY: help rc-backup awesome-backup awesome-update apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve present-live shorts-help shorts-record shorts-transcribe shorts-render manim-help manim-version manim-smoke manim-scene manim-shell wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external
+.PHONY: help rc-backup awesome-backup awesome-update apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve present-live present-profile present-profile-live present-profile-list shorts-help shorts-record shorts-transcribe shorts-render manim-help manim-version manim-smoke manim-scene manim-shell wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external samba-530-probe mount-530 umount-530 desktop-install
 
 help:
 >@echo "Targets:"
@@ -54,6 +58,9 @@ help:
 >@echo "  make docs                Build docs into docs/build"
 >@echo "  make docs-serve          Build docs and serve locally on http://localhost:$(DOCS_PORT)"
 >@echo "  make present-live        Launch reveal.js + Presenter Canvas (+ optional code tab)"
+>@echo "  make present-profile     One-click prep profile (audio + bluetooth + wacom + support apps)"
+>@echo "  make present-profile-live Prep profile + launch present-live workflow"
+>@echo "  make present-profile-list List profile names from config/presentation_profiles.json"
 >@echo "  make shorts-help         Show transcript-driven shorts pipeline commands"
 >@echo "  make manim-help          Show Manim helper commands (uses $(MANIM_DIR))"
 >@echo "  make wacom-help          Show quick Wacom mapping cheatsheet"
@@ -65,6 +72,10 @@ help:
 >@echo "  make wacom-switch        Cycle tablet mapping to the next connected output"
 >@echo "  make wacom-hdmi          Shortcut for OUTPUT=HDMI-1"
 >@echo "  make wacom-external      Auto-detect first external display and map tablet"
+>@echo "  make samba-530-probe     Check host/share reachability and list SMB shares"
+>@echo "  make mount-530           Mount //$(SMB_530_HOST)/$(SMB_530_SHARE) -> $(SMB_530_MOUNT)"
+>@echo "  make umount-530          Unmount $(SMB_530_MOUNT)"
+>@echo "  make desktop-install     Install LinuxUtilities .desktop launchers"
 
 rc-backup:
 >@test -f "$(AWESOME_RC)" || { echo "Missing system rc.lua: $(AWESOME_RC)"; exit 1; }
@@ -144,6 +155,8 @@ deps-check-runtime:
 >  "flameshot|Screenshot utility button|flameshot" \
 >  "xrandr|Wacom output detection/mapping|x11-xserver-utils" \
 >  "xsetwacom|Wacom tablet mapping|xserver-xorg-input-wacom" \
+>  "playerctl|Media play/pause/next/prev keys in AwesomeWM|playerctl" \
+>  "rofi|Mod4+r program launcher palette|rofi" \
 >  "redshift|Night Light tab|redshift" \
 >  "pavucontrol|Audio mixer button|pavucontrol" \
 >  "nm-connection-editor|Network button|network-manager-gnome" \
@@ -203,6 +216,23 @@ present-live:
 >PRESENT_LIVE_DELAY_SEC="$(PRESENT_LIVE_DELAY_SEC)" \
 >PRESENTER_CANVAS_PORT="$(PRESENTER_CANVAS_PORT)" \
 >./launch_present_live.sh
+
+present-profile:
+>@PRESENT_WACOM_MODE="$(PRESENT_WACOM_MODE)" \
+>REVEAL_URL="$(REVEAL_URL)" \
+>CODE_URL="$(CODE_URL)" \
+>PRESENT_LIVE_DELAY_SEC="$(PRESENT_LIVE_DELAY_SEC)" \
+>./scripts/presentation_mode.sh prep
+
+present-profile-live:
+>@PRESENT_WACOM_MODE="$(PRESENT_WACOM_MODE)" \
+>REVEAL_URL="$(REVEAL_URL)" \
+>CODE_URL="$(CODE_URL)" \
+>PRESENT_LIVE_DELAY_SEC="$(PRESENT_LIVE_DELAY_SEC)" \
+>./scripts/presentation_mode.sh live
+
+present-profile-list:
+>@PRESENT_PROFILE_FILE="$(PWD)/config/presentation_profiles.json" ./scripts/presentation_mode.sh list
 
 shorts-help:
 >@echo "Shorts pipeline:"
@@ -423,3 +453,23 @@ wacom-external:
 >fi; \
 >echo "Detected external output: $$output"; \
 >$(MAKE) --no-print-directory wacom-set-screen OUTPUT="$$output"
+
+samba-530-probe:
+>@SMB_530_HOST="$(SMB_530_HOST)" \
+>SMB_530_SHARE="$(SMB_530_SHARE)" \
+>SMB_530_MOUNT="$(SMB_530_MOUNT)" \
+>SMB_530_CREDENTIALS="$(SMB_530_CREDENTIALS)" \
+>./mount_530.sh --probe
+
+mount-530:
+>@SMB_530_HOST="$(SMB_530_HOST)" \
+>SMB_530_SHARE="$(SMB_530_SHARE)" \
+>SMB_530_MOUNT="$(SMB_530_MOUNT)" \
+>SMB_530_CREDENTIALS="$(SMB_530_CREDENTIALS)" \
+>./mount_530.sh
+
+umount-530:
+>@SMB_530_MOUNT="$(SMB_530_MOUNT)" ./umount_530.sh
+
+desktop-install:
+>@./scripts/install_desktop_entries.sh

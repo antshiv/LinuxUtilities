@@ -281,7 +281,8 @@ Common DSL actions:
 | `Mod4+Return` | Open terminal |
 | `Mod4+w` | Show main menu |
 | `Mod4+p` | Show menubar |
-| `Mod4+r` | Run prompt |
+| `Mod4+r` | Program launcher (rofi + custom LinuxUtilities commands) |
+| `Mod4+Shift+r` | Run prompt (classic) |
 | `Mod4+x` | Lua execute prompt |
 | `Mod4+Ctrl+r` | Reload awesome |
 | `Mod4+Shift+q` | Quit awesome |
@@ -339,6 +340,9 @@ Common DSL actions:
 | `XF86AudioRaiseVolume` | Volume up |
 | `XF86AudioLowerVolume` | Volume down |
 | `XF86AudioMute` | Toggle mute |
+| `XF86AudioPlay` / `XF86AudioPause` | Play/pause active media |
+| `XF86AudioNext` | Next track |
+| `XF86AudioPrev` | Previous track |
 
 ## Workspace Shell Shortcuts
 

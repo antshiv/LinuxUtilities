@@ -314,6 +314,41 @@ local function volume_toggle_mute()
     refresh_audio_state_later(true)
 end
 
+local function command_exists(cmd)
+    local ok, _, code = os.execute("command -v " .. cmd .. " >/dev/null 2>&1")
+    return ok == true or code == 0
+end
+
+local playerctl_available = command_exists("playerctl")
+local playerctl_warned = false
+
+local function run_playerctl(action)
+    if not playerctl_available then
+        if not playerctl_warned then
+            naughty.notify({
+                title = "Media keys",
+                text = "playerctl not found (install package: playerctl).",
+                timeout = 2.5
+            })
+            playerctl_warned = true
+        end
+        return
+    end
+    awful.spawn({ "playerctl", action }, false)
+end
+
+local function media_play_pause()
+    run_playerctl("play-pause")
+end
+
+local function media_next_track()
+    run_playerctl("next")
+end
+
+local function media_prev_track()
+    run_playerctl("previous")
+end
+
 local function build_flameshot_target_file()
     local home = os.getenv("HOME") or ""
     local shots_dir = home ~= "" and (home .. "/Screenshots") or "Screenshots"
@@ -345,6 +380,40 @@ local function shell_quote(value)
         return "''"
     end
     return "'" .. tostring(value):gsub("'", "'\\''") .. "'"
+end
+
+local function launch_program_palette()
+    local home = os.getenv("HOME") or ""
+    local workspace_dir = os.getenv("LINUXUTILITIES_DIR")
+    local launcher_script = nil
+    local rofi_theme = nil
+
+    if not workspace_dir or workspace_dir == "" then
+        workspace_dir = home ~= "" and (home .. "/Workspace/LinuxUtilities") or "."
+    end
+    launcher_script = workspace_dir .. "/scripts/awesome_program_launcher.sh"
+    rofi_theme = workspace_dir .. "/config/rofi_linuxutilities.rasi"
+
+    if command_exists("rofi") and gears.filesystem.file_readable(launcher_script) then
+        local theme_arg = ""
+        if gears.filesystem.file_readable(rofi_theme) then
+            theme_arg = " -theme " .. shell_quote(rofi_theme)
+        end
+        local cmd = string.format(
+            "rofi -show-icons -i -matching fuzzy%s -show combi -combi-modi \"lcu,drun,run,window\" -modi \"lcu:%s,drun,run,window\"",
+            theme_arg,
+            shell_quote(launcher_script)
+        )
+        awful.spawn.with_shell(cmd)
+        return
+    end
+
+    if command_exists("rofi") then
+        awful.spawn.with_shell("rofi -show drun -show-icons -i")
+        return
+    end
+
+    awful.screen.focused().mypromptbox:run()
 end
 
 local function clamp_number(value, lo, hi)
@@ -1415,6 +1484,14 @@ globalkeys = gears.table.join(
               {description = "decrease volume", group = "media"}),
     awful.key({                   }, "XF86AudioMute", volume_toggle_mute,
               {description = "toggle mute", group = "media"}),
+    awful.key({                   }, "XF86AudioPlay", media_play_pause,
+              {description = "play/pause active media", group = "media"}),
+    awful.key({                   }, "XF86AudioPause", media_play_pause,
+              {description = "play/pause active media", group = "media"}),
+    awful.key({                   }, "XF86AudioNext", media_next_track,
+              {description = "next track", group = "media"}),
+    awful.key({                   }, "XF86AudioPrev", media_prev_track,
+              {description = "previous track", group = "media"}),
     awful.key({ modkey, "Control" }, "r", awesome.restart,
               {description = "reload awesome", group = "awesome"}),
     awful.key({ modkey, "Shift"   }, "q", awesome.quit,
@@ -1450,8 +1527,10 @@ globalkeys = gears.table.join(
               {description = "restore minimized", group = "client"}),
 
     -- Prompt
-    awful.key({ modkey },            "r",     function () awful.screen.focused().mypromptbox:run() end,
-              {description = "run prompt", group = "launcher"}),
+    awful.key({ modkey },            "r", launch_program_palette,
+              {description = "program launcher (rofi + custom commands)", group = "launcher"}),
+    awful.key({ modkey, "Shift" },   "r",     function () awful.screen.focused().mypromptbox:run() end,
+              {description = "run prompt (classic)", group = "launcher"}),
 
     awful.key({ modkey }, "x",
               function ()

@@ -1,0 +1,40 @@
+{
+  "profiles": {
+    "present": {
+      "volume": 35,
+      "wacom_mode": "external",
+      "live_delay_sec": 0.35,
+      "reveal_url": "http://127.0.0.1:8000",
+      "code_url": "",
+      "bluetooth_refresh": true,
+      "launch_control_center": true,
+      "launch_teleprompter": true,
+      "launch_presenter_canvas": false,
+      "notify": true
+    },
+    "work": {
+      "volume": 22,
+      "wacom_mode": "none",
+      "live_delay_sec": 0.35,
+      "reveal_url": "http://127.0.0.1:8000",
+      "code_url": "",
+      "bluetooth_refresh": false,
+      "launch_control_center": false,
+      "launch_teleprompter": false,
+      "launch_presenter_canvas": false,
+      "notify": true
+    },
+    "record": {
+      "volume": 28,
+      "wacom_mode": "external",
+      "live_delay_sec": 0.25,
+      "reveal_url": "http://127.0.0.1:8000",
+      "code_url": "",
+      "bluetooth_refresh": true,
+      "launch_control_center": true,
+      "launch_teleprompter": true,
+      "launch_presenter_canvas": true,
+      "notify": true
+    }
+  }
+}

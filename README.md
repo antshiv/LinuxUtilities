@@ -76,6 +76,33 @@ Override default HDMI output name if needed:
 make wacom WACOM_OUTPUT=HDMI-A-1
 ```
 
+Samba mount helper (`10.0.0.119` / `shared`):
+
+```bash
+# probe host + list shares
+make samba-530-probe
+
+# mount //10.0.0.119/shared -> /mnt/w530
+make mount-530
+
+# unmount later
+make umount-530
+```
+
+If guest access is disabled, create `~/.smbcredentials-530`:
+
+```ini
+username=YOUR_USER
+password=YOUR_PASSWORD
+domain=WORKGROUP
+```
+
+Then lock it down:
+
+```bash
+chmod 600 ~/.smbcredentials-530
+```
+
 Live presentation launcher (reveal.js + canvas + optional code tab):
 
 ```bash
@@ -84,6 +111,15 @@ make present-live REVEAL_URL=http://127.0.0.1:8000
 
 # also open a code/doc window and auto-map tablet to first external display
 make present-live REVEAL_URL=http://127.0.0.1:8000 CODE_URL=https://github.com/your/repo PRESENT_WACOM_MODE=external
+
+# one-click prep profile (audio + bluetooth + wacom + support apps)
+make present-profile PRESENT_WACOM_MODE=external
+
+# prep profile + launch reveal/canvas live workflow
+make present-profile-live REVEAL_URL=http://127.0.0.1:8000
+
+# list available profile names (from config/presentation_profiles.json)
+make present-profile-list
 ```
 
 `PRESENT_WACOM_MODE` options:
@@ -92,6 +128,35 @@ make present-live REVEAL_URL=http://127.0.0.1:8000 CODE_URL=https://github.com/y
 - `external`: run `make wacom-external`
 - `switch`: run `make wacom-switch`
 - `<output>`: map directly to that output, e.g. `PRESENT_WACOM_MODE=HDMI-1`
+
+AwesomeWM launcher upgrades:
+
+```bash
+# install LinuxUtilities app entries (shows up in rofi drun / app menus)
+make desktop-install
+```
+
+- `Mod4+r` now opens a richer launcher path:
+  - grouped LinuxUtilities actions with icons
+  - pinned favorites + recent command history
+  - one-click Presentation Prep / Presentation Live profile actions
+  - regular desktop apps (`drun`)
+  - raw command mode (`run`)
+- `Mod4+r` uses `config/rofi_linuxutilities.rasi` when present.
+- `Mod4+Shift+r` keeps the classic Awesome run prompt.
+
+Optional dependency for media play/pause keys and launcher polish:
+
+```bash
+sudo apt install playerctl rofi
+```
+
+Profile tuning:
+
+- Edit `config/presentation_profiles.json` for `work`, `present`, `record`.
+- Per run override:
+  - `PRESENT_PROFILE=<name> make present-profile`
+  - `PRESENT_PROFILE=<name> make present-profile-live`
 
 Manim helpers:
 
@@ -113,7 +178,12 @@ make manim-shell
 - `cursor_spotlight.c`: Lightweight X11 cursor spotlight overlay utility.
 - `build_cursor_spotlight.sh`: Build helper for `cursor_spotlight`.
 - `launch_present_live.sh`: Opens reveal.js + Presenter Canvas (+ optional code URL) for live presentation flow.
+- `scripts/presentation_mode.sh`: One-click presentation profile (`prep` / `live`).
+- `scripts/awesome_program_launcher.sh`: Custom rofi launcher mode (favorites + recents + grouped actions).
+- `scripts/install_desktop_entries.sh`: Installs LinuxUtilities `.desktop` entries for launcher integration.
 - `manim_tools.sh`: Manim helper launcher (version/smoke/scene/shell, terminal modes included).
+- `mount_530.sh`: Samba mount helper for `//10.0.0.119/shared`.
+- `umount_530.sh`: Samba unmount helper for `/mnt/w530`.
 
 ## Cursor Spotlight Utility
 
@@ -147,6 +217,11 @@ The `Utilities` tab now includes:
 - `Manim Workspace` (open Manim project shell with venv)
 - `Manim Version` (run `manim --version`)
 - `Manim Smoke` (run `manim -pql smoke.py Smoke`)
+
+GTK4 Control Center also includes a `Commands` tab:
+- quick launcher buttons matching the Mod4+r palette favorites
+- one-click `Presentation Prep` and `Presentation Live`
+- raw command entry to run shell commands directly from the app
 
 ## Presenter Drawing (Epic Pen Style)
 
@@ -252,6 +327,8 @@ Core controls inside the canvas:
 - `Delete`: delete selected shape
 - `K`: play/pause timeline transcript mode
 - `X`: split selected timeline caption clip at playhead
+- `I`: insert motion keyframe at playhead (`Shift+I` deletes nearest keyframe)
+- `[` / `]`: jump to previous/next motion keyframe (selected shapes first)
 - `S`: toggle snap (grid + shape center/edge guides)
 - `F` / `H`: focus mode and show/hide controls
 - Mouse wheel: zoom at cursor
@@ -262,9 +339,19 @@ Timeline + transcript mode:
 - `Load Transcript JSON`: load timed text segments.
 - `Load Audio`: optional audio track for time sync.
 - `Play` (or `K`) to scrub time and show live text overlay on canvas.
+- Click any transcript row to jump to that segment start.
+- Click transcript word chips to jump to exact word timing.
 - `Add Caption At Time`: inserts current segment text as editable text object.
+- Selected shape motion now supports keyframes:
+  - `Apply Motion` creates start/end keyframes from control values.
+  - `Insert KF` button (or `I`) inserts a keyframe at playhead.
+  - Right-click in the `Shapes` timeline lane inserts keyframe at clicked time.
+  - `Set KF From Controls` writes current control values into playhead keyframe.
+  - `Delete KF @ Playhead` (or `Shift+I`) removes nearest keyframe.
+  - `Trim Start/End %` controls animate stroke trim for line/arrow shapes.
 - Caption template panel supports preset styles (`Typewriter`, `Karaoke`, `Impact`, etc.) and `Custom` style controls.
 - Karaoke/current-word highlight follows active timeline/audio progress when enabled.
+- Transcript segments support optional word-level timestamps for tighter karaoke sync.
 - Template buttons now render as style cards (`name + meta`) for faster scanning.
 - Sidebar sections are collapsible (layers/shapes/timeline/tools/style/canvas/align/pathfinder/save/notes) so the UI stays compact during longer sessions.
 - Tool/action buttons use icon + label styling to reduce visual clutter.
@@ -281,13 +368,23 @@ Transcript JSON format (supported):
 ```json
 {
   "segments": [
-    { "start": 0.0, "end": 1.6, "text": "How can I make all this work?" },
+    {
+      "start": 0.0,
+      "end": 1.6,
+      "text": "How can I make all this work?",
+      "words": [
+        { "text": "How", "start": 0.0, "end": 0.2 },
+        { "text": "can", "start": 0.2, "end": 0.4 },
+        { "text": "I", "start": 0.4, "end": 0.5 }
+      ]
+    },
     { "start": 1.6, "end": 3.0, "text": "We animate ideas with timeline captions." }
   ]
 }
 ```
 
 You can also pass the same segment objects as a top-level JSON array.
+Word entries accept `text`/`word` and `start`/`end` (or `start_time`/`end_time`, `t0`/`t1`).
 
 Starter sample:
 - `assets/examples/presenter-transcript.sample.json`
