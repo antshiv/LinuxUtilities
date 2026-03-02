@@ -169,6 +169,7 @@ typedef struct {
     GtkWidget *thumb_flow;
     GtkWidget *thumb_size_scale;
     GtkWidget *thumb_preset_dropdown;
+    GtkWidget *thumb_columns_dropdown;
     GtkWidget *editor_area;
     GtkWidget *editor_status;
     GtkWidget *editor_path;
@@ -273,6 +274,7 @@ typedef struct {
     gint split_pos_saved;
     gint studio_split_pos_saved;
     gint studio_dock_width_saved;
+    guint thumb_columns;
     gboolean thumb_ui_syncing;
     gboolean dock_ui_syncing;
     guint ui_state_save_source_id;
@@ -437,6 +439,61 @@ static guint gtk4_thumb_preset_for_width(gint width) {
     return 1;
 }
 
+static guint gtk4_clamp_thumb_columns(guint columns) {
+    if (columns <= 2) {
+        return 2;
+    }
+    if (columns <= 4) {
+        return 4;
+    }
+    if (columns <= 6) {
+        return 6;
+    }
+    return 8;
+}
+
+static guint gtk4_thumb_columns_to_dropdown_index(guint columns) {
+    switch (gtk4_clamp_thumb_columns(columns)) {
+        case 2:
+            return 0;
+        case 4:
+            return 1;
+        case 6:
+            return 2;
+        case 8:
+        default:
+            return 3;
+    }
+}
+
+static guint gtk4_thumb_columns_from_dropdown_index(guint index) {
+    switch (index) {
+        case 0:
+            return 2;
+        case 1:
+            return 4;
+        case 2:
+            return 6;
+        case 3:
+        default:
+            return 8;
+    }
+}
+
+static gint gtk4_thumb_width_for_columns(guint columns) {
+    switch (gtk4_clamp_thumb_columns(columns)) {
+        case 2:
+            return 360;
+        case 4:
+            return 270;
+        case 6:
+            return 210;
+        case 8:
+        default:
+            return 170;
+    }
+}
+
 static gint gtk4_dock_width_for_preset(guint preset) {
     switch (preset) {
         case 0:
@@ -507,6 +564,7 @@ static void gtk4_ui_state_load(Gtk4State *state) {
     GKeyFile *kf = NULL;
     GError *err = NULL;
     gint thumb_w = 0;
+    gint thumb_cols = 0;
     gint split_pos = 0;
     gint studio_pos = 0;
     gint dock_w = 0;
@@ -524,6 +582,7 @@ static void gtk4_ui_state_load(Gtk4State *state) {
         return;
     }
     thumb_w = g_key_file_get_integer(kf, "screenshots", "thumb_width", NULL);
+    thumb_cols = g_key_file_get_integer(kf, "screenshots", "thumb_columns", NULL);
     split_pos = g_key_file_get_integer(kf, "screenshots", "split_position", NULL);
     studio_pos = g_key_file_get_integer(kf, "screenshots", "studio_split_position", NULL);
     dock_w = g_key_file_get_integer(kf, "screenshots", "studio_dock_width", NULL);
@@ -548,6 +607,9 @@ static void gtk4_ui_state_load(Gtk4State *state) {
     if (thumb_w > 0) {
         state->thumb_preview_width = CLAMP(thumb_w, 170, 440);
         state->thumb_preview_height = CLAMP((gint)lrint((gdouble)state->thumb_preview_width * 0.62), 110, 300);
+    }
+    if (thumb_cols > 0) {
+        state->thumb_columns = gtk4_clamp_thumb_columns((guint)thumb_cols);
     }
     if (split_pos > 0) {
         state->split_pos_saved = gtk4_clamp_editor_split_position(state, split_pos);
@@ -606,7 +668,11 @@ static void gtk4_ui_state_save(Gtk4State *state) {
     g_key_file_set_integer(kf,
                            "screenshots",
                            "thumb_width",
-                           CLAMP(state->thumb_preview_width > 0 ? state->thumb_preview_width : 270, 170, 440));
+                           CLAMP(state->thumb_preview_width > 0 ? state->thumb_preview_width : 170, 170, 440));
+    g_key_file_set_integer(kf,
+                           "screenshots",
+                           "thumb_columns",
+                           (gint)gtk4_clamp_thumb_columns(state->thumb_columns > 0 ? state->thumb_columns : 8));
     g_key_file_set_integer(kf,
                            "screenshots",
                            "split_position",
@@ -2454,6 +2520,27 @@ static void gtk4_set_thumb_preview_width(Gtk4State *state, gint width) {
     state->thumb_ui_syncing = FALSE;
 }
 
+static void gtk4_set_thumb_columns(Gtk4State *state, guint columns) {
+    guint clamped = 8;
+    if (!state) {
+        return;
+    }
+    clamped = gtk4_clamp_thumb_columns(columns);
+    state->thumb_columns = clamped;
+    if (state->thumb_flow) {
+        gtk_flow_box_set_min_children_per_line(GTK_FLOW_BOX(state->thumb_flow), clamped);
+        gtk_flow_box_set_max_children_per_line(GTK_FLOW_BOX(state->thumb_flow), clamped);
+    }
+    if (state->thumb_columns_dropdown) {
+        guint idx = gtk4_thumb_columns_to_dropdown_index(clamped);
+        state->thumb_ui_syncing = TRUE;
+        if (gtk_drop_down_get_selected(GTK_DROP_DOWN(state->thumb_columns_dropdown)) != idx) {
+            gtk_drop_down_set_selected(GTK_DROP_DOWN(state->thumb_columns_dropdown), idx);
+        }
+        state->thumb_ui_syncing = FALSE;
+    }
+}
+
 static void gtk4_adjust_thumb_region(Gtk4State *state, gint delta) {
     gint pos = 0;
     if (!state || !state->editor_split || !state->editor_thumbs_visible) {
@@ -2521,6 +2608,28 @@ static void gtk4_on_thumb_preset_selected(GObject *object, GParamSpec *pspec, gp
     gtk4_set_thumb_preview_width(state, gtk4_thumb_width_for_preset(sel));
     gtk4_reload(state);
     gtk4_ui_state_schedule_save(state);
+}
+
+static void gtk4_on_thumb_columns_selected(GObject *object, GParamSpec *pspec, gpointer user_data) {
+    Gtk4State *state = user_data;
+    guint sel = 3;
+    guint columns = 8;
+    (void)pspec;
+    if (!state || !object || state->thumb_ui_syncing) {
+        return;
+    }
+    sel = gtk_drop_down_get_selected(GTK_DROP_DOWN(object));
+    columns = gtk4_thumb_columns_from_dropdown_index(sel);
+    gtk4_set_thumb_columns(state, columns);
+    gtk4_set_thumb_preview_width(state, gtk4_thumb_width_for_columns(columns));
+    gtk4_reload(state);
+    gtk4_ui_state_schedule_save(state);
+    gtk4_set_status(state->editor_status,
+                    columns == 8 ? "Thumbnail layout: 8 per row." :
+                    columns == 6 ? "Thumbnail layout: 6 per row." :
+                    columns == 4 ? "Thumbnail layout: 4 per row." :
+                                   "Thumbnail layout: 2 per row.",
+                    "Thumbnail row count changed.");
 }
 
 static void gtk4_on_dock_width_changed(GtkRange *range, gpointer user_data) {
@@ -4326,6 +4435,7 @@ static gboolean gtk4_on_window_key(GtkEventControllerKey *controller,
 
 static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     static const char *thumb_presets[] = { "Small", "Medium", "Large", NULL };
+    static const char *thumb_columns[] = { "2 / row", "4 / row", "6 / row", "8 / row", NULL };
     static const char *dock_presets[] = { "Compact", "Default", "Wide", NULL };
     GtkWidget *root = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
     GtkWidget *title = gtk_label_new("Screenshot Studio");
@@ -4411,7 +4521,9 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     GtkWidget *thumb_controls = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
     GtkWidget *thumb_size_label = gtk_label_new("Thumb size");
     GtkWidget *thumb_preset_label = gtk_label_new("Preset");
+    GtkWidget *thumb_columns_label = gtk_label_new("Columns");
     GtkWidget *thumb_preset_dropdown = gtk_drop_down_new_from_strings(thumb_presets);
+    GtkWidget *thumb_columns_dropdown = gtk_drop_down_new_from_strings(thumb_columns);
     GtkWidget *thumb_size_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 170.0, 440.0, 10.0);
     GtkWidget *thumb_scroll = gtk_scrolled_window_new();
     GtkWidget *thumb_flow = gtk_flow_box_new();
@@ -4489,6 +4601,7 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     gtk_label_set_xalign(GTK_LABEL(dock_width_label), 0.0f);
     gtk_label_set_xalign(GTK_LABEL(thumb_size_label), 0.0f);
     gtk_label_set_xalign(GTK_LABEL(thumb_preset_label), 0.0f);
+    gtk_label_set_xalign(GTK_LABEL(thumb_columns_label), 0.0f);
     gtk_label_set_xalign(GTK_LABEL(dock_title), 0.0f);
     gtk_label_set_xalign(GTK_LABEL(props_title), 0.0f);
     gtk_label_set_xalign(GTK_LABEL(dock_help), 0.0f);
@@ -4504,6 +4617,8 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     gtk_scale_set_draw_value(GTK_SCALE(thumb_size_scale), TRUE);
     gtk_widget_set_hexpand(thumb_size_scale, TRUE);
     gtk_drop_down_set_selected(GTK_DROP_DOWN(thumb_preset_dropdown), 1);
+    gtk_drop_down_set_selected(GTK_DROP_DOWN(thumb_columns_dropdown),
+                               gtk4_thumb_columns_to_dropdown_index(state && state->thumb_columns > 0 ? state->thumb_columns : 8));
     gtk_scale_set_draw_value(GTK_SCALE(dock_width_scale), FALSE);
     gtk_widget_set_size_request(dock_width_scale, 120, -1);
     gtk_drop_down_set_selected(GTK_DROP_DOWN(dock_preset_dropdown), 1);
@@ -4532,8 +4647,10 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
 
     gtk_flow_box_set_selection_mode(GTK_FLOW_BOX(thumb_flow), GTK_SELECTION_MULTIPLE);
     gtk_flow_box_set_activate_on_single_click(GTK_FLOW_BOX(thumb_flow), FALSE);
-    gtk_flow_box_set_min_children_per_line(GTK_FLOW_BOX(thumb_flow), 2);
-    gtk_flow_box_set_max_children_per_line(GTK_FLOW_BOX(thumb_flow), 6);
+    gtk_flow_box_set_min_children_per_line(GTK_FLOW_BOX(thumb_flow),
+                                           gtk4_clamp_thumb_columns(state && state->thumb_columns > 0 ? state->thumb_columns : 8));
+    gtk_flow_box_set_max_children_per_line(GTK_FLOW_BOX(thumb_flow),
+                                           gtk4_clamp_thumb_columns(state && state->thumb_columns > 0 ? state->thumb_columns : 8));
     gtk_flow_box_set_row_spacing(GTK_FLOW_BOX(thumb_flow), 10);
     gtk_flow_box_set_column_spacing(GTK_FLOW_BOX(thumb_flow), 10);
     gtk_widget_set_focusable(thumb_flow, TRUE);
@@ -4554,6 +4671,8 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     gtk_box_append(GTK_BOX(thumb_controls), thumb_size_scale);
     gtk_box_append(GTK_BOX(thumb_controls), thumb_preset_label);
     gtk_box_append(GTK_BOX(thumb_controls), thumb_preset_dropdown);
+    gtk_box_append(GTK_BOX(thumb_controls), thumb_columns_label);
+    gtk_box_append(GTK_BOX(thumb_controls), thumb_columns_dropdown);
     gtk_box_append(GTK_BOX(browser_info), selected);
     gtk_box_append(GTK_BOX(browser_info), thumb_controls);
     gtk_box_append(GTK_BOX(browser_info), paths_scroll);
@@ -4932,6 +5051,7 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     state->thumb_flow = thumb_flow;
     state->thumb_size_scale = thumb_size_scale;
     state->thumb_preset_dropdown = thumb_preset_dropdown;
+    state->thumb_columns_dropdown = thumb_columns_dropdown;
     state->editor_area = editor_area;
     state->editor_status = editor_status;
     state->editor_path = editor_path;
@@ -5008,7 +5128,8 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     state->editor_auto_step = TRUE;
     state->editor_link_steps = FALSE;
     state->editor_next_step = 1;
-    gtk4_set_thumb_preview_width(state, state->thumb_preview_width > 0 ? state->thumb_preview_width : 270);
+    gtk4_set_thumb_preview_width(state, state->thumb_preview_width > 0 ? state->thumb_preview_width : 170);
+    gtk4_set_thumb_columns(state, state->thumb_columns > 0 ? state->thumb_columns : 8);
     gdk_rgba_parse(&state->editor_color, "#ef5b5b");
     gtk4_apply_dock_layout(state);
     gtk4_apply_editor_panel_visibility(state);
@@ -5040,6 +5161,7 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     g_signal_connect(search, "changed", G_CALLBACK(gtk4_on_search_changed), state);
     g_signal_connect(thumb_size_scale, "value-changed", G_CALLBACK(gtk4_on_thumb_size_changed), state);
     g_signal_connect(thumb_preset_dropdown, "notify::selected", G_CALLBACK(gtk4_on_thumb_preset_selected), state);
+    g_signal_connect(thumb_columns_dropdown, "notify::selected", G_CALLBACK(gtk4_on_thumb_columns_selected), state);
     g_signal_connect(split, "notify::position", G_CALLBACK(gtk4_on_split_position_notify), state);
     g_signal_connect(studio_shell, "notify::position", G_CALLBACK(gtk4_on_split_position_notify), state);
     g_signal_connect(thumb_flow, "selected-children-changed", G_CALLBACK(gtk4_on_thumb_selection_changed), state);
@@ -5281,8 +5403,9 @@ int main(int argc, char **argv) {
     } else {
         state->shots_dir = g_strdup(candidate_shots);
     }
-    state->thumb_preview_width = 270;
+    state->thumb_preview_width = 170;
     state->thumb_preview_height = CLAMP((gint)lrint((gdouble)state->thumb_preview_width * 0.62), 110, 300);
+    state->thumb_columns = 8;
     state->split_pos_saved = 430;
     state->studio_split_pos_saved = 840;
     state->studio_dock_width_saved = 280;

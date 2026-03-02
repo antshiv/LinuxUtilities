@@ -21,6 +21,7 @@ const state = createInitialState();
 const COLLAPSIBLE_PANEL_KEYS = [
   'layers',
   'shapes',
+  'script',
   'timeline',
   'tools',
   'style',
@@ -29,11 +30,13 @@ const COLLAPSIBLE_PANEL_KEYS = [
   'align',
   'pathfinder',
   'save',
+  'format',
   'notes'
 ];
 const COLLAPSIBLE_PANEL_LABELS = {
   layers: 'Layers',
   shapes: 'Shapes',
+  script: 'Script Editor',
   timeline: 'Timeline',
   tools: 'Tools',
   style: 'Style',
@@ -42,11 +45,13 @@ const COLLAPSIBLE_PANEL_LABELS = {
   align: 'Align',
   pathfinder: 'Pathfinder',
   save: 'Save / Load',
+  format: 'Format / Shorts',
   notes: 'Recording Notes'
 };
 const PANEL_COLLAPSE_DEFAULTS = {
   layers: false,
   shapes: false,
+  script: false,
   timeline: false,
   tools: false,
   style: false,
@@ -55,6 +60,7 @@ const PANEL_COLLAPSE_DEFAULTS = {
   align: true,
   pathfinder: true,
   save: false,
+  format: true,
   notes: true
 };
 
@@ -129,6 +135,9 @@ const BUTTON_ICON_LABELS = {
   btnLineDotted: { icon: '┈', label: 'Dotted' },
   btnToggleArrow: { icon: '↔', label: 'Line ↔ Arrow' },
   btnRectRadius: { icon: '◧', label: 'Set Rect Radius' },
+  btnMotionInsertKeyframe: { icon: '◆', label: 'Insert KF' },
+  btnMotionSetKeyframe: { icon: '◎', label: 'Set KF' },
+  btnMotionDeleteKeyframe: { icon: '◇', label: 'Delete KF' },
   btnAlignLeft: { iconSvg: INLINE_ICONS.alignLeft, label: 'Left' },
   btnAlignCenter: { iconSvg: INLINE_ICONS.alignCenter, label: 'Center' },
   btnAlignRight: { iconSvg: INLINE_ICONS.alignRight, label: 'Right' },
@@ -145,6 +154,7 @@ const BUTTON_ICON_LABELS = {
   btnExportDsl: { icon: '⇄', label: 'Export DSL Starter' },
   btnExportPng: { icon: '⤓', label: 'Export PNG' },
   btnTimelineDockStop: { icon: '■', label: 'Stop' },
+  btnTimelineInsertKeyframe: { icon: '◆', label: 'Insert KF' },
   btnTimelineSplit: { icon: '⫶', label: 'Split' },
   btnTimelineDeleteClip: { icon: '⌦', label: 'Delete Clip' }
 };
@@ -209,6 +219,12 @@ const els = {
   captionTextColor: document.getElementById('captionTextColor'),
   captionStrokeColor: document.getElementById('captionStrokeColor'),
   captionHighlightColor: document.getElementById('captionHighlightColor'),
+  captionHighlightTextColor: document.getElementById('captionHighlightTextColor'),
+  captionHighlightFontFamily: document.getElementById('captionHighlightFontFamily'),
+  captionHighlightFontWeight: document.getElementById('captionHighlightFontWeight'),
+  captionHighlightPadY: document.getElementById('captionHighlightPadY'),
+  captionHighlightPadX: document.getElementById('captionHighlightPadX'),
+  captionHighlightRadius: document.getElementById('captionHighlightRadius'),
   captionOverlayBg: document.getElementById('captionOverlayBg'),
   captionFontSize: document.getElementById('captionFontSize'),
   captionStrokeWidth: document.getElementById('captionStrokeWidth'),
@@ -218,12 +234,14 @@ const els = {
   captionActionMode: document.getElementById('captionActionMode'),
   captionFontWeight: document.getElementById('captionFontWeight'),
   captionWordHighlight: document.getElementById('captionWordHighlight'),
+  captionFontFamily: document.getElementById('captionFontFamily'),
   timelineTranscriptLoader: document.getElementById('timelineTranscriptLoader'),
   timelineAudioLoader: document.getElementById('timelineAudioLoader'),
   liveTranscriptOverlay: document.getElementById('liveTranscriptOverlay'),
   timelineDock: document.getElementById('timelineDock'),
   btnTimelineDockPlay: document.getElementById('btnTimelineDockPlay'),
   btnTimelineDockStop: document.getElementById('btnTimelineDockStop'),
+  btnTimelineInsertKeyframe: document.getElementById('btnTimelineInsertKeyframe'),
   btnTimelineSplit: document.getElementById('btnTimelineSplit'),
   btnTimelineDeleteClip: document.getElementById('btnTimelineDeleteClip'),
   timelineSnap: document.getElementById('timelineSnap'),
@@ -240,6 +258,8 @@ const els = {
   toolGrid: document.getElementById('toolGrid'),
   strokeColor: document.getElementById('strokeColor'),
   bgColor: document.getElementById('bgColor'),
+  fillEnabled: document.getElementById('fillEnabled'),
+  fillColor: document.getElementById('fillColor'),
   lineWidth: document.getElementById('lineWidth'),
   lineWidthValue: document.getElementById('lineWidthValue'),
   lineStyle: document.getElementById('lineStyle'),
@@ -257,10 +277,19 @@ const els = {
   btnGrid: document.getElementById('btnGrid'),
   btnFocus: document.getElementById('btnFocus'),
   btnFullscreen: document.getElementById('btnFullscreen'),
+  captionFloatPanel: document.getElementById('captionFloatPanel'),
+  cfpBackdrop: document.getElementById('cfpBackdrop'),
+  cfpScroll: document.getElementById('cfpScroll'),
+  btnOpenCaptionStyles: document.getElementById('btnOpenCaptionStyles'),
+  btnCaptionPanelClose: document.getElementById('btnCaptionPanelClose'),
+  btnCfpSelected: document.getElementById('btnCfpSelected'),
+  btnCfpAll: document.getElementById('btnCfpAll'),
   btnSaveJson: document.getElementById('btnSaveJson'),
   btnLoadJson: document.getElementById('btnLoadJson'),
   btnExportDsl: document.getElementById('btnExportDsl'),
   btnExportPng: document.getElementById('btnExportPng'),
+  btnExportSRT: document.getElementById('btnExportSRT'),
+  canvasTextEditor: document.getElementById('canvasTextEditor'),
   fileLoader: document.getElementById('fileLoader'),
   status: document.getElementById('status'),
   toolPill: document.getElementById('toolPill'),
@@ -291,7 +320,12 @@ const els = {
   motionToY: document.getElementById('motionToY'),
   motionFromOpacity: document.getElementById('motionFromOpacity'),
   motionToOpacity: document.getElementById('motionToOpacity'),
+  motionTrimStart: document.getElementById('motionTrimStart'),
+  motionTrimEnd: document.getElementById('motionTrimEnd'),
   motionEase: document.getElementById('motionEase'),
+  btnMotionInsertKeyframe: document.getElementById('btnMotionInsertKeyframe'),
+  btnMotionSetKeyframe: document.getElementById('btnMotionSetKeyframe'),
+  btnMotionDeleteKeyframe: document.getElementById('btnMotionDeleteKeyframe'),
   btnMotionApply: document.getElementById('btnMotionApply'),
   btnMotionClear: document.getElementById('btnMotionClear'),
   btnAlignLeft: document.getElementById('btnAlignLeft'),
@@ -307,7 +341,43 @@ const els = {
   btnPathSubtract: document.getElementById('btnPathSubtract'),
   shortcutOverlay: document.getElementById('shortcutOverlay'),
   focusToggleBtn: document.getElementById('focusToggleBtn'),
-  menuBtn: document.getElementById('menuBtn')
+  btnPresent: document.getElementById('btnPresent'),
+  teleprompter: document.getElementById('teleprompter'),
+  tpCurrent: document.getElementById('tpCurrent'),
+  tpNext: document.getElementById('tpNext'),
+  recBadge: document.getElementById('recBadge'),
+  recTime: document.getElementById('recTime'),
+  countdownOverlay: document.getElementById('countdownOverlay'),
+  countdownNum: document.getElementById('countdownNum'),
+  menuBtn: document.getElementById('menuBtn'),
+  scriptEditorText: document.getElementById('scriptEditorText'),
+  scriptEditorStat: document.getElementById('scriptEditorStat'),
+  scriptSplitMode: document.getElementById('scriptSplitMode'),
+  scriptWordCountRow: document.getElementById('scriptWordCountRow'),
+  scriptWordsPerCap: document.getElementById('scriptWordsPerCap'),
+  scriptWPM: document.getElementById('scriptWPM'),
+  scriptWpmValue: document.getElementById('scriptWpmValue'),
+  btnScriptGenerate: document.getElementById('btnScriptGenerate'),
+  btnScriptAppend: document.getElementById('btnScriptAppend'),
+  btnScriptClear: document.getElementById('btnScriptClear'),
+  btnScriptFromTranscript: document.getElementById('btnScriptFromTranscript'),
+  formatGuide: document.getElementById('formatGuide'),
+  captionZoneIndicator: document.getElementById('captionZoneIndicator'),
+  webcamFeed: document.getElementById('webcamFeed'),
+  btnFormat16x9: document.getElementById('btnFormat16x9'),
+  btnFormat9x16: document.getElementById('btnFormat9x16'),
+  btnFormat1x1: document.getElementById('btnFormat1x1'),
+  btnCaptionPosTop: document.getElementById('btnCaptionPosTop'),
+  btnCaptionPosCenter: document.getElementById('btnCaptionPosCenter'),
+  btnCaptionPosBottom: document.getElementById('btnCaptionPosBottom'),
+  captionOffsetPct: document.getElementById('captionOffsetPct'),
+  captionOffsetPctValue: document.getElementById('captionOffsetPctValue'),
+  captionZoneVisible: document.getElementById('captionZoneVisible'),
+  btnWebcamToggle: document.getElementById('btnWebcamToggle'),
+  webcamPosition: document.getElementById('webcamPosition'),
+  webcamShape: document.getElementById('webcamShape'),
+  webcamSize: document.getElementById('webcamSize'),
+  webcamSizeValue: document.getElementById('webcamSizeValue')
 };
 
 const ctx = els.stage.getContext('2d');
@@ -321,6 +391,7 @@ const TIMELINE_MIN_CLIP_SEC = 0.08;
 const TIMELINE_LABEL_WIDTH = 78;
 const TIMELINE_MIN_PX_PER_SEC = 50;
 const TIMELINE_MAX_PX_PER_SEC = 260;
+const MOTION_KEYFRAME_EPSILON_SEC = 0.06;
 const timelineEditRuntime = {
   selectedIds: new Set(),
   drag: null
@@ -422,11 +493,17 @@ const CAPTION_TEMPLATE_PRESETS = {
   typewriter: {
     template: 'typewriter',
     mode: 'typewriter',
+    fontFamily: '',
     textColor: '#e9f2ff',
     strokeColor: '#05070d',
     strokeWidth: 3,
     highlightColor: '#7be0ff',
     highlightTextColor: '#0b1221',
+    highlightFontFamily: '',
+    highlightFontWeight: 700,
+    highlightPadY: 0,
+    highlightPadX: 3,
+    highlightRadius: 3,
     overlayBgColor: '#081321',
     overlayBgOpacity: 0.72,
     fontSize: 22,
@@ -438,11 +515,17 @@ const CAPTION_TEMPLATE_PRESETS = {
   karaoke_classic: {
     template: 'karaoke_classic',
     mode: 'karaoke',
+    fontFamily: '',
     textColor: '#f7fbff',
     strokeColor: '#05070d',
     strokeWidth: 4,
     highlightColor: '#ffe05d',
     highlightTextColor: '#121315',
+    highlightFontFamily: '',
+    highlightFontWeight: 800,
+    highlightPadY: 0,
+    highlightPadX: 3,
+    highlightRadius: 3,
     overlayBgColor: '#0b1018',
     overlayBgOpacity: 0.76,
     fontSize: 22,
@@ -454,11 +537,17 @@ const CAPTION_TEMPLATE_PRESETS = {
   impact_yellow: {
     template: 'impact_yellow',
     mode: 'karaoke',
+    fontFamily: 'Oswald',
     textColor: '#ffe25a',
     strokeColor: '#020306',
     strokeWidth: 5,
     highlightColor: '#5aff9f',
     highlightTextColor: '#03120a',
+    highlightFontFamily: '',
+    highlightFontWeight: 900,
+    highlightPadY: 0,
+    highlightPadX: 3,
+    highlightRadius: 2,
     overlayBgColor: '#06090f',
     overlayBgOpacity: 0.64,
     fontSize: 24,
@@ -470,11 +559,17 @@ const CAPTION_TEMPLATE_PRESETS = {
   clean_paragraph: {
     template: 'clean_paragraph',
     mode: 'plain',
+    fontFamily: '',
     textColor: '#f2f5fa',
     strokeColor: '#111826',
     strokeWidth: 1,
     highlightColor: '#9fd6ff',
     highlightTextColor: '#0f1d2b',
+    highlightFontFamily: '',
+    highlightFontWeight: 700,
+    highlightPadY: 0,
+    highlightPadX: 3,
+    highlightRadius: 3,
     overlayBgColor: '#101726',
     overlayBgOpacity: 0.48,
     fontSize: 21,
@@ -486,17 +581,89 @@ const CAPTION_TEMPLATE_PRESETS = {
   bold_two_words: {
     template: 'bold_two_words',
     mode: 'karaoke',
+    fontFamily: 'Oswald',
     textColor: '#ffffff',
     strokeColor: '#05070d',
     strokeWidth: 4.5,
     highlightColor: '#ffd95a',
     highlightTextColor: '#0c0f18',
+    highlightFontFamily: '',
+    highlightFontWeight: 900,
+    highlightPadY: 0,
+    highlightPadX: 3,
+    highlightRadius: 3,
     overlayBgColor: '#04060a',
     overlayBgOpacity: 0.72,
     fontSize: 24,
     fontWeight: 900,
     lineHeight: 1.28,
     letterSpacing: 0.4,
+    wordHighlight: true
+  },
+  capcut_black: {
+    template: 'capcut_black',
+    mode: 'capcut_black',
+    fontFamily: 'Sora',
+    textColor: '#ffffff',
+    strokeColor: '#000000',
+    strokeWidth: 0,
+    highlightColor: '#ff4d79',
+    highlightTextColor: '#ffffff',
+    highlightFontFamily: 'Sora',
+    highlightFontWeight: 800,
+    highlightPadY: 2,
+    highlightPadX: 6,
+    highlightRadius: 4,
+    overlayBgColor: '#000000',
+    overlayBgOpacity: 0,
+    fontSize: 28,
+    fontWeight: 800,
+    lineHeight: 1.3,
+    letterSpacing: 0.2,
+    wordHighlight: true
+  },
+  word_pop: {
+    template: 'word_pop',
+    mode: 'word_pop',
+    fontFamily: 'Nunito',
+    textColor: '#ffffff',
+    strokeColor: '#030608',
+    strokeWidth: 4,
+    highlightColor: '#ffe05d',
+    highlightTextColor: '#121315',
+    highlightFontFamily: 'Nunito',
+    highlightFontWeight: 900,
+    highlightPadY: 0,
+    highlightPadX: 2,
+    highlightRadius: 3,
+    overlayBgColor: '#000000',
+    overlayBgOpacity: 0.72,
+    fontSize: 26,
+    fontWeight: 900,
+    lineHeight: 1.3,
+    letterSpacing: 0.2,
+    wordHighlight: true
+  },
+  slide_up: {
+    template: 'slide_up',
+    mode: 'slide_up',
+    fontFamily: 'Sora',
+    textColor: '#ffffff',
+    strokeColor: '#030608',
+    strokeWidth: 3.5,
+    highlightColor: '#7bffd6',
+    highlightTextColor: '#081a14',
+    highlightFontFamily: 'Sora',
+    highlightFontWeight: 800,
+    highlightPadY: 0,
+    highlightPadX: 3,
+    highlightRadius: 3,
+    overlayBgColor: '#060b15',
+    overlayBgOpacity: 0.72,
+    fontSize: 23,
+    fontWeight: 800,
+    lineHeight: 1.32,
+    letterSpacing: 0,
     wordHighlight: true
   }
 };
@@ -513,28 +680,44 @@ function normalizeCaptionStyle(rawStyle, fallbackStyle) {
   const fallback = fallbackStyle || captionDefaultStyle();
   const raw = rawStyle && typeof rawStyle === 'object' ? rawStyle : {};
   const template = typeof raw.template === 'string' && raw.template ? raw.template : fallback.template;
-  const mode = raw.mode === 'typewriter' || raw.mode === 'karaoke' ? raw.mode : (fallback.mode || 'plain');
+  const VALID_MODES = ['typewriter', 'karaoke', 'plain', 'capcut_black', 'word_pop', 'slide_up'];
+  const mode = VALID_MODES.includes(raw.mode) ? raw.mode : (VALID_MODES.includes(fallback.mode) ? fallback.mode : 'plain');
   const fontSize = clamp(Number(raw.fontSize) || Number(fallback.fontSize) || 22, 14, 96);
   const fontWeight = clamp(Math.round(Number(raw.fontWeight) || Number(fallback.fontWeight) || 700), 500, 900);
   const lineHeight = clamp(Number(raw.lineHeight) || Number(fallback.lineHeight) || 1.34, 1.05, 2.2);
   const strokeWidth = clamp(Number(raw.strokeWidth), 0, 8);
   const letterSpacing = clamp(Number(raw.letterSpacing), -1, 5);
   const overlayBgOpacity = clamp(Number(raw.overlayBgOpacity), 0, 1);
+  const highlightPadY = clamp(Number(raw.highlightPadY), 0, 18);
+  const highlightPadX = clamp(Number(raw.highlightPadX), 0, 18);
+  const highlightRadius = clamp(Number(raw.highlightRadius), 0, 24);
+  const highlightFontWeight = clamp(Math.round(Number(raw.highlightFontWeight) || Number(fallback.highlightFontWeight) || Number(fallback.fontWeight) || 700), 500, 900);
+  const fontFamily = typeof raw.fontFamily === 'string' ? raw.fontFamily : (typeof fallback.fontFamily === 'string' ? fallback.fontFamily : '');
+  const highlightFontFamily = typeof raw.highlightFontFamily === 'string'
+    ? raw.highlightFontFamily
+    : (typeof fallback.highlightFontFamily === 'string' ? fallback.highlightFontFamily : '');
   return {
     template,
     mode,
+    fontFamily,
     textColor: typeof raw.textColor === 'string' && raw.textColor ? raw.textColor : (fallback.textColor || '#f7fbff'),
     strokeColor: typeof raw.strokeColor === 'string' && raw.strokeColor ? raw.strokeColor : (fallback.strokeColor || '#05070d'),
     strokeWidth: Number.isFinite(strokeWidth) ? strokeWidth : (Number(fallback.strokeWidth) || 0),
     highlightColor: typeof raw.highlightColor === 'string' && raw.highlightColor ? raw.highlightColor : (fallback.highlightColor || '#ffe05d'),
     highlightTextColor: typeof raw.highlightTextColor === 'string' && raw.highlightTextColor ? raw.highlightTextColor : (fallback.highlightTextColor || '#121315'),
+    highlightFontFamily,
+    highlightFontWeight: Number.isFinite(highlightFontWeight) ? highlightFontWeight : (Number(fallback.highlightFontWeight) || Number(fallback.fontWeight) || 700),
+    highlightPadY: Number.isFinite(highlightPadY) ? highlightPadY : (Number(fallback.highlightPadY) || 0),
+    highlightPadX: Number.isFinite(highlightPadX) ? highlightPadX : (Number(fallback.highlightPadX) || 3),
+    highlightRadius: Number.isFinite(highlightRadius) ? highlightRadius : (Number(fallback.highlightRadius) || 3),
     overlayBgColor: typeof raw.overlayBgColor === 'string' && raw.overlayBgColor ? raw.overlayBgColor : (fallback.overlayBgColor || '#0b1018'),
     overlayBgOpacity: Number.isFinite(overlayBgOpacity) ? overlayBgOpacity : (Number(fallback.overlayBgOpacity) || 0.72),
     fontSize,
     fontWeight,
     lineHeight,
     letterSpacing: Number.isFinite(letterSpacing) ? letterSpacing : 0,
-    wordHighlight: typeof raw.wordHighlight === 'boolean' ? raw.wordHighlight : !!fallback.wordHighlight
+    wordHighlight: typeof raw.wordHighlight === 'boolean' ? raw.wordHighlight : !!fallback.wordHighlight,
+    wordsPerLine: clamp(Math.round(Number(raw.wordsPerLine) || Number(fallback.wordsPerLine) || 0), 0, 20)
   };
 }
 
@@ -581,6 +764,345 @@ function captionStrokeShadow(style) {
   return shadows.join(', ');
 }
 
+// ── Webcam PiP ──
+const webcamState = {
+  enabled: false,
+  stream: null,
+  position: 'br',  // br | bl | tr | tl
+  size: 80,
+  shape: 'circle'  // circle | rounded
+};
+
+async function startWebcam() {
+  if (webcamState.stream) {
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    webcamState.stream = stream;
+    webcamState.enabled = true;
+    if (els.webcamFeed) {
+      els.webcamFeed.srcObject = stream;
+    }
+    if (els.btnWebcamToggle) {
+      els.btnWebcamToggle.textContent = 'Disable Cam';
+    }
+    setStatus('Webcam PiP active.');
+    ensureRenderLoop();
+  } catch (err) {
+    setStatus(`Webcam error: ${err.message}`);
+    webcamState.enabled = false;
+  }
+}
+
+function stopWebcam() {
+  if (webcamState.stream) {
+    for (const track of webcamState.stream.getTracks()) {
+      track.stop();
+    }
+    webcamState.stream = null;
+  }
+  webcamState.enabled = false;
+  if (els.webcamFeed) {
+    els.webcamFeed.srcObject = null;
+  }
+  if (els.btnWebcamToggle) {
+    els.btnWebcamToggle.textContent = 'Enable Cam';
+  }
+  setStatus('Webcam disabled.');
+}
+
+function drawWebcamPiP() {
+  const video = els.webcamFeed;
+  if (!video || !webcamState.enabled || video.readyState < 2) {
+    return;
+  }
+  const width = els.stage.width / DPR;
+  const height = els.stage.height / DPR;
+  const size = webcamState.size;
+  const pad = 16;
+
+  let cx, cy;
+  switch (webcamState.position) {
+    case 'tl': cx = pad + size / 2; cy = pad + size / 2; break;
+    case 'tr': cx = width - pad - size / 2; cy = pad + size / 2; break;
+    case 'bl': cx = pad + size / 2; cy = height - pad - size / 2; break;
+    default:   cx = width - pad - size / 2; cy = height - pad - size / 2; break;
+  }
+
+  ctx.save();
+  ctx.beginPath();
+  if (webcamState.shape === 'circle') {
+    ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+  } else {
+    const r = size * 0.12;
+    if (typeof ctx.roundRect === 'function') {
+      ctx.roundRect(cx - size / 2, cy - size / 2, size, size, r);
+    } else {
+      ctx.rect(cx - size / 2, cy - size / 2, size, size);
+    }
+  }
+  ctx.clip();
+  ctx.drawImage(video, cx - size / 2, cy - size / 2, size, size);
+  ctx.restore();
+
+  // Border ring
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  if (webcamState.shape === 'circle') {
+    ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+  } else {
+    const r = size * 0.12;
+    if (typeof ctx.roundRect === 'function') {
+      ctx.roundRect(cx - size / 2, cy - size / 2, size, size, r);
+    } else {
+      ctx.rect(cx - size / 2, cy - size / 2, size, size);
+    }
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ── Canvas Format / Safe-zone guides ──
+let canvasFormat = '16:9';
+
+function setCanvasFormat(fmt) {
+  canvasFormat = fmt;
+  if (els.btnFormat16x9) els.btnFormat16x9.classList.toggle('active', fmt === '16:9');
+  if (els.btnFormat9x16) els.btnFormat9x16.classList.toggle('active', fmt === '9:16');
+  if (els.btnFormat1x1)  els.btnFormat1x1.classList.toggle('active', fmt === '1:1');
+  updateFormatGuide();
+  updateCaptionOverlayGeometry();
+  saveToLocalStorage();
+}
+
+function updateFormatGuide() {
+  const guide = els.formatGuide;
+  if (!guide) {
+    return;
+  }
+  guide.innerHTML = '';
+  if (canvasFormat === '16:9') {
+    return;
+  }
+  const wrap = els.canvasWrap.getBoundingClientRect();
+  const ww = wrap.width;
+  const wh = wrap.height;
+  let fw, fh;
+  if (canvasFormat === '9:16') {
+    const ratio = 9 / 16;
+    if (ww / wh > ratio) {
+      fh = wh;
+      fw = Math.round(wh * ratio);
+    } else {
+      fw = ww;
+      fh = Math.round(ww / ratio);
+    }
+  } else {
+    const side = Math.min(ww, wh);
+    fw = fh = Math.round(side);
+  }
+  const ml = Math.round((ww - fw) / 2);
+  const mt = Math.round((wh - fh) / 2);
+
+  // Mask panels (4 sides)
+  const masks = [
+    `left:0;top:0;width:${ml}px;height:100%`,
+    `right:0;top:0;width:${ml}px;height:100%`,
+    `left:0;top:0;width:100%;height:${mt}px`,
+    `left:0;bottom:0;width:100%;height:${mt}px`
+  ];
+  for (const css of masks) {
+    const d = document.createElement('div');
+    d.className = 'format-guide-mask';
+    d.style.cssText = css;
+    guide.appendChild(d);
+  }
+  // Frame border
+  const frame = document.createElement('div');
+  frame.className = 'format-guide-frame';
+  frame.style.cssText = `left:${ml}px;top:${mt}px;width:${fw}px;height:${fh}px`;
+  guide.appendChild(frame);
+  // Label
+  const label = document.createElement('div');
+  label.className = 'format-guide-label';
+  label.style.cssText = `left:${ml + fw / 2}px;top:${mt + 8}px;transform:translateX(-50%)`;
+  label.textContent = canvasFormat === '9:16' ? '9:16 Shorts' : '1:1 Square';
+  guide.appendChild(label);
+}
+
+// ── Caption Placement ──
+const captionPlacement = {
+  vertical: 'bottom',   // 'top' | 'center' | 'bottom'
+  offsetPct: 12,        // distance from edge as % of frame height
+  zoneVisible: true     // show dashed zone indicator
+};
+
+/** Compute the safe-zone frame rect (in canvas-wrap CSS pixels). */
+function getSafeZoneRect() {
+  const wrap = els.canvasWrap.getBoundingClientRect();
+  const ww = wrap.width;
+  const wh = wrap.height;
+  if (canvasFormat === '16:9') {
+    return { left: 0, top: 0, width: ww, height: wh };
+  }
+  let fw, fh;
+  if (canvasFormat === '9:16') {
+    const ratio = 9 / 16;
+    if (ww / wh > ratio) { fh = wh; fw = Math.round(wh * ratio); }
+    else                  { fw = ww; fh = Math.round(ww / ratio); }
+  } else { // 1:1
+    const side = Math.min(ww, wh);
+    fw = fh = Math.round(side);
+  }
+  return {
+    left:   Math.round((ww - fw) / 2),
+    top:    Math.round((wh - fh) / 2),
+    width:  fw,
+    height: fh
+  };
+}
+
+/**
+ * Re-positions the live-transcript-overlay and caption-zone-indicator
+ * so they sit at the correct spot inside the active format frame.
+ */
+function updateCaptionOverlayGeometry() {
+  const overlay = els.liveTranscriptOverlay;
+  const indicator = els.captionZoneIndicator;
+  if (!overlay || !els.canvasWrap) {
+    return;
+  }
+
+  const frame = getSafeZoneRect();
+  const PAD = 16; // horizontal padding inside frame
+  const overlayWidth = frame.width - PAD * 2;
+  const offsetPx = Math.round(frame.height * (captionPlacement.offsetPct / 100));
+
+  // ── position the overlay ──
+  overlay.style.left      = `${frame.left + PAD}px`;
+  overlay.style.width     = `${overlayWidth}px`;
+  overlay.style.minWidth  = '0';
+  overlay.style.maxWidth  = `${overlayWidth}px`;
+
+  if (captionPlacement.vertical === 'bottom') {
+    overlay.style.bottom  = `${frame.top + offsetPx}px`;
+    overlay.style.top     = '';
+    overlay.style.transform = 'none';
+  } else if (captionPlacement.vertical === 'top') {
+    overlay.style.top     = `${frame.top + offsetPx}px`;
+    overlay.style.bottom  = '';
+    overlay.style.transform = 'none';
+  } else {
+    // center: vertically centered in frame
+    overlay.style.top     = `${frame.top + Math.round(frame.height / 2)}px`;
+    overlay.style.bottom  = '';
+    overlay.style.transform = 'translateY(-50%)';
+  }
+
+  // ── position the zone indicator ──
+  if (!indicator) {
+    return;
+  }
+  const zoneHeight = Math.max(40, Math.round(frame.height * 0.14));
+  const showZone = captionPlacement.zoneVisible && !state.timeline.playing;
+  indicator.classList.toggle('hidden', !showZone);
+
+  if (showZone) {
+    indicator.style.left  = `${frame.left + PAD}px`;
+    indicator.style.width = `${overlayWidth}px`;
+    indicator.style.height = `${zoneHeight}px`;
+
+    if (captionPlacement.vertical === 'bottom') {
+      indicator.style.bottom = `${frame.top + offsetPx}px`;
+      indicator.style.top    = '';
+    } else if (captionPlacement.vertical === 'top') {
+      indicator.style.top    = `${frame.top + offsetPx}px`;
+      indicator.style.bottom = '';
+    } else {
+      indicator.style.top    = `${frame.top + Math.round(frame.height / 2) - Math.round(zoneHeight / 2)}px`;
+      indicator.style.bottom = '';
+    }
+  }
+}
+
+function setCaptionPlacementVertical(v) {
+  captionPlacement.vertical = v;
+  if (els.btnCaptionPosTop)    els.btnCaptionPosTop.classList.toggle('active', v === 'top');
+  if (els.btnCaptionPosCenter) els.btnCaptionPosCenter.classList.toggle('active', v === 'center');
+  if (els.btnCaptionPosBottom) els.btnCaptionPosBottom.classList.toggle('active', v === 'bottom');
+  updateCaptionOverlayGeometry();
+  saveToLocalStorage();
+}
+
+function setupCaptionZoneDrag() {
+  const indicator = els.captionZoneIndicator;
+  if (!indicator) return;
+
+  let dragging = false;
+  let startClientY = 0;
+  let startIndicatorTopPx = 0; // indicator's top edge relative to canvas-wrap, in px
+
+  indicator.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    dragging = true;
+    startClientY = e.clientY;
+    const wrap = els.canvasWrap.getBoundingClientRect();
+    const indRect = indicator.getBoundingClientRect();
+    startIndicatorTopPx = indRect.top - wrap.top;
+    indicator.setPointerCapture(e.pointerId);
+    indicator.classList.add('dragging');
+    e.preventDefault();
+  });
+
+  indicator.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const frame = getSafeZoneRect();
+    if (!frame.height) return;
+
+    const deltaY = e.clientY - startClientY;
+    const zoneHeight = Math.max(40, Math.round(frame.height * 0.14));
+    // Center of indicator relative to top of frame
+    const centerInFrame = (startIndicatorTopPx + deltaY + zoneHeight / 2) - frame.top;
+    const relPct = clamp((centerInFrame / frame.height) * 100, 3, 97);
+
+    // Map position to anchor mode + offsetPct
+    let newVertical, newOffsetPct;
+    if (relPct < 38) {
+      newVertical = 'top';
+      newOffsetPct = clamp(Math.round(relPct), 2, 48);
+    } else if (relPct > 62) {
+      newVertical = 'bottom';
+      newOffsetPct = clamp(Math.round(100 - relPct), 2, 48);
+    } else {
+      newVertical = 'center';
+      newOffsetPct = captionPlacement.offsetPct;
+    }
+
+    captionPlacement.vertical = newVertical;
+    captionPlacement.offsetPct = newOffsetPct;
+
+    if (els.btnCaptionPosTop)    els.btnCaptionPosTop.classList.toggle('active', newVertical === 'top');
+    if (els.btnCaptionPosCenter) els.btnCaptionPosCenter.classList.toggle('active', newVertical === 'center');
+    if (els.btnCaptionPosBottom) els.btnCaptionPosBottom.classList.toggle('active', newVertical === 'bottom');
+    if (els.captionOffsetPct) els.captionOffsetPct.value = String(newOffsetPct);
+    if (els.captionOffsetPctValue) els.captionOffsetPctValue.textContent = String(newOffsetPct);
+
+    updateCaptionOverlayGeometry();
+  });
+
+  const endDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    indicator.classList.remove('dragging');
+    saveToLocalStorage();
+  };
+  indicator.addEventListener('pointerup', endDrag);
+  indicator.addEventListener('pointercancel', endDrag);
+}
+
 function isFormControlTarget(target) {
   return !!(target && (
     target.tagName === 'INPUT' ||
@@ -614,53 +1136,244 @@ function easeTimelineProgress(t, name) {
   return 1 - Math.pow(-2 * p + 2, 3) / 2;
 }
 
+function normalizeMotionEase(rawEase, fallbackEase = 'easeInOutCubic') {
+  const base = String(rawEase || fallbackEase || 'easeInOutCubic');
+  if (base === 'linear' || base === 'easeOutCubic' || base === 'easeInCubic' || base === 'easeInOutCubic') {
+    return base;
+  }
+  return 'easeInOutCubic';
+}
+
+function normalizeTrimWindow(trimStartRaw, trimEndRaw) {
+  const rawStart = Number(trimStartRaw);
+  const rawEnd = Number(trimEndRaw);
+  let start = Number.isFinite(rawStart) ? rawStart : 0;
+  let end = Number.isFinite(rawEnd) ? rawEnd : 1;
+  start = clamp(start, 0, 1);
+  end = clamp(end, 0, 1);
+  if (end < start) {
+    const tmp = start;
+    start = end;
+    end = tmp;
+  }
+  return { trimStart: start, trimEnd: end };
+}
+
+function readMotionNumber(raw, base, key, defaultValue) {
+  const primary = Number(raw[key]);
+  if (Number.isFinite(primary)) {
+    return primary;
+  }
+  const secondary = Number(base[key]);
+  if (Number.isFinite(secondary)) {
+    return secondary;
+  }
+  return Number(defaultValue) || 0;
+}
+
+function normalizedMotionKeyframe(rawKeyframe, defaults = {}) {
+  const raw = rawKeyframe && typeof rawKeyframe === 'object' ? rawKeyframe : {};
+  const atValue = Number(raw.at ?? raw.time ?? raw.t ?? defaults.at ?? 0);
+  const at = Math.max(0, Number.isFinite(atValue) ? atValue : 0);
+  const dxValue = Number(raw.dx ?? raw.x ?? raw.offsetX ?? defaults.dx ?? 0);
+  const dyValue = Number(raw.dy ?? raw.y ?? raw.offsetY ?? defaults.dy ?? 0);
+  const opacityValue = Number(raw.opacity ?? raw.alpha ?? defaults.opacity ?? 1);
+  const trim = normalizeTrimWindow(
+    raw.trimStart ?? raw.trim_start ?? defaults.trimStart ?? 0,
+    raw.trimEnd ?? raw.trim_end ?? defaults.trimEnd ?? 1
+  );
+  return {
+    at: roundTimelineSeconds(at),
+    dx: clamp(Number.isFinite(dxValue) ? dxValue : 0, -6000, 6000),
+    dy: clamp(Number.isFinite(dyValue) ? dyValue : 0, -6000, 6000),
+    opacity: clamp(Number.isFinite(opacityValue) ? opacityValue : 1, 0, 1),
+    trimStart: trim.trimStart,
+    trimEnd: trim.trimEnd,
+    ease: normalizeMotionEase(raw.ease, defaults.ease)
+  };
+}
+
+function dedupeAndSortMotionKeyframes(keyframes) {
+  const sorted = (Array.isArray(keyframes) ? keyframes.slice() : [])
+    .filter((item) => !!item && typeof item === 'object')
+    .sort((a, b) => (Number(a.at) || 0) - (Number(b.at) || 0));
+  if (!sorted.length) {
+    return [];
+  }
+  const deduped = [sorted[0]];
+  for (let i = 1; i < sorted.length; i += 1) {
+    const current = sorted[i];
+    const prev = deduped[deduped.length - 1];
+    if (Math.abs((Number(current.at) || 0) - (Number(prev.at) || 0)) <= 1e-3) {
+      deduped[deduped.length - 1] = current;
+    } else {
+      deduped.push(current);
+    }
+  }
+  return deduped;
+}
+
 function normalizeShapeMotion(rawMotion, fallback = {}) {
   const raw = rawMotion && typeof rawMotion === 'object' ? rawMotion : {};
   const base = fallback && typeof fallback === 'object' ? fallback : {};
-  const read = (key, defaultValue) => {
-    const primary = Number(raw[key]);
-    if (Number.isFinite(primary)) {
-      return primary;
-    }
-    const secondary = Number(base[key]);
-    if (Number.isFinite(secondary)) {
-      return secondary;
-    }
-    return Number(defaultValue) || 0;
-  };
-  const easeRaw = typeof raw.ease === 'string' ? raw.ease : (typeof base.ease === 'string' ? base.ease : 'easeInOutCubic');
-  const ease = (easeRaw === 'linear' || easeRaw === 'easeOutCubic' || easeRaw === 'easeInCubic' || easeRaw === 'easeInOutCubic')
-    ? easeRaw
-    : 'easeInOutCubic';
+  const read = (key, defaultValue) => readMotionNumber(raw, base, key, defaultValue);
+  const ease = normalizeMotionEase(raw.ease, base.ease);
+  const baseTrim = normalizeTrimWindow(
+    read('trimStart', 0),
+    read('trimEnd', 1)
+  );
+  const baseStart = Math.max(0, read('start', state.timeline.currentTime));
+  const baseDuration = clamp(read('duration', 1.2), 0.05, 600);
+  const fromX = clamp(read('fromX', 0), -6000, 6000);
+  const fromY = clamp(read('fromY', 0), -6000, 6000);
+  const toX = clamp(read('toX', 140), -6000, 6000);
+  const toY = clamp(read('toY', 0), -6000, 6000);
+  const fromOpacity = clamp(read('fromOpacity', 1), 0, 1);
+  const toOpacity = clamp(read('toOpacity', 1), 0, 1);
+  const rawKeyframes = Array.isArray(raw.keyframes)
+    ? raw.keyframes
+    : Array.isArray(base.keyframes)
+      ? base.keyframes
+      : null;
+  let keyframes = [];
+  if (rawKeyframes && rawKeyframes.length) {
+    keyframes = rawKeyframes.map((item) => normalizedMotionKeyframe(item, {
+      at: baseStart,
+      dx: fromX,
+      dy: fromY,
+      opacity: fromOpacity,
+      trimStart: baseTrim.trimStart,
+      trimEnd: baseTrim.trimEnd,
+      ease
+    }));
+  } else {
+    keyframes = [
+      normalizedMotionKeyframe({
+        at: baseStart,
+        dx: fromX,
+        dy: fromY,
+        opacity: fromOpacity,
+        trimStart: baseTrim.trimStart,
+        trimEnd: baseTrim.trimEnd,
+        ease
+      }, { ease }),
+      normalizedMotionKeyframe({
+        at: baseStart + baseDuration,
+        dx: toX,
+        dy: toY,
+        opacity: toOpacity,
+        trimStart: baseTrim.trimStart,
+        trimEnd: baseTrim.trimEnd,
+        ease
+      }, { ease })
+    ];
+  }
+  keyframes = dedupeAndSortMotionKeyframes(keyframes);
+  if (!keyframes.length) {
+    keyframes = [normalizedMotionKeyframe({
+      at: baseStart,
+      dx: fromX,
+      dy: fromY,
+      opacity: fromOpacity,
+      trimStart: baseTrim.trimStart,
+      trimEnd: baseTrim.trimEnd,
+      ease
+    }, { ease })];
+  }
+  const first = keyframes[0];
+  const last = keyframes[keyframes.length - 1];
+  const start = first.at;
+  const end = Math.max(start + 0.05, last.at);
   return {
     enabled: raw.enabled !== false,
-    start: Math.max(0, read('start', state.timeline.currentTime)),
-    duration: clamp(read('duration', 1.2), 0.05, 600),
-    fromX: clamp(read('fromX', 0), -6000, 6000),
-    fromY: clamp(read('fromY', 0), -6000, 6000),
-    toX: clamp(read('toX', 140), -6000, 6000),
-    toY: clamp(read('toY', 0), -6000, 6000),
-    fromOpacity: clamp(read('fromOpacity', 1), 0, 1),
-    toOpacity: clamp(read('toOpacity', 1), 0, 1),
-    ease
+    start,
+    duration: clamp(end - start, 0.05, 600),
+    fromX: first.dx,
+    fromY: first.dy,
+    toX: last.dx,
+    toY: last.dy,
+    fromOpacity: first.opacity,
+    toOpacity: last.opacity,
+    trimStart: first.trimStart,
+    trimEnd: first.trimEnd,
+    ease,
+    keyframes
   };
 }
 
 function shapeMotionAtTime(shape, timeSec) {
   if (!shape || !shape.motion || !shape.motion.enabled) {
-    return { enabled: false, dx: 0, dy: 0, opacity: 1, progress: 1 };
+    return { enabled: false, dx: 0, dy: 0, opacity: 1, trimStart: 0, trimEnd: 1, progress: 1 };
   }
   const motion = normalizeShapeMotion(shape.motion);
-  const start = motion.start;
-  const duration = Math.max(0.05, motion.duration);
-  const rawProgress = clamp(((Number(timeSec) || 0) - start) / duration, 0, 1);
-  const p = easeTimelineProgress(rawProgress, motion.ease);
+  const keyframes = motion.keyframes || [];
+  if (!keyframes.length) {
+    return { enabled: false, dx: 0, dy: 0, opacity: 1, trimStart: 0, trimEnd: 1, progress: 1 };
+  }
+  if (keyframes.length === 1) {
+    const only = keyframes[0];
+    return {
+      enabled: true,
+      dx: only.dx,
+      dy: only.dy,
+      opacity: only.opacity,
+      trimStart: only.trimStart,
+      trimEnd: only.trimEnd,
+      progress: 1
+    };
+  }
+  const t = Number(timeSec) || 0;
+  const first = keyframes[0];
+  const last = keyframes[keyframes.length - 1];
+  if (t <= first.at) {
+    return {
+      enabled: true,
+      dx: first.dx,
+      dy: first.dy,
+      opacity: first.opacity,
+      trimStart: first.trimStart,
+      trimEnd: first.trimEnd,
+      progress: 0
+    };
+  }
+  if (t >= last.at) {
+    return {
+      enabled: true,
+      dx: last.dx,
+      dy: last.dy,
+      opacity: last.opacity,
+      trimStart: last.trimStart,
+      trimEnd: last.trimEnd,
+      progress: 1
+    };
+  }
+  let left = first;
+  let right = last;
+  for (let i = 0; i < keyframes.length - 1; i += 1) {
+    const a = keyframes[i];
+    const b = keyframes[i + 1];
+    if (t >= a.at && t <= b.at) {
+      left = a;
+      right = b;
+      break;
+    }
+  }
+  const span = Math.max(1e-6, right.at - left.at);
+  const rawProgress = clamp((t - left.at) / span, 0, 1);
+  const p = easeTimelineProgress(rawProgress, left.ease || motion.ease);
+  const trim = normalizeTrimWindow(
+    left.trimStart + (right.trimStart - left.trimStart) * p,
+    left.trimEnd + (right.trimEnd - left.trimEnd) * p
+  );
+  const totalProgress = clamp((t - first.at) / Math.max(1e-6, last.at - first.at), 0, 1);
   return {
     enabled: true,
-    dx: motion.fromX + (motion.toX - motion.fromX) * p,
-    dy: motion.fromY + (motion.toY - motion.fromY) * p,
-    opacity: motion.fromOpacity + (motion.toOpacity - motion.fromOpacity) * p,
-    progress: p
+    dx: left.dx + (right.dx - left.dx) * p,
+    dy: left.dy + (right.dy - left.dy) * p,
+    opacity: left.opacity + (right.opacity - left.opacity) * p,
+    trimStart: trim.trimStart,
+    trimEnd: trim.trimEnd,
+    progress: totalProgress
   };
 }
 
@@ -669,11 +1382,27 @@ function shapeMotionOffsetExtents(shape) {
     return { minDx: 0, maxDx: 0, minDy: 0, maxDy: 0 };
   }
   const motion = normalizeShapeMotion(shape.motion);
+  if (!motion.keyframes || !motion.keyframes.length) {
+    return { minDx: 0, maxDx: 0, minDy: 0, maxDy: 0 };
+  }
+  let minDx = Infinity;
+  let maxDx = -Infinity;
+  let minDy = Infinity;
+  let maxDy = -Infinity;
+  for (const keyframe of motion.keyframes) {
+    minDx = Math.min(minDx, keyframe.dx);
+    maxDx = Math.max(maxDx, keyframe.dx);
+    minDy = Math.min(minDy, keyframe.dy);
+    maxDy = Math.max(maxDy, keyframe.dy);
+  }
+  if (!Number.isFinite(minDx) || !Number.isFinite(maxDx) || !Number.isFinite(minDy) || !Number.isFinite(maxDy)) {
+    return { minDx: 0, maxDx: 0, minDy: 0, maxDy: 0 };
+  }
   return {
-    minDx: Math.min(motion.fromX, motion.toX),
-    maxDx: Math.max(motion.fromX, motion.toX),
-    minDy: Math.min(motion.fromY, motion.toY),
-    maxDy: Math.max(motion.fromY, motion.toY)
+    minDx,
+    maxDx,
+    minDy,
+    maxDy
   };
 }
 
@@ -682,7 +1411,23 @@ function shapeMotionEndTime(shape) {
     return 0;
   }
   const motion = normalizeShapeMotion(shape.motion);
+  const keyframes = motion.keyframes || [];
+  if (keyframes.length) {
+    return keyframes[keyframes.length - 1].at;
+  }
   return motion.start + motion.duration;
+}
+
+function shapeMotionStartTime(shape) {
+  if (!shape || !shape.motion || !shape.motion.enabled) {
+    return 0;
+  }
+  const motion = normalizeShapeMotion(shape.motion);
+  const keyframes = motion.keyframes || [];
+  if (keyframes.length) {
+    return keyframes[0].at;
+  }
+  return motion.start;
 }
 
 function timelineDurationFromSegments(segments) {
@@ -691,6 +1436,100 @@ function timelineDurationFromSegments(segments) {
     maxEnd = Math.max(maxEnd, Number(seg.end) || 0);
   }
   return Math.max(1, maxEnd);
+}
+
+function synthesizeSegmentWords(tokens, segStart, segEnd) {
+  const clean = Array.isArray(tokens)
+    ? tokens.map((token) => String(token || '').trim()).filter(Boolean)
+    : [];
+  if (!clean.length) {
+    return [];
+  }
+  const duration = Math.max(0.06, segEnd - segStart);
+  const slice = duration / clean.length;
+  const words = [];
+  for (let i = 0; i < clean.length; i += 1) {
+    const start = segStart + (slice * i);
+    const end = i === clean.length - 1 ? segEnd : segStart + (slice * (i + 1));
+    words.push({
+      text: clean[i],
+      start: roundTimelineSeconds(start),
+      end: roundTimelineSeconds(Math.max(start + 0.02, end))
+    });
+  }
+  return words;
+}
+
+function normalizeSegmentWords(rawWords, segmentText, segStart, segEnd) {
+  const source = Array.isArray(rawWords) ? rawWords : [];
+  const parsed = [];
+
+  for (const rawWord of source) {
+    const isObj = !!rawWord && typeof rawWord === 'object';
+    const text = String(
+      isObj
+        ? (rawWord.text ?? rawWord.word ?? '')
+        : rawWord
+    ).trim();
+    if (!text) {
+      continue;
+    }
+    const startRaw = isObj ? Number(rawWord.start ?? rawWord.start_time ?? rawWord.t0) : NaN;
+    const endRaw = isObj ? Number(rawWord.end ?? rawWord.end_time ?? rawWord.t1) : NaN;
+    parsed.push({
+      text,
+      start: Number.isFinite(startRaw) ? startRaw : null,
+      end: Number.isFinite(endRaw) ? endRaw : null
+    });
+  }
+
+  const hasTimedWords = parsed.length > 0 && parsed.every((word) => word.start !== null && word.end !== null);
+  if (!hasTimedWords) {
+    const fallbackTokens = parsed.length
+      ? parsed.map((word) => word.text)
+      : captionWords(segmentText);
+    return synthesizeSegmentWords(fallbackTokens, segStart, segEnd);
+  }
+
+  const sorted = parsed
+    .map((word) => ({
+      text: word.text,
+      start: Number(word.start),
+      end: Number(word.end)
+    }))
+    .sort((a, b) => a.start - b.start || a.end - b.end);
+  const normalized = [];
+  let cursor = segStart;
+  for (const word of sorted) {
+    let start = clamp(word.start, segStart, segEnd);
+    let end = clamp(word.end, segStart, segEnd);
+    if (end <= start) {
+      continue;
+    }
+    if (start < cursor) {
+      start = cursor;
+    }
+    if (end <= start) {
+      end = start + 0.02;
+    }
+    if (start >= segEnd) {
+      break;
+    }
+    normalized.push({
+      text: word.text,
+      start: roundTimelineSeconds(start),
+      end: roundTimelineSeconds(Math.min(segEnd, end))
+    });
+    cursor = end;
+  }
+
+  if (!normalized.length) {
+    return synthesizeSegmentWords(captionWords(segmentText), segStart, segEnd);
+  }
+  if (normalized[normalized.length - 1].end < segEnd) {
+    normalized[normalized.length - 1].end = roundTimelineSeconds(segEnd);
+  }
+  return normalized;
 }
 
 function normalizeTranscriptPayload(payload) {
@@ -711,8 +1550,17 @@ function normalizeTranscriptPayload(payload) {
       ? normalizeCaptionStyle(item.style, captionDefaultStyle())
       : null;
     const normalizedItem = { id: segmentId, start, end, text };
+    const words = normalizeSegmentWords(item.words, text, start, end);
     if (style) {
       normalizedItem.style = style;
+    }
+    if (words.length) {
+      normalizedItem.words = words;
+    }
+    // Preserve one-block display width (words per view)
+    const displayWords = Math.round(Number(item.displayWords) || 0);
+    if (displayWords > 0) {
+      normalizedItem.displayWords = displayWords;
     }
     normalized.push(normalizedItem);
   }
@@ -929,6 +1777,23 @@ function updateTimelineClipVisualState() {
   }
 }
 
+function updateTimelineShapeMotionVisualState() {
+  if (!els.timelineTrackShapeBody) {
+    return;
+  }
+  const selectedShapeSet = new Set(selectedShapeIds());
+  const clips = els.timelineTrackShapeBody.querySelectorAll('.timeline-shape-clip.motion');
+  for (const clip of clips) {
+    const shapeId = clip.dataset.shapeId || '';
+    clip.classList.toggle('active', !!shapeId && selectedShapeSet.has(shapeId));
+  }
+  const markers = els.timelineTrackShapeBody.querySelectorAll('.timeline-kf-marker');
+  for (const marker of markers) {
+    const at = Number(marker.dataset.at);
+    marker.classList.toggle('current', Number.isFinite(at) && Math.abs(at - state.timeline.currentTime) <= MOTION_KEYFRAME_EPSILON_SEC);
+  }
+}
+
 function renderTimelineTracks() {
   if (!els.timelineTrackCaptionBody || !els.timelineTrackAudioBody || !els.timelineTrackShapeBody) {
     return;
@@ -960,6 +1825,10 @@ function renderTimelineTracks() {
     }
 
     const staticCount = Math.max(0, state.shapes.length - animated.length);
+    const motionRowHeight = 18;
+    const motionRows = Math.max(1, animated.length);
+    const motionTrackMinHeight = Math.max(42, 12 + motionRows * motionRowHeight);
+    els.timelineTrackShapeBody.style.minHeight = `${motionTrackMinHeight}px`;
     if (staticCount > 0) {
       const shapeClip = document.createElement('div');
       shapeClip.className = 'timeline-shape-clip';
@@ -972,22 +1841,46 @@ function renderTimelineTracks() {
     for (let i = 0; i < animated.length; i += 1) {
       const shape = animated[i];
       const motion = normalizeShapeMotion(shape.motion);
+      const motionStart = shapeMotionStartTime(shape);
+      const motionEnd = shapeMotionEndTime(shape);
+      const clipDuration = Math.max(TIMELINE_MIN_CLIP_SEC, motionEnd - motionStart);
       const clip = document.createElement('div');
       clip.className = 'timeline-shape-clip motion';
-      clip.style.left = `${timelineTimeToPx(motion.start)}px`;
-      clip.style.width = `${Math.max(10, timelineTimeToPx(motion.duration))}px`;
-      clip.style.top = `${4 + (i % 2) * 18}px`;
+      clip.dataset.shapeId = shape.id;
+      clip.style.left = `${timelineTimeToPx(motionStart)}px`;
+      clip.style.width = `${Math.max(10, timelineTimeToPx(clipDuration))}px`;
+      clip.style.top = `${4 + i * motionRowHeight}px`;
       clip.textContent = `${shapeLayerLabel(shape)} move`;
+      if (selectedShapeIds().includes(shape.id)) {
+        clip.classList.add('active');
+      }
+      for (const keyframe of motion.keyframes || []) {
+        const marker = document.createElement('span');
+        marker.className = 'timeline-kf-marker';
+        marker.dataset.shapeId = shape.id;
+        marker.dataset.at = String(keyframe.at);
+        marker.title = `Keyframe ${formatTimelineTime(keyframe.at)}`;
+        marker.style.left = `${timelineTimeToPx(keyframe.at - motionStart)}px`;
+        if (Math.abs((Number(keyframe.at) || 0) - state.timeline.currentTime) <= MOTION_KEYFRAME_EPSILON_SEC) {
+          marker.classList.add('current');
+        }
+        clip.appendChild(marker);
+      }
       shapeFrag.appendChild(clip);
     }
+  } else {
+    els.timelineTrackShapeBody.style.minHeight = '42px';
   }
 
   for (const seg of state.timeline.transcriptSegments) {
     const clip = document.createElement('div');
-    clip.className = 'timeline-clip';
+    const isOneBlock = Array.isArray(seg.words) && seg.words.length > 0;
+    clip.className = isOneBlock ? 'timeline-clip oneblock' : 'timeline-clip';
     clip.dataset.segId = seg.id;
-    clip.style.left = `${timelineTimeToPx(seg.start)}px`;
-    clip.style.width = `${Math.max(12, timelineTimeToPx(seg.end - seg.start))}px`;
+    const clipLeft = timelineTimeToPx(seg.start);
+    const clipWidth = Math.max(12, timelineTimeToPx(seg.end - seg.start));
+    clip.style.left = `${clipLeft}px`;
+    clip.style.width = `${clipWidth}px`;
     const leftHandle = document.createElement('span');
     leftHandle.className = 'timeline-clip-handle left';
     leftHandle.dataset.edge = 'left';
@@ -998,6 +1891,26 @@ function renderTimelineTracks() {
     rightHandle.className = 'timeline-clip-handle right';
     rightHandle.dataset.edge = 'right';
     clip.append(leftHandle, label, rightHandle);
+
+    // Word markers for one-block segments (word tick marks inside the clip)
+    if (isOneBlock && clipWidth > 40) {
+      const segDur = Math.max(0.001, seg.end - seg.start);
+      const winSize = seg.displayWords || 0;
+      for (let wi = 0; wi < seg.words.length; wi += 1) {
+        const word = seg.words[wi];
+        const isPageBoundary = winSize > 0 && wi > 0 && wi % winSize === 0;
+        const isActiveWord = Math.abs(word.start - state.timeline.currentTime) < (60 / 130 / 2);
+        if (!isPageBoundary && !isActiveWord) {
+          continue; // only show page-boundary and active markers to avoid clutter
+        }
+        const marker = document.createElement('span');
+        marker.className = isActiveWord ? 'timeline-word-marker active' : 'timeline-word-marker';
+        const markerPct = ((word.start - seg.start) / segDur) * clipWidth;
+        marker.style.left = `${Math.max(8, markerPct)}px`;
+        clip.appendChild(marker);
+      }
+    }
+
     captionFrag.appendChild(clip);
   }
 
@@ -1007,6 +1920,7 @@ function renderTimelineTracks() {
   els.timelineTrackShapeBody.appendChild(shapeFrag);
   els.timelineTrackCaptionBody.innerHTML = '';
   els.timelineTrackCaptionBody.appendChild(captionFrag);
+  updateTimelineShapeMotionVisualState();
   updateTimelineClipVisualState();
 }
 
@@ -1053,6 +1967,7 @@ function updateTimelineTimeUI() {
     els.timelineDockTime.textContent = timeText;
   }
   updateTimelinePlayhead();
+  updateTimelineShapeMotionVisualState();
 }
 
 function activeTranscriptIndexAt(timeSec) {
@@ -1073,6 +1988,53 @@ function activeTranscriptIndexAt(timeSec) {
   return -1;
 }
 
+function timelineSeekToTranscriptPoint(segment, timeSec) {
+  if (!segment) {
+    return;
+  }
+  const segStart = Number(segment.start) || 0;
+  const segEnd = Number(segment.end) || segStart;
+  const seekTime = clamp(Number(timeSec), segStart, segEnd);
+  setTimelineClipSelection([segment.id], { skipRender: true });
+  setTimelineTime(seekTime, { updateAudio: true });
+  renderTimelineEditor({ keepScroll: true });
+  if (!state.timeline.playing) {
+    render();
+  }
+}
+
+function segmentWordTimings(segment) {
+  if (!segment) {
+    return [];
+  }
+  return normalizeSegmentWords(segment.words, segment.text, Number(segment.start) || 0, Number(segment.end) || 0);
+}
+
+function activeWordIndexAtTime(words, timeSec, fallbackProgress = 0) {
+  if (!Array.isArray(words) || !words.length) {
+    return -1;
+  }
+  const t = Number(timeSec);
+  if (Number.isFinite(t)) {
+    for (let i = 0; i < words.length; i += 1) {
+      const start = Number(words[i].start);
+      const end = Number(words[i].end);
+      if (!Number.isFinite(start) || !Number.isFinite(end)) {
+        continue;
+      }
+      if (t >= start && t < end) {
+        return i;
+      }
+    }
+    const firstStart = Number(words[0].start);
+    if (Number.isFinite(firstStart) && t <= firstStart) {
+      return 0;
+    }
+    return words.length - 1;
+  }
+  return clamp(Math.floor(clamp(fallbackProgress, 0, 0.999999) * words.length), 0, words.length - 1);
+}
+
 function renderTranscriptList() {
   if (!els.transcriptList) {
     updateTimelineClipVisualState();
@@ -1083,33 +2045,240 @@ function renderTranscriptList() {
   if (!segments.length) {
     const empty = document.createElement('div');
     empty.className = 'transcript-item';
-    empty.innerHTML = '<span class="time">--:--</span><span>No transcript loaded.</span>';
+    empty.innerHTML = '<span class="time">--:--</span> <span class="label">No transcript loaded.</span>';
     els.transcriptList.appendChild(empty);
     return;
   }
 
   for (let i = 0; i < segments.length; i += 1) {
     const seg = segments[i];
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'transcript-item';
-    btn.dataset.segIndex = String(i);
-    btn.dataset.segId = seg.id;
+    const item = document.createElement('div');
+    item.className = 'transcript-item';
+    item.dataset.segIndex = String(i);
+    item.dataset.segId = seg.id;
+
+    // ── header row: timestamp + text + edit button ──
+    const header = document.createElement('div');
+    header.className = 'transcript-item-header';
+
+    const seekBtn = document.createElement('button');
+    seekBtn.type = 'button';
+    seekBtn.className = 'transcript-seek';
+    seekBtn.title = 'Click to seek · Double-click to edit';
+    seekBtn.setAttribute('aria-label', `Seek to ${formatTimelineTime(seg.start)} segment`);
     const time = document.createElement('span');
     time.className = 'time';
     time.textContent = formatTimelineTime(seg.start);
-    const text = document.createElement('span');
-    text.textContent = seg.text;
-    btn.append(time, text);
-    btn.addEventListener('click', () => {
-      setTimelineClipSelection([seg.id], { skipRender: true });
-      setTimelineTime(seg.start, { updateAudio: true });
-      renderTimelineEditor({ keepScroll: true });
-      if (!state.timeline.playing) {
-        render();
+    const textSpan = document.createElement('span');
+    textSpan.className = 'label';
+    textSpan.textContent = seg.text;
+    seekBtn.append(time, textSpan);
+    seekBtn.addEventListener('click', () => {
+      timelineSeekToTranscriptPoint(seg, seg.start);
+    });
+    seekBtn.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      beginTranscriptSegmentEdit(i);
+    });
+
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'transcript-edit-btn';
+    editBtn.title = 'Edit caption text';
+    editBtn.textContent = '✎';
+    editBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      beginTranscriptSegmentEdit(i);
+    });
+
+    header.append(seekBtn, editBtn);
+    item.appendChild(header);
+
+    // ── word chips row ──
+    const words = segmentWordTimings(seg);
+    if (words.length) {
+      const wordRow = document.createElement('div');
+      wordRow.className = 'transcript-word-row';
+      for (let wordIdx = 0; wordIdx < words.length; wordIdx += 1) {
+        const word = words[wordIdx];
+        const wordBtn = document.createElement('button');
+        wordBtn.type = 'button';
+        wordBtn.className = 'transcript-word';
+        wordBtn.dataset.segIndex = String(i);
+        wordBtn.dataset.wordIndex = String(wordIdx);
+        wordBtn.dataset.start = String(word.start);
+        wordBtn.dataset.end = String(word.end);
+        wordBtn.textContent = word.text;
+        wordBtn.title = `Seek ${formatTimelineTime(word.start)}`;
+        wordBtn.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          timelineSeekToTranscriptPoint(seg, word.start);
+        });
+        wordRow.appendChild(wordBtn);
+      }
+      item.appendChild(wordRow);
+    }
+
+    // ── inline edit area (hidden by default) ──
+    const editArea = document.createElement('div');
+    editArea.className = 'transcript-edit-area';
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'transcript-edit-input';
+    textarea.value = seg.text;
+    textarea.rows = 2;
+    textarea.setAttribute('aria-label', 'Edit caption text');
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        cancelTranscriptSegmentEdit(i);
+      } else if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        commitTranscriptSegmentEdit(i, textarea.value);
       }
     });
-    els.transcriptList.appendChild(btn);
+
+    const hint = document.createElement('div');
+    hint.className = 'transcript-edit-hint';
+    hint.textContent = 'Enter to save · Shift+Enter for new line · Esc to cancel';
+
+    const actions = document.createElement('div');
+    actions.className = 'transcript-edit-actions';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.className = 'btn-save';
+    saveBtn.textContent = 'Save';
+    saveBtn.addEventListener('click', () => commitTranscriptSegmentEdit(i, textarea.value));
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'btn-cancel';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.addEventListener('click', () => cancelTranscriptSegmentEdit(i));
+
+    actions.append(saveBtn, cancelBtn);
+    editArea.append(textarea, hint, actions);
+    item.appendChild(editArea);
+
+    els.transcriptList.appendChild(item);
+  }
+}
+
+function beginTranscriptSegmentEdit(segIndex) {
+  // Cancel any currently open edit first
+  const prev = els.transcriptList ? els.transcriptList.querySelector('.transcript-item.editing') : null;
+  if (prev) {
+    const prevIdx = Number(prev.dataset.segIndex);
+    if (prevIdx === segIndex) {
+      // Already editing this one — focus the textarea
+      const ta = prev.querySelector('.transcript-edit-input');
+      if (ta) ta.focus();
+      return;
+    }
+    prev.classList.remove('editing');
+  }
+  const item = els.transcriptList ? els.transcriptList.querySelector(`.transcript-item[data-seg-index="${segIndex}"]`) : null;
+  if (!item) return;
+  const seg = (state.timeline.transcriptSegments || [])[segIndex];
+  if (!seg) return;
+  const textarea = item.querySelector('.transcript-edit-input');
+  if (textarea) {
+    textarea.value = seg.text;
+    // Place cursor at end
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+  }
+  item.classList.add('editing');
+  if (textarea) {
+    textarea.focus();
+    // Auto-resize to content
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
+    textarea.addEventListener('input', () => {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
+    }, { once: false });
+  }
+}
+
+function cancelTranscriptSegmentEdit(segIndex) {
+  const item = els.transcriptList ? els.transcriptList.querySelector(`.transcript-item[data-seg-index="${segIndex}"]`) : null;
+  if (!item) return;
+  item.classList.remove('editing');
+  // Restore textarea value in case user typed something
+  const seg = (state.timeline.transcriptSegments || [])[segIndex];
+  const textarea = item.querySelector('.transcript-edit-input');
+  if (textarea && seg) textarea.value = seg.text;
+}
+
+function commitTranscriptSegmentEdit(segIndex, rawText) {
+  const newText = String(rawText || '').trim();
+  if (!newText) {
+    setStatus('Caption text cannot be empty.');
+    return;
+  }
+  const segs = state.timeline.transcriptSegments || [];
+  const seg = segs[segIndex];
+  if (!seg) return;
+
+  const textChanged = seg.text !== newText;
+  seg.text = newText;
+
+  // Re-synthesize word timings from new text, preserving segment bounds
+  const newTokens = newText.split(/\s+/).filter(Boolean);
+  if (newTokens.length) {
+    seg.words = synthesizeSegmentWords(newTokens, seg.start, seg.end);
+    if (seg.displayWords > 0) {
+      // Keep displayWords, clamp to new word count
+      seg.displayWords = Math.min(seg.displayWords, newTokens.length);
+    }
+  } else {
+    delete seg.words;
+  }
+
+  // Update the label in the DOM without full re-render for smoothness
+  const item = els.transcriptList ? els.transcriptList.querySelector(`.transcript-item[data-seg-index="${segIndex}"]`) : null;
+  if (item) {
+    item.classList.remove('editing');
+    const labelSpan = item.querySelector('.transcript-seek .label');
+    if (labelSpan) labelSpan.textContent = newText;
+    // Rebuild word chips
+    const existingWordRow = item.querySelector('.transcript-word-row');
+    if (existingWordRow) existingWordRow.remove();
+    const words = segmentWordTimings(seg);
+    if (words.length) {
+      const wordRow = document.createElement('div');
+      wordRow.className = 'transcript-word-row';
+      for (let wi = 0; wi < words.length; wi += 1) {
+        const word = words[wi];
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'transcript-word';
+        btn.dataset.segIndex = String(segIndex);
+        btn.dataset.wordIndex = String(wi);
+        btn.dataset.start = String(word.start);
+        btn.dataset.end = String(word.end);
+        btn.textContent = word.text;
+        btn.title = `Seek ${formatTimelineTime(word.start)}`;
+        btn.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          timelineSeekToTranscriptPoint(seg, word.start);
+        });
+        wordRow.appendChild(btn);
+      }
+      // Insert before edit area
+      const editArea = item.querySelector('.transcript-edit-area');
+      item.insertBefore(wordRow, editArea);
+    }
+  }
+
+  if (textChanged) {
+    pushHistory();
+    renderTimelineEditor({ keepScroll: true });
+    updateTranscriptDisplayForTime(true);
+    setStatus(`Caption updated: "${newText.slice(0, 40)}${newText.length > 40 ? '…' : ''}"`);
   }
 }
 
@@ -1134,13 +2303,30 @@ function captionWords(text) {
   return String(text || '').trim().split(/\s+/).filter(Boolean);
 }
 
-function renderKaraokeHtml(text, progress) {
-  const words = captionWords(text);
+function renderKaraokeHtml(segment, progress) {
+  const words = segmentWordTimings(segment);
   if (!words.length) {
     return '';
   }
-  const activeWord = clamp(Math.floor(progress * words.length), 0, words.length - 1);
-  return words.map((word, idx) => `<span class="word${idx === activeWord ? ' active' : ''}">${escapeHtml(word)}</span>`).join(' ');
+  const activeWord = activeWordIndexAtTime(words, state.timeline.currentTime, progress);
+
+  // Windowed display: show only N words at a time, grouped into pages
+  const style = effectiveCaptionStyle(segment);
+  const windowSize = Math.max(0, segment.displayWords || style.wordsPerLine || 0);
+  if (windowSize > 0 && words.length > windowSize) {
+    const pageIndex = Math.floor(Math.max(0, activeWord) / windowSize);
+    const windowStart = pageIndex * windowSize;
+    const windowEnd = Math.min(words.length, windowStart + windowSize);
+    const visibleWords = words.slice(windowStart, windowEnd);
+    const localActive = activeWord - windowStart;
+    return visibleWords
+      .map((word, idx) => `<span class="word${idx === localActive ? ' active' : ''}">${escapeHtml(word.text)}</span>`)
+      .join(' ');
+  }
+
+  return words
+    .map((word, idx) => `<span class="word${idx === activeWord ? ' active' : ''}">${escapeHtml(word.text)}</span>`)
+    .join(' ');
 }
 
 function renderTypewriterHtml(text, progress) {
@@ -1157,15 +2343,25 @@ function applyOverlayCaptionStyle(style) {
     return;
   }
   els.liveTranscriptOverlay.style.color = style.textColor;
-  els.liveTranscriptOverlay.style.background = toOverlayBg(style);
+  // capcut_black uses per-word pill backgrounds; overlay itself is transparent
+  els.liveTranscriptOverlay.style.background = style.mode === 'capcut_black' ? 'transparent' : toOverlayBg(style);
+  els.liveTranscriptOverlay.style.fontFamily = style.fontFamily ? `"${style.fontFamily}", sans-serif` : '"Fira Sans", "Noto Sans", sans-serif';
   els.liveTranscriptOverlay.style.fontSize = `${style.fontSize}px`;
   els.liveTranscriptOverlay.style.fontWeight = String(style.fontWeight);
   els.liveTranscriptOverlay.style.lineHeight = String(style.lineHeight);
   els.liveTranscriptOverlay.style.letterSpacing = `${style.letterSpacing}px`;
-  els.liveTranscriptOverlay.style.textShadow = captionStrokeShadow(style);
+  els.liveTranscriptOverlay.style.textShadow = style.mode === 'capcut_black' ? 'none' : captionStrokeShadow(style);
   els.liveTranscriptOverlay.style.setProperty('--caption-highlight-bg', style.highlightColor);
   els.liveTranscriptOverlay.style.setProperty('--caption-highlight-color', style.highlightTextColor);
+  els.liveTranscriptOverlay.style.setProperty('--caption-highlight-font-family',
+    style.highlightFontFamily ? `"${style.highlightFontFamily}", sans-serif` : 'inherit');
+  els.liveTranscriptOverlay.style.setProperty('--caption-highlight-font-weight', String(style.highlightFontWeight));
+  els.liveTranscriptOverlay.style.setProperty('--caption-highlight-pad-y', `${style.highlightPadY}px`);
+  els.liveTranscriptOverlay.style.setProperty('--caption-highlight-pad-x', `${style.highlightPadX}px`);
+  els.liveTranscriptOverlay.style.setProperty('--caption-highlight-radius', `${style.highlightRadius}px`);
 }
+
+const KARAOKE_LIKE_MODES = new Set(['karaoke', 'capcut_black', 'word_pop', 'slide_up']);
 
 function renderLiveCaptionOverlay(segment) {
   if (!els.liveTranscriptOverlay) {
@@ -1173,23 +2369,86 @@ function renderLiveCaptionOverlay(segment) {
   }
   if (!segment) {
     els.liveTranscriptOverlay.textContent = '';
-    els.liveTranscriptOverlay.classList.remove('active');
+    els.liveTranscriptOverlay.classList.remove('active', 'caption-entering');
+    els.liveTranscriptOverlay.removeAttribute('data-caption-mode');
+    els.liveTranscriptOverlay.removeAttribute('data-seg-id');
     return;
   }
   const style = effectiveCaptionStyle(segment);
   const progress = activeSegmentProgress(segment);
+
+  // Detect segment change (or page change in one-block segments) for slide-up animation
+  const prevSegId = els.liveTranscriptOverlay.dataset.segId;
+  const isNewSeg = prevSegId !== String(segment.id);
+  els.liveTranscriptOverlay.dataset.segId = String(segment.id);
+  els.liveTranscriptOverlay.dataset.captionMode = style.mode;
+
+  // For one-block segments, also detect word-page changes
+  let isNewPage = false;
+  const windowSize = Math.max(0, segment.displayWords || style.wordsPerLine || 0);
+  if (windowSize > 0 && Array.isArray(segment.words) && segment.words.length > 0) {
+    const words = segmentWordTimings(segment);
+    const activeWord = activeWordIndexAtTime(words, state.timeline.currentTime, progress);
+    const currentPage = Math.floor(Math.max(0, activeWord) / windowSize);
+    const prevPage = Number(els.liveTranscriptOverlay.dataset.captionPage || -1);
+    if (currentPage !== prevPage) {
+      els.liveTranscriptOverlay.dataset.captionPage = String(currentPage);
+      isNewPage = true;
+    }
+  } else if (isNewSeg) {
+    els.liveTranscriptOverlay.dataset.captionPage = '0';
+  }
+
   applyOverlayCaptionStyle(style);
+
+  if (style.mode === 'slide_up' && (isNewSeg || isNewPage)) {
+    els.liveTranscriptOverlay.classList.remove('caption-entering');
+    // Force reflow to re-trigger animation
+    void els.liveTranscriptOverlay.offsetWidth;
+    els.liveTranscriptOverlay.classList.add('caption-entering');
+    els.liveTranscriptOverlay.addEventListener('animationend', () => {
+      els.liveTranscriptOverlay.classList.remove('caption-entering');
+    }, { once: true });
+  }
 
   let html = '';
   if (style.mode === 'typewriter') {
     html = renderTypewriterHtml(segment.text, progress);
-  } else if (style.mode === 'karaoke' && style.wordHighlight) {
-    html = renderKaraokeHtml(segment.text, progress);
+  } else if (KARAOKE_LIKE_MODES.has(style.mode) && style.wordHighlight) {
+    html = renderKaraokeHtml(segment, progress);
   } else {
     html = escapeHtml(segment.text);
   }
   els.liveTranscriptOverlay.innerHTML = html;
   els.liveTranscriptOverlay.classList.add('active');
+}
+
+function updateTranscriptWordHighlights(activeSegIndex, timeSec) {
+  if (!els.transcriptList) {
+    return;
+  }
+  const rows = els.transcriptList.querySelectorAll('.transcript-item[data-seg-index]');
+  for (const row of rows) {
+    const rowSegIndex = Number(row.dataset.segIndex);
+    const wordButtons = Array.from(row.querySelectorAll('.transcript-word'));
+    if (!wordButtons.length) {
+      continue;
+    }
+    if (!Number.isFinite(rowSegIndex) || rowSegIndex !== activeSegIndex) {
+      for (const btn of wordButtons) {
+        btn.classList.remove('active');
+      }
+      continue;
+    }
+    const words = wordButtons.map((btn) => ({
+      start: Number(btn.dataset.start),
+      end: Number(btn.dataset.end)
+    }));
+    const activeWord = activeWordIndexAtTime(words, timeSec);
+    for (let i = 0; i < wordButtons.length; i += 1) {
+      wordButtons[i].classList.toggle('active', i === activeWord);
+    }
+  }
 }
 
 function setTimelineCaptionStyle(nextStyle, options = {}) {
@@ -1245,6 +2504,24 @@ function syncCaptionStyleControls() {
   if (els.captionHighlightColor) {
     els.captionHighlightColor.value = style.highlightColor;
   }
+  if (els.captionHighlightTextColor) {
+    els.captionHighlightTextColor.value = style.highlightTextColor;
+  }
+  if (els.captionHighlightFontFamily) {
+    els.captionHighlightFontFamily.value = style.highlightFontFamily || '';
+  }
+  if (els.captionHighlightFontWeight) {
+    els.captionHighlightFontWeight.value = String(style.highlightFontWeight);
+  }
+  if (els.captionHighlightPadY) {
+    els.captionHighlightPadY.value = String(style.highlightPadY);
+  }
+  if (els.captionHighlightPadX) {
+    els.captionHighlightPadX.value = String(style.highlightPadX);
+  }
+  if (els.captionHighlightRadius) {
+    els.captionHighlightRadius.value = String(style.highlightRadius);
+  }
   if (els.captionOverlayBg) {
     els.captionOverlayBg.value = style.overlayBgColor;
   }
@@ -1263,6 +2540,9 @@ function syncCaptionStyleControls() {
   if (els.captionOverlayOpacity) {
     els.captionOverlayOpacity.value = String(style.overlayBgOpacity);
   }
+  if (els.captionFontFamily) {
+    els.captionFontFamily.value = style.fontFamily || '';
+  }
   if (els.captionActionMode) {
     els.captionActionMode.value = style.mode;
   }
@@ -1272,6 +2552,7 @@ function syncCaptionStyleControls() {
   if (els.captionWordHighlight) {
     els.captionWordHighlight.checked = !!style.wordHighlight;
   }
+  syncCfpActiveCard();
 }
 
 function updateCaptionStyleFromCustomControls() {
@@ -1279,10 +2560,16 @@ function updateCaptionStyleFromCustomControls() {
   const next = normalizeCaptionStyle({
     template: 'custom',
     mode: els.captionActionMode ? els.captionActionMode.value : prev.mode,
+    fontFamily: els.captionFontFamily ? els.captionFontFamily.value : prev.fontFamily,
     textColor: els.captionTextColor ? els.captionTextColor.value : prev.textColor,
     strokeColor: els.captionStrokeColor ? els.captionStrokeColor.value : prev.strokeColor,
     highlightColor: els.captionHighlightColor ? els.captionHighlightColor.value : prev.highlightColor,
-    highlightTextColor: prev.highlightTextColor,
+    highlightTextColor: els.captionHighlightTextColor ? els.captionHighlightTextColor.value : prev.highlightTextColor,
+    highlightFontFamily: els.captionHighlightFontFamily ? els.captionHighlightFontFamily.value : prev.highlightFontFamily,
+    highlightFontWeight: els.captionHighlightFontWeight ? Number(els.captionHighlightFontWeight.value) : prev.highlightFontWeight,
+    highlightPadY: els.captionHighlightPadY ? Number(els.captionHighlightPadY.value) : prev.highlightPadY,
+    highlightPadX: els.captionHighlightPadX ? Number(els.captionHighlightPadX.value) : prev.highlightPadX,
+    highlightRadius: els.captionHighlightRadius ? Number(els.captionHighlightRadius.value) : prev.highlightRadius,
     overlayBgColor: els.captionOverlayBg ? els.captionOverlayBg.value : prev.overlayBgColor,
     overlayBgOpacity: els.captionOverlayOpacity ? Number(els.captionOverlayOpacity.value) : prev.overlayBgOpacity,
     fontSize: els.captionFontSize ? Number(els.captionFontSize.value) : prev.fontSize,
@@ -1356,10 +2643,10 @@ function updateTranscriptDisplayForTime(forceListRefresh) {
     return;
   }
   if (changed || forceListRefresh) {
-    const buttons = els.transcriptList.querySelectorAll('.transcript-item');
-    for (const btn of buttons) {
-      const idx = Number(btn.dataset.segIndex);
-      btn.classList.toggle('active', Number.isFinite(idx) && idx === nextIndex);
+    const rows = els.transcriptList.querySelectorAll('.transcript-item');
+    for (const row of rows) {
+      const idx = Number(row.dataset.segIndex);
+      row.classList.toggle('active', Number.isFinite(idx) && idx === nextIndex);
     }
 
     if (changed && nextIndex >= 0) {
@@ -1369,7 +2656,9 @@ function updateTranscriptDisplayForTime(forceListRefresh) {
       }
     }
   }
+  updateTranscriptWordHighlights(nextIndex, state.timeline.currentTime);
   updateTimelineClipVisualState();
+  updateTeleprompter();
 }
 
 function clampTimelineTime(timeSec) {
@@ -1389,6 +2678,9 @@ function setTimelineTime(timeSec, options = {}) {
   state.timeline.currentTime = clampTimelineTime(timeSec);
   updateTimelineTimeUI();
   updateTranscriptDisplayForTime(false);
+  if (!state.timeline.playing && options.syncMotionUi !== false && selectedShapeIds().length) {
+    syncSelectedShapeMotionControls();
+  }
 
   if (options.updateAudio && timelineRuntime.audio && timelineRuntime.audio.readyState >= 1) {
     const drift = Math.abs((timelineRuntime.audio.currentTime || 0) - state.timeline.currentTime);
@@ -1473,12 +2765,95 @@ function beginTimelineScrubDrag(event, bodyEl, options = {}) {
   event.preventDefault();
 }
 
+function beginTimelineMotionKeyframeDrag(event, shapeId, keyframeAt) {
+  if (!event || event.button !== 0) {
+    return false;
+  }
+  if (!shapeId || !Number.isFinite(Number(keyframeAt))) {
+    return false;
+  }
+  const shape = state.shapes.find((item) => item && item.id === shapeId);
+  if (!shape || !shape.motion || !shape.motion.enabled || isShapeHidden(shape) || isShapeLocked(shape)) {
+    return false;
+  }
+  if (state.timeline.playing) {
+    setTimelinePlaying(false);
+  }
+  const at = roundTimelineSeconds(Math.max(0, Number(keyframeAt) || 0));
+  const motion = normalizeShapeMotion(shape.motion, { start: at, duration: 0.2 });
+  const keyframes = (motion.keyframes || []).map((keyframe) => ({ ...keyframe }));
+  if (!keyframes.length) {
+    return false;
+  }
+  const keyIndex = findMotionKeyframeIndexNearTime(keyframes, at, 0.02);
+  if (keyIndex < 0) {
+    return false;
+  }
+  const minAt = keyIndex > 0
+    ? roundTimelineSeconds((Number(keyframes[keyIndex - 1].at) || 0) + 0.01)
+    : 0;
+  const maxAt = keyIndex < keyframes.length - 1
+    ? roundTimelineSeconds((Number(keyframes[keyIndex + 1].at) || 0) - 0.01)
+    : 7200;
+  beginTimelineDragSession({
+    mode: 'motion-kf',
+    pointerId: event.pointerId,
+    startClientX: event.clientX,
+    shapeId,
+    keyIndex,
+    startAt: at,
+    minAt,
+    maxAt,
+    baseMotion: motion,
+    baseKeyframes: keyframes,
+    lastAt: at,
+    mutated: false
+  });
+  return true;
+}
+
 function onTimelineDragMove(event) {
   const drag = timelineEditRuntime.drag;
   if (!drag) {
     return;
   }
   if (drag.pointerId !== undefined && event.pointerId !== undefined && drag.pointerId !== event.pointerId) {
+    return;
+  }
+  if (drag.mode === 'motion-kf') {
+    const shape = state.shapes.find((item) => item && item.id === drag.shapeId);
+    if (!shape) {
+      return;
+    }
+    const deltaSec = (event.clientX - drag.startClientX) / timelineZoomPxPerSec();
+    let nextAt = drag.startAt + deltaSec;
+    const snapSec = timelineSnapSec();
+    if (snapSec) {
+      nextAt = Math.round(nextAt / snapSec) * snapSec;
+    }
+    nextAt = clamp(nextAt, drag.minAt, drag.maxAt);
+    nextAt = roundTimelineSeconds(nextAt);
+    if (Math.abs(nextAt - drag.lastAt) <= 1e-4) {
+      return;
+    }
+    const keyframes = (drag.baseKeyframes || []).map((keyframe, idx) => (
+      idx === drag.keyIndex
+        ? { ...keyframe, at: nextAt }
+        : { ...keyframe }
+    ));
+    shape.motion = normalizeShapeMotion({
+      ...(drag.baseMotion || {}),
+      enabled: true,
+      keyframes
+    }, { start: nextAt, duration: 0.2 });
+    drag.lastAt = nextAt;
+    drag.mutated = true;
+    invalidateShapeCaches();
+    markLayerPanelDirty();
+    refreshTimelineDurationFromSources({ preserveExisting: true });
+    setTimelineTime(nextAt, { updateAudio: false, syncMotionUi: true });
+    renderTimelineEditor({ keepScroll: true });
+    render();
     return;
   }
   if (drag.mode === 'scrub') {
@@ -1556,6 +2931,16 @@ function onTimelineDragEnd(event) {
   }
   releaseTimelineDrag();
   timelineEditRuntime.drag = null;
+  if (drag.mode === 'motion-kf') {
+    if (drag.mutated) {
+      refreshTimelineDurationFromSources({ preserveExisting: false });
+      renderTimelineEditor({ keepScroll: true });
+      syncSelectedShapeMotionControls();
+      pushHistory();
+      setStatus(`Moved keyframe to ${formatTimelineTime(drag.lastAt)}.`);
+    }
+    return;
+  }
   if (drag.mutated) {
     sortTimelineSegmentsInPlace();
     refreshTimelineDurationFromSources({ preserveExisting: false });
@@ -1600,13 +2985,25 @@ function splitSelectedTimelineClipAtPlayhead() {
     setStatus('Move playhead inside the clip before splitting.');
     return false;
   }
+  const oldEnd = seg.end;
+  const existingWords = segmentWordTimings(seg);
   const newSeg = {
     id: uid(),
     start: roundTimelineSeconds(t),
-    end: seg.end,
+    end: oldEnd,
     text: seg.text
   };
   seg.end = roundTimelineSeconds(t);
+  const leftWords = normalizeSegmentWords(existingWords, seg.text, seg.start, seg.end);
+  const rightWords = normalizeSegmentWords(existingWords, seg.text, newSeg.start, newSeg.end);
+  if (leftWords.length) {
+    seg.words = leftWords;
+  } else {
+    delete seg.words;
+  }
+  if (rightWords.length) {
+    newSeg.words = rightWords;
+  }
   state.timeline.transcriptSegments.push(newSeg);
   sortTimelineSegmentsInPlace();
   setTimelineClipSelection([newSeg.id], { skipRender: true });
@@ -1617,6 +3014,334 @@ function splitSelectedTimelineClipAtPlayhead() {
   pushHistory();
   setStatus('Split caption clip at playhead.');
   return true;
+}
+
+function findMotionKeyframeIndexNearTime(keyframes, timeSec, toleranceSec = MOTION_KEYFRAME_EPSILON_SEC) {
+  const list = Array.isArray(keyframes) ? keyframes : [];
+  const t = Number(timeSec);
+  if (!Number.isFinite(t) || !list.length) {
+    return -1;
+  }
+  let bestIndex = -1;
+  let bestDelta = Infinity;
+  for (let i = 0; i < list.length; i += 1) {
+    const at = Number(list[i] && list[i].at);
+    if (!Number.isFinite(at)) {
+      continue;
+    }
+    const delta = Math.abs(at - t);
+    if (delta <= toleranceSec && delta < bestDelta) {
+      bestDelta = delta;
+      bestIndex = i;
+    }
+  }
+  return bestIndex;
+}
+
+function readMotionKeyframeControls(timeSec) {
+  const trim = normalizeTrimWindow(
+    (Number(els.motionTrimStart && els.motionTrimStart.value) || 0) / 100,
+    (Number(els.motionTrimEnd && els.motionTrimEnd.value) || 100) / 100
+  );
+  return normalizedMotionKeyframe({
+    at: timeSec,
+    dx: Number(els.motionFromX && els.motionFromX.value) || 0,
+    dy: Number(els.motionFromY && els.motionFromY.value) || 0,
+    opacity: Number(els.motionFromOpacity && els.motionFromOpacity.value),
+    trimStart: trim.trimStart,
+    trimEnd: trim.trimEnd,
+    ease: els.motionEase ? els.motionEase.value : 'easeInOutCubic'
+  }, {
+    at: timeSec,
+    dx: 0,
+    dy: 0,
+    opacity: 1,
+    trimStart: trim.trimStart,
+    trimEnd: trim.trimEnd,
+    ease: els.motionEase ? els.motionEase.value : 'easeInOutCubic'
+  });
+}
+
+function evaluatedMotionKeyframeAtTime(shape, timeSec) {
+  const motionSample = shapeMotionAtTime(shape, timeSec);
+  const trim = normalizeTrimWindow(motionSample.trimStart, motionSample.trimEnd);
+  return normalizedMotionKeyframe({
+    at: timeSec,
+    dx: motionSample.dx,
+    dy: motionSample.dy,
+    opacity: motionSample.opacity,
+    trimStart: trim.trimStart,
+    trimEnd: trim.trimEnd,
+    ease: normalizeShapeMotion(shape && shape.motion, {}).ease
+  }, {
+    at: timeSec,
+    dx: 0,
+    dy: 0,
+    opacity: 1,
+    trimStart: 0,
+    trimEnd: 1,
+    ease: 'easeInOutCubic'
+  });
+}
+
+function upsertShapeMotionKeyframe(shape, timeSec, options = {}) {
+  if (!shape || isShapeLocked(shape) || isShapeHidden(shape)) {
+    return false;
+  }
+  const at = roundTimelineSeconds(Math.max(0, Number(timeSec) || 0));
+  const current = shape.motion
+    ? normalizeShapeMotion(shape.motion, { start: at, duration: 1.2 })
+    : normalizeShapeMotion({
+      enabled: true,
+      start: at,
+      duration: 0.2,
+      fromX: 0,
+      fromY: 0,
+      toX: 0,
+      toY: 0,
+      fromOpacity: 1,
+      toOpacity: 1,
+      trimStart: 0,
+      trimEnd: 1,
+      keyframes: [{ at, dx: 0, dy: 0, opacity: 1, trimStart: 0, trimEnd: 1, ease: 'easeInOutCubic' }]
+    }, { start: at, duration: 0.2 });
+  const keyframes = (current.keyframes || []).map((keyframe) => ({ ...keyframe }));
+  const nextKeyframe = options.fromControls
+    ? readMotionKeyframeControls(at)
+    : evaluatedMotionKeyframeAtTime(shape, at);
+  const nearIndex = findMotionKeyframeIndexNearTime(keyframes, at);
+  if (nearIndex >= 0) {
+    const prev = keyframes[nearIndex];
+    if (prev &&
+      Math.abs(prev.at - nextKeyframe.at) < 1e-6 &&
+      Math.abs(prev.dx - nextKeyframe.dx) < 1e-6 &&
+      Math.abs(prev.dy - nextKeyframe.dy) < 1e-6 &&
+      Math.abs(prev.opacity - nextKeyframe.opacity) < 1e-6 &&
+      Math.abs(prev.trimStart - nextKeyframe.trimStart) < 1e-6 &&
+      Math.abs(prev.trimEnd - nextKeyframe.trimEnd) < 1e-6 &&
+      prev.ease === nextKeyframe.ease) {
+      return false;
+    }
+    keyframes[nearIndex] = nextKeyframe;
+  } else {
+    keyframes.push(nextKeyframe);
+  }
+  shape.motion = normalizeShapeMotion({
+    ...current,
+    enabled: true,
+    keyframes
+  }, { start: at, duration: 1.2 });
+  return true;
+}
+
+function removeShapeMotionKeyframe(shape, timeSec) {
+  if (!shape || !shape.motion) {
+    return false;
+  }
+  const motion = normalizeShapeMotion(shape.motion, { start: timeSec, duration: 1.2 });
+  const keyframes = (motion.keyframes || []).map((keyframe) => ({ ...keyframe }));
+  const idx = findMotionKeyframeIndexNearTime(keyframes, timeSec);
+  if (idx < 0) {
+    return false;
+  }
+  keyframes.splice(idx, 1);
+  if (!keyframes.length) {
+    delete shape.motion;
+    return true;
+  }
+  shape.motion = normalizeShapeMotion({
+    ...motion,
+    keyframes
+  }, { start: timeSec, duration: 1.2 });
+  return true;
+}
+
+function resolveMotionTargetShapes(options = {}) {
+  const targets = [];
+  const seen = new Set();
+  const requestedId = typeof options.shapeId === 'string' ? options.shapeId : '';
+  if (requestedId) {
+    const hit = state.shapes.find((shape) => shape && shape.id === requestedId);
+    if (hit && !isShapeLocked(hit) && !isShapeHidden(hit)) {
+      targets.push(hit);
+      seen.add(hit.id);
+    }
+  }
+  for (const shape of selectedUnlockedShapes()) {
+    if (!shape || isShapeHidden(shape) || seen.has(shape.id)) {
+      continue;
+    }
+    targets.push(shape);
+    seen.add(shape.id);
+  }
+  return targets;
+}
+
+function commitMotionKeyframeEdit(changed, statusMessage) {
+  if (!changed) {
+    return false;
+  }
+  invalidateShapeCaches();
+  markLayerPanelDirty();
+  refreshTimelineDurationFromSources({ preserveExisting: false });
+  renderTimelineEditor({ keepScroll: true });
+  syncSelectedShapeMotionControls();
+  pushHistory();
+  render();
+  if (statusMessage) {
+    setStatus(statusMessage);
+  }
+  return true;
+}
+
+function insertMotionKeyframeAtTimeline(timeSec, options = {}) {
+  const at = clampTimelineTime(timeSec);
+  const targets = resolveMotionTargetShapes(options);
+  if (!targets.length) {
+    setStatus('Select at least one unlocked shape, or right-click a shape motion clip.');
+    return false;
+  }
+  if (options.selectPrimary && targets[0] && targets[0].id) {
+    setSelection([targets[0].id]);
+  }
+  let changed = 0;
+  for (const shape of targets) {
+    if (upsertShapeMotionKeyframe(shape, at, { fromControls: !!options.fromControls })) {
+      changed += 1;
+    }
+  }
+  if (!changed) {
+    setStatus('Keyframe already matches at this time.');
+    return false;
+  }
+  const modeLabel = options.fromControls ? 'from controls' : 'from current pose';
+  return commitMotionKeyframeEdit(changed, `Inserted/updated ${changed} keyframe(s) @ ${formatTimelineTime(at)} (${modeLabel}).`);
+}
+
+function deleteMotionKeyframeAtTimeline(timeSec, options = {}) {
+  const at = clampTimelineTime(timeSec);
+  const targets = resolveMotionTargetShapes(options);
+  if (!targets.length) {
+    setStatus('Select at least one unlocked shape first.');
+    return false;
+  }
+  let changed = 0;
+  for (const shape of targets) {
+    if (removeShapeMotionKeyframe(shape, at)) {
+      changed += 1;
+    }
+  }
+  if (!changed) {
+    setStatus('No keyframe near playhead to delete.');
+    return false;
+  }
+  return commitMotionKeyframeEdit(changed, `Deleted ${changed} keyframe(s) near ${formatTimelineTime(at)}.`);
+}
+
+function motionKeyframeTimesForTargets(targets) {
+  const list = [];
+  const seen = new Set();
+  for (const shape of targets || []) {
+    if (!shape || !shape.motion || !shape.motion.enabled) {
+      continue;
+    }
+    const motion = normalizeShapeMotion(shape.motion, { start: state.timeline.currentTime, duration: 0.2 });
+    for (const keyframe of motion.keyframes || []) {
+      const at = roundTimelineSeconds(Number(keyframe.at) || 0);
+      const key = at.toFixed(3);
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      list.push(at);
+    }
+  }
+  list.sort((a, b) => a - b);
+  return list;
+}
+
+function stepToAdjacentMotionKeyframe(direction) {
+  const dir = direction < 0 ? -1 : 1;
+  const selected = selectedUnlockedShapes();
+  const candidateTargets = selected.length
+    ? selected
+    : state.shapes.filter((shape) => !!(shape && shape.motion && shape.motion.enabled && !isShapeHidden(shape) && !isShapeLocked(shape)));
+  const times = motionKeyframeTimesForTargets(candidateTargets);
+  if (!times.length) {
+    setStatus('No motion keyframes found.');
+    return false;
+  }
+  const now = state.timeline.currentTime;
+  let target = null;
+  if (dir > 0) {
+    target = times.find((time) => time > now + MOTION_KEYFRAME_EPSILON_SEC) ?? times[times.length - 1];
+  } else {
+    for (let i = times.length - 1; i >= 0; i -= 1) {
+      if (times[i] < now - MOTION_KEYFRAME_EPSILON_SEC) {
+        target = times[i];
+        break;
+      }
+    }
+    if (target === null) {
+      target = times[0];
+    }
+  }
+  setTimelineTime(target, { updateAudio: true });
+  render();
+  setStatus(`${dir > 0 ? 'Next' : 'Previous'} keyframe: ${formatTimelineTime(target)}.`);
+  return true;
+}
+
+function onTimelineShapePointerDown(event) {
+  if (!els.timelineTrackShapeBody || event.button !== 0) {
+    return;
+  }
+  const clipEl = event.target && event.target.closest
+    ? event.target.closest('.timeline-shape-clip.motion')
+    : null;
+  const markerEl = event.target && event.target.closest
+    ? event.target.closest('.timeline-kf-marker')
+    : null;
+  if (clipEl && clipEl.dataset.shapeId) {
+    setSelection([clipEl.dataset.shapeId]);
+  }
+  if (markerEl) {
+    const at = Number(markerEl.dataset.at);
+    const shapeId = markerEl.dataset.shapeId || (clipEl && clipEl.dataset.shapeId) || '';
+    if (shapeId && Number.isFinite(at)) {
+      event.preventDefault();
+      setTimelineTime(at, { updateAudio: true });
+      render();
+      beginTimelineMotionKeyframeDrag(event, shapeId, at);
+      return;
+    }
+  }
+  if (clipEl) {
+    event.preventDefault();
+    const x = timelineContentXFromEvent(event, els.timelineTrackShapeBody);
+    setTimelineTime(timelinePxToTime(x), { updateAudio: true });
+    render();
+    return;
+  }
+  beginTimelineScrubDrag(event, els.timelineTrackShapeBody);
+}
+
+function onTimelineShapeContextMenu(event) {
+  if (!els.timelineTrackShapeBody) {
+    return;
+  }
+  event.preventDefault();
+  const clipEl = event.target && event.target.closest
+    ? event.target.closest('.timeline-shape-clip.motion')
+    : null;
+  const shapeId = clipEl && clipEl.dataset.shapeId ? clipEl.dataset.shapeId : '';
+  const x = timelineContentXFromEvent(event, els.timelineTrackShapeBody);
+  const time = timelinePxToTime(x);
+  insertMotionKeyframeAtTimeline(time, {
+    shapeId,
+    fromControls: false,
+    selectPrimary: true
+  });
 }
 
 function onTimelineCaptionPointerDown(event) {
@@ -1706,6 +3431,21 @@ function setTimelinePlaying(playing) {
       }
     } else {
       timelineRuntime.audio.pause();
+    }
+  }
+
+  // Hide zone indicator during playback; restore when stopped
+  if (typeof updateCaptionOverlayGeometry === 'function') {
+    updateCaptionOverlayGeometry();
+  }
+
+  // REC badge
+  if (presentMode) {
+    document.body.classList.toggle('is-playing', next);
+    if (next) {
+      startRecTimer();
+    } else {
+      stopRecTimer();
     }
   }
 
@@ -1872,6 +3612,206 @@ function refreshTimelineViews() {
   updateTranscriptDisplayForTime(true);
   updateTimelineClipActionButtons();
   renderTimelineEditor({ keepScroll: true });
+}
+
+// ── Script Editor ──
+
+function updateScriptModeUI() {
+  if (!els.scriptSplitMode || !els.scriptWordCountRow) {
+    return;
+  }
+  const mode = els.scriptSplitMode.value;
+  const showWordCount = mode === 'words' || mode === 'oneblock';
+  els.scriptWordCountRow.style.display = showWordCount ? '' : 'none';
+  const label = document.getElementById('scriptWordsPerCapLabel');
+  if (label) {
+    label.textContent = mode === 'oneblock' ? 'Words per view' : 'Words per caption';
+  }
+  const input = els.scriptWordsPerCap;
+  if (input) {
+    if (mode === 'oneblock') {
+      input.min = '1';
+      input.max = '12';
+      if (Number(input.value) < 1 || Number(input.value) > 12) {
+        input.value = '4';
+      }
+    } else {
+      input.min = '1';
+      input.max = '8';
+      if (Number(input.value) > 8) {
+        input.value = '3';
+      }
+    }
+  }
+}
+
+function scriptEditorStat() {
+  if (!els.scriptEditorText || !els.scriptEditorStat) {
+    return;
+  }
+  const text = els.scriptEditorText.value.trim();
+  if (!text) {
+    els.scriptEditorStat.textContent = '';
+    return;
+  }
+  const wordCount = text.split(/\s+/).filter(Boolean).length;
+  const splitMode = els.scriptSplitMode ? els.scriptSplitMode.value : 'oneblock';
+  const wordsPerCap = els.scriptWordsPerCap ? Number(els.scriptWordsPerCap.value) : 4;
+  const wpm = els.scriptWPM ? Number(els.scriptWPM.value) : 130;
+  if (splitMode === 'oneblock') {
+    const secPerWord = 60 / Math.max(60, wpm);
+    const totalDur = wordCount * secPerWord + 0.5;
+    const pages = wordsPerCap > 0 ? Math.ceil(wordCount / wordsPerCap) : 1;
+    els.scriptEditorStat.textContent = `${wordCount} words · 1 clip · ${pages} views · ~${totalDur.toFixed(1)}s`;
+  } else {
+    const preview = splitScriptToSegments(text, splitMode, wordsPerCap, wpm);
+    const totalDur = preview.length ? preview[preview.length - 1].end : 0;
+    els.scriptEditorStat.textContent = `${wordCount} words · ~${preview.length} captions · ~${totalDur.toFixed(1)}s`;
+  }
+}
+
+function splitScriptToOneBlock(text, wpm, wordsPerDisplay) {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) {
+    return [];
+  }
+  const WPM = Math.max(60, Number(wpm) || 130);
+  const N = Math.max(1, Math.min(20, Math.round(Number(wordsPerDisplay)) || 4));
+  const secPerWord = 60 / WPM;
+  const tokens = trimmed.split(/\s+/).filter(Boolean);
+  if (!tokens.length) {
+    return [];
+  }
+  let t = 0;
+  const words = tokens.map((w) => {
+    const start = roundTimelineSeconds(t);
+    t += secPerWord;
+    return { text: w, start, end: roundTimelineSeconds(t) };
+  });
+  return [{
+    start: 0,
+    end: roundTimelineSeconds(t + 0.5),
+    text: trimmed,
+    displayWords: N,
+    words
+  }];
+}
+
+function splitScriptToSegments(text, splitMode, wordsPerCap, wpm) {
+  if (splitMode === 'oneblock') {
+    return splitScriptToOneBlock(text, wpm, wordsPerCap);
+  }
+  const trimmed = String(text || '').trim();
+  if (!trimmed) {
+    return [];
+  }
+  const WPM = Math.max(60, Number(wpm) || 130);
+  const N = Math.max(1, Math.min(8, Math.round(Number(wordsPerCap)) || 3));
+
+  let chunks = [];
+  if (splitMode === 'sentence') {
+    chunks = trimmed
+      .replace(/([.!?])\s+/g, '$1\n')
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (!chunks.length) {
+      chunks = [trimmed];
+    }
+  } else if (splitMode === 'line') {
+    chunks = trimmed.split(/\n+/).map((s) => s.trim()).filter(Boolean);
+    if (!chunks.length) {
+      chunks = [trimmed];
+    }
+  } else {
+    // N-words mode
+    const words = trimmed.split(/\s+/).filter(Boolean);
+    for (let i = 0; i < words.length; i += N) {
+      chunks.push(words.slice(i, i + N).join(' '));
+    }
+  }
+
+  const GAP = 0.06;
+  let time = 0;
+  const segments = [];
+  for (const chunk of chunks) {
+    if (!chunk) {
+      continue;
+    }
+    // Duration = word count / WPM * 60s + 0.2s buffer
+    const wordCount = chunk.trim().split(/\s+/).filter(Boolean).length;
+    const segDur = Math.max(0.4, (wordCount / WPM) * 60 + 0.2);
+    segments.push({ start: time, end: time + segDur, text: chunk });
+    time += segDur + GAP;
+  }
+  return segments;
+}
+
+function generateCaptionsFromScript(appendMode) {
+  const text = els.scriptEditorText ? els.scriptEditorText.value : '';
+  if (!text.trim()) {
+    setStatus('Script is empty. Type some text first.');
+    return;
+  }
+  const splitMode = els.scriptSplitMode ? els.scriptSplitMode.value : 'words';
+  const wordsPerCap = els.scriptWordsPerCap ? Number(els.scriptWordsPerCap.value) : 3;
+  const wpm = els.scriptWPM ? Number(els.scriptWPM.value) : 130;
+
+  let rawSegments = splitScriptToSegments(text, splitMode, wordsPerCap, wpm);
+
+  if (appendMode && state.timeline.transcriptSegments.length) {
+    const lastEnd = Math.max(...state.timeline.transcriptSegments.map((s) => s.end));
+    const offset = lastEnd + 0.1;
+    rawSegments = rawSegments.map((seg) => ({
+      ...seg,
+      start: seg.start + offset,
+      end: seg.end + offset
+    }));
+  }
+
+  const normalized = normalizeTranscriptPayload({ segments: rawSegments });
+  if (!normalized.length) {
+    setStatus('Could not parse script into segments.');
+    return;
+  }
+
+  if (appendMode) {
+    state.timeline.transcriptSegments.push(...normalized);
+    state.timeline.transcriptSegments.sort((a, b) => (a.start - b.start) || (a.end - b.end));
+  } else {
+    state.timeline.transcriptSegments = normalized;
+  }
+
+  // Extend timeline duration if needed
+  const lastEnd = Math.max(...state.timeline.transcriptSegments.map((s) => s.end));
+  if (lastEnd + 2 > state.timeline.duration) {
+    state.timeline.duration = Math.ceil(lastEnd) + 3;
+    if (els.timelineScrub) {
+      els.timelineScrub.max = String(state.timeline.duration * 100);
+    }
+    if (els.timelineDockScrub) {
+      els.timelineDockScrub.max = String(state.timeline.duration * 100);
+    }
+  }
+
+  saveToLocalStorage();
+  refreshTimelineViews();
+  const action = appendMode ? 'Appended' : 'Generated';
+  setStatus(`${action} ${normalized.length} caption segment(s) from script.`);
+}
+
+function pullScriptFromTranscript() {
+  const segs = state.timeline.transcriptSegments;
+  if (!segs.length) {
+    setStatus('No transcript segments loaded yet.');
+    return;
+  }
+  const text = segs.map((s) => s.text).join('\n');
+  if (els.scriptEditorText) {
+    els.scriptEditorText.value = text;
+    scriptEditorStat();
+  }
+  setStatus(`Pulled ${segs.length} segment(s) into script editor.`);
 }
 
 function normalizeCollapsedPanels(raw) {
@@ -2268,7 +4208,9 @@ function styleFromControls() {
     width: state.lineWidth,
     style: state.lineStyle,
     animated: state.animated,
-    opacity: state.opacity
+    opacity: state.opacity,
+    fill: state.fillEnabled,
+    fillColor: state.fillColor
   };
 }
 
@@ -2301,7 +4243,10 @@ function quickAddShape(type) {
       style: style.style,
       animated: style.animated,
       opacity: style.opacity,
-      radius: 0
+      fill: style.fill,
+      fillColor: style.fillColor,
+      radius: 0,
+      rotation: 0
     };
   } else if (type === 'ellipse') {
     shape = {
@@ -2315,7 +4260,10 @@ function quickAddShape(type) {
       width: style.width,
       style: style.style,
       animated: style.animated,
-      opacity: style.opacity
+      opacity: style.opacity,
+      fill: style.fill,
+      fillColor: style.fillColor,
+      rotation: 0
     };
   } else if (type === 'line' || type === 'arrow') {
     shape = {
@@ -2763,16 +4711,29 @@ function drawShape(shape, highlight) {
       ctx.stroke();
     }
   } else if (shape.type === 'line' || shape.type === 'arrow') {
-    const ex = shape.x1 + (shape.x2 - shape.x1) * revealProgress;
-    const ey = shape.y1 + (shape.y2 - shape.y1) * revealProgress;
+    const trimStart = clamp(Number(motion.trimStart), 0, 1);
+    const trimEnd = clamp(Number(motion.trimEnd), trimStart, 1);
+    const revealEnd = trimStart + (trimEnd - trimStart) * revealProgress;
+    const sx = shape.x1 + (shape.x2 - shape.x1) * trimStart;
+    const sy = shape.y1 + (shape.y2 - shape.y1) * trimStart;
+    const ex = shape.x1 + (shape.x2 - shape.x1) * revealEnd;
+    const ey = shape.y1 + (shape.y2 - shape.y1) * revealEnd;
+    if (revealEnd <= trimStart + 1e-6) {
+      ctx.restore();
+      return;
+    }
     ctx.beginPath();
-    ctx.moveTo(shape.x1, shape.y1);
+    ctx.moveTo(sx, sy);
     ctx.lineTo(ex, ey);
     ctx.stroke();
-    if (shape.type === 'arrow' && Math.hypot(ex - shape.x1, ey - shape.y1) > 0.5 / state.camera.scale) {
-      drawArrowHead(shape.x1, shape.y1, ex, ey, color, width);
+    if (shape.type === 'arrow' && Math.hypot(ex - sx, ey - sy) > 0.5 / state.camera.scale) {
+      const prevRatio = Math.max(trimStart, revealEnd - Math.min(0.08, (revealEnd - trimStart) * 0.6));
+      const px = shape.x1 + (shape.x2 - shape.x1) * prevRatio;
+      const py = shape.y1 + (shape.y2 - shape.y1) * prevRatio;
+      drawArrowHead(px, py, ex, ey, color, width);
     }
   } else if (shape.type === 'rect') {
+    const rotation = Number(shape.rotation) || 0;
     const x2 = shape.x1 + (shape.x2 - shape.x1) * revealProgress;
     const y2 = shape.y1 + (shape.y2 - shape.y1) * revealProgress;
     const x = Math.min(shape.x1, x2);
@@ -2780,12 +4741,27 @@ function drawShape(shape, highlight) {
     const w = Math.abs(x2 - shape.x1);
     const h = Math.abs(y2 - shape.y1);
     const radius = Math.max(0, Number(shape.radius) || 0);
+    if (Math.abs(rotation) > 1e-4) {
+      const rcx = x + w / 2;
+      const rcy = y + h / 2;
+      ctx.translate(rcx, rcy);
+      ctx.rotate(rotation);
+      ctx.translate(-rcx, -rcy);
+    }
+    const hasFill = !!shape.fill && shape.fillColor;
+    if (hasFill) {
+      ctx.fillStyle = shape.fillColor;
+    }
     if (radius > 0.1 && w > 0.5 && h > 0.5) {
-      roundRect(x, y, w, h, radius, false, true);
+      roundRect(x, y, w, h, radius, hasFill, true);
     } else {
+      if (hasFill) {
+        ctx.fillRect(x, y, w, h);
+      }
       ctx.strokeRect(x, y, w, h);
     }
   } else if (shape.type === 'ellipse') {
+    const rotation = Number(shape.rotation) || 0;
     const x2 = shape.x1 + (shape.x2 - shape.x1) * revealProgress;
     const y2 = shape.y1 + (shape.y2 - shape.y1) * revealProgress;
     const cx = (shape.x1 + x2) / 2;
@@ -2793,7 +4769,11 @@ function drawShape(shape, highlight) {
     const rx = Math.abs(x2 - shape.x1) / 2;
     const ry = Math.abs(y2 - shape.y1) / 2;
     ctx.beginPath();
-    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, cy, rx, ry, rotation, 0, Math.PI * 2);
+    if (shape.fill && shape.fillColor) {
+      ctx.fillStyle = shape.fillColor;
+      ctx.fill();
+    }
     ctx.stroke();
   } else if (shape.type === 'text') {
     ctx.setLineDash([]);
@@ -3448,7 +5428,14 @@ function buildAutosavePayload() {
       tool: state.tool,
       snapGrid: state.snapGrid,
       recentColors: state.recentColors,
-      panelCollapsed: state.panelCollapsed
+      panelCollapsed: state.panelCollapsed,
+      canvasFormat,
+      captionPlacementVertical: captionPlacement.vertical,
+      captionPlacementOffsetPct: captionPlacement.offsetPct,
+      captionPlacementZoneVisible: captionPlacement.zoneVisible,
+      webcamPosition: webcamState.position,
+      webcamShape: webcamState.shape,
+      webcamSize: webcamState.size
     }
   };
 }
@@ -3550,6 +5537,27 @@ function loadFromLocalStorage() {
       state.snapGrid = !!payload.ui.snapGrid;
       state.recentColors = Array.isArray(payload.ui.recentColors) ? payload.ui.recentColors : [];
       state.panelCollapsed = normalizeCollapsedPanels(payload.ui.panelCollapsed || state.panelCollapsed);
+      if (['16:9', '9:16', '1:1'].includes(payload.ui.canvasFormat)) {
+        canvasFormat = payload.ui.canvasFormat;
+      }
+      if (['top', 'center', 'bottom'].includes(payload.ui.captionPlacementVertical)) {
+        captionPlacement.vertical = payload.ui.captionPlacementVertical;
+      }
+      if (Number.isFinite(Number(payload.ui.captionPlacementOffsetPct))) {
+        captionPlacement.offsetPct = clamp(Number(payload.ui.captionPlacementOffsetPct), 2, 48);
+      }
+      if (typeof payload.ui.captionPlacementZoneVisible === 'boolean') {
+        captionPlacement.zoneVisible = payload.ui.captionPlacementZoneVisible;
+      }
+      if (['br', 'bl', 'tr', 'tl'].includes(payload.ui.webcamPosition)) {
+        webcamState.position = payload.ui.webcamPosition;
+      }
+      if (['circle', 'rounded'].includes(payload.ui.webcamShape)) {
+        webcamState.shape = payload.ui.webcamShape;
+      }
+      if (Number.isFinite(Number(payload.ui.webcamSize))) {
+        webcamState.size = clamp(Number(payload.ui.webcamSize), 60, 200);
+      }
     }
     clearSelection();
     renderArtboardTabs();
@@ -3624,41 +5632,63 @@ function exportDslStarter() {
       continue;
     }
     const motion = normalizeShapeMotion(shape.motion);
-    const start = roundTimelineSeconds(motion.start);
-    const duration = roundTimelineSeconds(motion.duration);
-    const deltaX = motion.toX - motion.fromX;
-    const deltaY = motion.toY - motion.fromY;
-    if (Math.abs(motion.fromX) > 1e-6 || Math.abs(motion.fromY) > 1e-6) {
+    const keyframes = Array.isArray(motion.keyframes) ? motion.keyframes : [];
+    if (!keyframes.length) {
+      continue;
+    }
+    const first = keyframes[0];
+    if (Math.abs(first.dx) > 1e-6 || Math.abs(first.dy) > 1e-6) {
       timeline.push({
-        at: start,
+        at: roundTimelineSeconds(first.at),
         do: 'move',
         targets: [shape.id],
         duration: 0,
-        dx: roundTimelineSeconds(motion.fromX),
-        dy: roundTimelineSeconds(motion.fromY)
+        dx: roundTimelineSeconds(first.dx),
+        dy: roundTimelineSeconds(first.dy)
       });
     }
-    if (Math.abs(deltaX) > 1e-6 || Math.abs(deltaY) > 1e-6) {
+    if (Math.abs(first.opacity - 1) > 1e-6) {
       timeline.push({
-        at: start,
-        do: 'move',
-        targets: [shape.id],
-        duration,
-        dx: roundTimelineSeconds(deltaX),
-        dy: roundTimelineSeconds(deltaY),
-        ease: motion.ease
-      });
-    }
-    if (Math.abs(motion.fromOpacity - motion.toOpacity) > 1e-6) {
-      timeline.push({
-        at: start,
+        at: roundTimelineSeconds(first.at),
         do: 'show',
         targets: [shape.id],
-        duration,
-        from: roundTimelineSeconds(motion.fromOpacity),
-        to: roundTimelineSeconds(motion.toOpacity),
+        duration: 0,
+        from: 1,
+        to: roundTimelineSeconds(first.opacity),
         ease: motion.ease
       });
+    }
+    for (let i = 0; i < keyframes.length - 1; i += 1) {
+      const left = keyframes[i];
+      const right = keyframes[i + 1];
+      const duration = Math.max(0, roundTimelineSeconds(right.at - left.at));
+      if (duration <= 0) {
+        continue;
+      }
+      const deltaX = right.dx - left.dx;
+      const deltaY = right.dy - left.dy;
+      if (Math.abs(deltaX) > 1e-6 || Math.abs(deltaY) > 1e-6) {
+        timeline.push({
+          at: roundTimelineSeconds(left.at),
+          do: 'move',
+          targets: [shape.id],
+          duration,
+          dx: roundTimelineSeconds(deltaX),
+          dy: roundTimelineSeconds(deltaY),
+          ease: left.ease || motion.ease
+        });
+      }
+      if (Math.abs(left.opacity - right.opacity) > 1e-6) {
+        timeline.push({
+          at: roundTimelineSeconds(left.at),
+          do: 'show',
+          targets: [shape.id],
+          duration,
+          from: roundTimelineSeconds(left.opacity),
+          to: roundTimelineSeconds(right.opacity),
+          ease: left.ease || motion.ease
+        });
+      }
     }
   }
 
@@ -3766,6 +5796,47 @@ function exportPng() {
   setSelection(previousIds);
   render();
   setStatus('Exported PNG.');
+}
+
+function toSRTTime(sec) {
+  const totalMs = Math.round(Math.max(0, sec) * 1000);
+  const ms = totalMs % 1000;
+  const s = Math.floor(totalMs / 1000) % 60;
+  const m = Math.floor(totalMs / 60000) % 60;
+  const h = Math.floor(totalMs / 3600000);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')},${String(ms).padStart(3, '0')}`;
+}
+
+function exportCaptionsAsSRT() {
+  const segments = state.timeline.transcriptSegments;
+  if (!segments || !segments.length) {
+    setStatus('No captions to export. Load a transcript or generate captions first.');
+    return;
+  }
+  const lines = [];
+  segments.forEach((seg, idx) => {
+    const start = typeof seg.start === 'number' ? seg.start : 0;
+    const end = typeof seg.end === 'number' ? seg.end : start + 1;
+    const text = String(seg.text || '').trim();
+    if (!text) {
+      return;
+    }
+    lines.push(`${idx + 1}`);
+    lines.push(`${toSRTTime(start)} --> ${toSRTTime(end)}`);
+    lines.push(text);
+    lines.push('');
+  });
+  const srtContent = lines.join('\n');
+  const blob = new Blob([srtContent], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${state.timeline.transcriptName || 'captions'}.srt`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  setStatus(`Exported ${segments.length} caption(s) as SRT.`);
 }
 
 function centerView() {
@@ -4077,6 +6148,9 @@ function resizeCanvas() {
   els.stage.width = Math.max(1, Math.floor(rect.width * DPR));
   els.stage.height = Math.max(1, Math.floor(rect.height * DPR));
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  updateFormatGuide();
+  updateCaptionOverlayGeometry();
+  positionTeleprompter();
   render();
 }
 
@@ -4117,6 +6191,261 @@ function toggleFocusMode(force) {
   requestAnimationFrame(resizeCanvas);
 }
 
+// ── Present / Recording Mode ────────────────────────────────────────────────
+
+let presentMode = false;
+let recTimerInterval = null;
+let recStartTime = 0;
+
+function enterPresentMode() {
+  presentMode = true;
+  document.body.classList.add('present-mode', 'focus');
+  if (els.btnPresent) els.btnPresent.textContent = 'Exit Present';
+  requestAnimationFrame(() => {
+    resizeCanvas();
+    positionTeleprompter();
+    updateTeleprompter();
+  });
+}
+
+function exitPresentMode() {
+  presentMode = false;
+  document.body.classList.remove('present-mode', 'is-playing');
+  if (state.timeline.playing) setTimelinePlaying(false);
+  stopRecTimer();
+  if (els.btnPresent) els.btnPresent.textContent = 'Present';
+  requestAnimationFrame(resizeCanvas);
+}
+
+function togglePresentMode() {
+  if (presentMode) {
+    exitPresentMode();
+  } else {
+    enterPresentMode();
+  }
+}
+
+// ── Caption Styles Float Panel ───────────────────────────────────────────────
+
+const CFP_LABELS = {
+  typewriter:     'Typewriter',
+  karaoke_classic:'Karaoke',
+  impact_yellow:  'Impact: Yellow',
+  clean_paragraph:'Classic',
+  bold_two_words: 'Bold: Two Words',
+  capcut_black:   'CapCut Pills',
+  word_pop:       'Word Pop',
+  slide_up:       'Slide Up',
+  custom:         'Custom'
+};
+
+let cfpApplyMode = 'selected'; // 'selected' | 'all'
+
+function buildCfpCardPreview(id, p, previewWords) {
+  const [w0, w1, w2, w3] = previewWords && previewWords.length
+    ? [...previewWords, ...['', '', '', '']]
+    : ['how', 'can', 'i', 'make'];
+  const bgHex = p.overlayBgColor || '#111';
+  const alpha = Math.round(clamp(Number(p.overlayBgOpacity) || 0, 0, 1) * 255)
+    .toString(16).padStart(2, '0');
+  const bg = p.mode === 'capcut_black' ? 'transparent' : (bgHex + alpha);
+  const ff = p.fontFamily ? `'${p.fontFamily}',sans-serif` : 'inherit';
+  const sw = Number(p.strokeWidth) || 0;
+  const stroke = sw > 0
+    ? `${p.strokeColor} -${sw * 0.5}px -${sw * 0.5}px 0, ${p.strokeColor} ${sw * 0.5}px -${sw * 0.5}px 0, ${p.strokeColor} -${sw * 0.5}px ${sw * 0.5}px 0, ${p.strokeColor} ${sw * 0.5}px ${sw * 0.5}px 0`
+    : 'none';
+  const hff = p.highlightFontFamily ? `'${p.highlightFontFamily}',sans-serif` : ff;
+  const hfw = Number(p.highlightFontWeight) || Number(p.fontWeight) || 700;
+  const hpy = clamp(Number(p.highlightPadY) || 0, 0, 18);
+  const hpx = clamp(Number(p.highlightPadX) || 3, 0, 18);
+  const hrad = clamp(Number(p.highlightRadius) || 3, 0, 24);
+  const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const baseStyle = `color:${p.textColor};font-weight:${p.fontWeight};font-family:${ff};font-size:14px;line-height:1.3;text-shadow:${stroke}`;
+  const hlStyle = `background:${p.highlightColor};color:${p.highlightTextColor};border-radius:${hrad}px;padding:${hpy}px ${hpx}px;font-family:${hff};font-weight:${hfw}`;
+
+  let inner;
+  if (id === 'capcut_black') {
+    inner = `<span style="${baseStyle};background:rgba(0,0,0,0.84);border-radius:.28em;padding:2px 6px;margin:1px">${esc(w0)}</span>`
+          + `<span style="${baseStyle};background:${p.highlightColor};color:${p.highlightTextColor};border-radius:${hrad}px;padding:${Math.max(2, hpy)}px ${Math.max(6, hpx)}px;margin:1px;font-family:${hff};font-weight:${hfw}">${esc(w1)}</span>`
+          + (w2 ? `<span style="${baseStyle};background:rgba(0,0,0,0.84);border-radius:.28em;padding:2px 6px;margin:1px">${esc(w2)}</span>` : '');
+  } else if (id === 'typewriter') {
+    inner = `<span style="${baseStyle}">${esc(w0)} ${esc(w1)}▌</span>`;
+  } else if (p.wordHighlight) {
+    inner = `<span style="${baseStyle}">${esc(w0)} <mark style="${hlStyle}">${esc(w1)}</mark>${w2 ? ` ${esc(w2)}` : ''}</span>`;
+  } else {
+    const words = [w0, w1, w2, w3].filter(Boolean).join(' ');
+    inner = `<span style="${baseStyle}">${esc(words)}</span>`;
+  }
+  return `<div class="cfp-card-preview" style="background:${bg}">${inner}</div>`;
+}
+
+function buildCfpCards() {
+  if (!els.cfpScroll) return;
+  const style = normalizeCaptionStyle(state.timeline.captionStyle, captionDefaultStyle());
+  els.cfpScroll.innerHTML = '';
+
+  // Use real transcript text for the preview so users see how their words look
+  const segs = state.timeline.transcriptSegments || [];
+  const activeSeg = segs[timelineRuntime.activeIndex >= 0 ? timelineRuntime.activeIndex : 0] || segs[0];
+  let previewWords = ['how', 'can', 'i', 'make'];
+  if (activeSeg && activeSeg.text) {
+    const tokens = activeSeg.text.trim().split(/\s+/).filter(Boolean);
+    if (tokens.length >= 2) {
+      previewWords = tokens.slice(0, 4);
+    }
+  }
+
+  for (const [id, preset] of Object.entries(CAPTION_TEMPLATE_PRESETS)) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cfp-card';
+    btn.dataset.template = id;
+    btn.classList.toggle('active', style.template === id);
+    btn.innerHTML = buildCfpCardPreview(id, preset, previewWords)
+      + `<div class="cfp-card-name">${CFP_LABELS[id] || id}</div>`;
+    btn.addEventListener('click', () => {
+      setCaptionTemplate(id);
+      if (cfpApplyMode === 'all') {
+        applyCaptionStyleToAllTimelineSegments();
+      } else {
+        applyCaptionStyleToSelectedTimelineSegments();
+      }
+      syncCfpActiveCard();
+    });
+    els.cfpScroll.appendChild(btn);
+  }
+}
+
+function syncCfpActiveCard() {
+  if (!els.cfpScroll) return;
+  const style = normalizeCaptionStyle(state.timeline.captionStyle, captionDefaultStyle());
+  for (const btn of els.cfpScroll.querySelectorAll('.cfp-card')) {
+    btn.classList.toggle('active', btn.dataset.template === style.template);
+  }
+}
+
+function openCaptionFloatPanel() {
+  buildCfpCards();
+  if (els.captionFloatPanel) els.captionFloatPanel.classList.add('open');
+  if (els.cfpBackdrop) els.cfpBackdrop.classList.add('open');
+}
+
+function closeCaptionFloatPanel() {
+  if (els.captionFloatPanel) els.captionFloatPanel.classList.remove('open');
+  if (els.cfpBackdrop) els.cfpBackdrop.classList.remove('open');
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
+function stopRecTimer() {
+  if (recTimerInterval) {
+    clearInterval(recTimerInterval);
+    recTimerInterval = null;
+  }
+  if (els.recTime) els.recTime.textContent = '0:00';
+}
+
+function startRecTimer() {
+  stopRecTimer();
+  recStartTime = Date.now();
+  recTimerInterval = setInterval(() => {
+    if (!els.recTime) return;
+    const elapsed = Math.floor((Date.now() - recStartTime) / 1000);
+    const m = Math.floor(elapsed / 60);
+    const s = elapsed % 60;
+    els.recTime.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+  }, 500);
+}
+
+function startPresentCountdown(cb) {
+  const overlay = els.countdownOverlay;
+  const numEl = els.countdownNum;
+  if (!overlay || !numEl) { cb(); return; }
+
+  let count = 3;
+  overlay.classList.add('active');
+  numEl.textContent = String(count);
+
+  const tick = () => {
+    count--;
+    if (count <= 0) {
+      overlay.classList.remove('active');
+      cb();
+      return;
+    }
+    // Re-trigger CSS animation
+    numEl.style.animation = 'none';
+    void numEl.offsetWidth;
+    numEl.style.animation = '';
+    numEl.textContent = String(count);
+    setTimeout(tick, 920);
+  };
+  setTimeout(tick, 920);
+}
+
+function positionTeleprompter() {
+  const tp = els.teleprompter;
+  if (!tp) return;
+  const frame = getSafeZoneRect();
+
+  if (canvasFormat === '9:16' && frame.left > 50) {
+    // Left pillarbox — outside the 9:16 safe zone, won't appear in cropped short
+    tp.style.left = '0';
+    tp.style.right = `calc(100% - ${frame.left - 6}px)`;
+    tp.style.top = '50%';
+    tp.style.bottom = '';
+    tp.style.transform = 'translateY(-50%)';
+    tp.style.width = '';
+    tp.style.textAlign = 'right';
+  } else if (canvasFormat === '1:1' && frame.top > 50) {
+    // Bottom strip below the 1:1 frame
+    tp.style.left = `${frame.left}px`;
+    tp.style.right = `${frame.left}px`;
+    tp.style.top = `${frame.top + frame.height + 8}px`;
+    tp.style.bottom = '';
+    tp.style.transform = '';
+    tp.style.width = '';
+    tp.style.textAlign = 'left';
+  } else {
+    // 16:9 — bottom strip above dock, semi-transparent background
+    tp.style.left = '12px';
+    tp.style.right = '12px';
+    tp.style.bottom = '64px';
+    tp.style.top = '';
+    tp.style.transform = '';
+    tp.style.width = '';
+    tp.style.textAlign = 'left';
+    tp.style.background = 'rgba(0,0,0,0.55)';
+    tp.style.borderRadius = '8px';
+  }
+}
+
+function updateTeleprompter() {
+  if (!presentMode || !els.tpCurrent) return;
+  const segs = state.timeline.transcriptSegments || [];
+  const t = state.timeline.currentTime;
+  let activeIdx = -1;
+  let nextIdx = -1;
+  for (let i = 0; i < segs.length; i++) {
+    if (t >= segs[i].start && t < segs[i].end) { activeIdx = i; break; }
+    if (segs[i].start > t && nextIdx === -1) nextIdx = i;
+  }
+  const coming = activeIdx >= 0 ? (segs[activeIdx + 1] || null) : (nextIdx >= 0 ? segs[nextIdx] : null);
+  if (activeIdx >= 0) {
+    els.tpCurrent.textContent = segs[activeIdx].text;
+    els.tpNext.textContent = coming ? coming.text : '';
+  } else if (nextIdx >= 0) {
+    // Before any captions start — show upcoming as faint prompt
+    els.tpCurrent.textContent = '▷ ' + segs[nextIdx].text;
+    els.tpNext.textContent = segs[nextIdx + 1] ? segs[nextIdx + 1].text : '';
+  } else {
+    els.tpCurrent.textContent = '';
+    els.tpNext.textContent = '';
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
 function toggleFullscreen() {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen().catch(() => {});
@@ -4140,7 +6469,7 @@ function initTools() {
       </span>
     `;
     btn.setAttribute('aria-label', `${tool.label} tool (${tool.hotkey})`);
-    btn.title = `${tool.label} [${tool.hotkey}]`;
+    btn.title = `${tool.label}  [${tool.hotkey}]`;
     btn.addEventListener('click', () => setTool(tool.id));
     els.toolGrid.appendChild(btn);
   }
@@ -4149,6 +6478,8 @@ function initTools() {
 function syncControls() {
   els.strokeColor.value = state.strokeColor;
   els.bgColor.value = state.bgColor;
+  if (els.fillEnabled) els.fillEnabled.checked = state.fillEnabled;
+  if (els.fillColor) els.fillColor.value = state.fillColor;
   els.lineWidth.value = String(state.lineWidth);
   els.lineWidthValue.textContent = `${state.lineWidth}px`;
   els.lineStyle.value = state.lineStyle;
@@ -4174,6 +6505,29 @@ function syncControls() {
   syncSelectedShapeMotionControls();
   renderTimelineEditor({ keepScroll: true });
   setTool(state.tool);
+  syncFormatWebcamControls();
+  // Defer so canvas dimensions are known
+  requestAnimationFrame(updateCaptionOverlayGeometry);
+}
+
+function syncFormatWebcamControls() {
+  if (els.btnFormat16x9) els.btnFormat16x9.classList.toggle('active', canvasFormat === '16:9');
+  if (els.btnFormat9x16) els.btnFormat9x16.classList.toggle('active', canvasFormat === '9:16');
+  if (els.btnFormat1x1)  els.btnFormat1x1.classList.toggle('active', canvasFormat === '1:1');
+  if (els.btnCaptionPosTop)    els.btnCaptionPosTop.classList.toggle('active', captionPlacement.vertical === 'top');
+  if (els.btnCaptionPosCenter) els.btnCaptionPosCenter.classList.toggle('active', captionPlacement.vertical === 'center');
+  if (els.btnCaptionPosBottom) els.btnCaptionPosBottom.classList.toggle('active', captionPlacement.vertical === 'bottom');
+  if (els.captionOffsetPct) {
+    els.captionOffsetPct.value = String(captionPlacement.offsetPct);
+    if (els.captionOffsetPctValue) els.captionOffsetPctValue.textContent = String(captionPlacement.offsetPct);
+  }
+  if (els.captionZoneVisible) els.captionZoneVisible.checked = captionPlacement.zoneVisible;
+  if (els.webcamPosition) els.webcamPosition.value = webcamState.position;
+  if (els.webcamShape)    els.webcamShape.value = webcamState.shape;
+  if (els.webcamSize) {
+    els.webcamSize.value = String(webcamState.size);
+    if (els.webcamSizeValue) els.webcamSizeValue.textContent = String(webcamState.size);
+  }
 }
 
 function shapeNeedsAnimationFrame(shape, nowMs) {
@@ -4193,6 +6547,9 @@ function shapeNeedsAnimationFrame(shape, nowMs) {
 
 function canvasNeedsAnimationFrame(nowMs) {
   if (state.timeline.playing) {
+    return true;
+  }
+  if (webcamState.enabled) {
     return true;
   }
   for (const shape of state.shapes) {
@@ -4241,6 +6598,18 @@ function setupBindings() {
     saveToLocalStorage();
     render();
   });
+  if (els.fillEnabled) {
+    els.fillEnabled.addEventListener('change', () => {
+      state.fillEnabled = els.fillEnabled.checked;
+      saveToLocalStorage();
+    });
+  }
+  if (els.fillColor) {
+    els.fillColor.addEventListener('input', () => {
+      state.fillColor = els.fillColor.value;
+      saveToLocalStorage();
+    });
+  }
   els.lineWidth.addEventListener('input', () => {
     state.lineWidth = Number(els.lineWidth.value) || 4;
     els.lineWidthValue.textContent = `${state.lineWidth}px`;
@@ -4291,6 +6660,7 @@ function setupBindings() {
     setStatus(state.grid ? 'Grid enabled.' : 'Grid hidden.');
   });
   els.btnFocus.addEventListener('click', () => toggleFocusMode());
+  if (els.btnPresent) els.btnPresent.addEventListener('click', togglePresentMode);
   els.btnFullscreen.addEventListener('click', toggleFullscreen);
   els.focusToggleBtn.addEventListener('click', () => toggleFocusMode(false));
   els.menuBtn.addEventListener('click', () => {
@@ -4306,6 +6676,22 @@ function setupBindings() {
   });
   els.btnExportDsl.addEventListener('click', exportDslStarter);
   els.btnExportPng.addEventListener('click', exportPng);
+  if (els.btnExportSRT) {
+    els.btnExportSRT.addEventListener('click', exportCaptionsAsSRT);
+  }
+
+  if (els.canvasTextEditor) {
+    els.canvasTextEditor.addEventListener('blur', commitCanvasTextEdit);
+    els.canvasTextEditor.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        cancelCanvasTextEdit();
+      } else if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        commitCanvasTextEdit();
+      }
+    });
+  }
 
   if (els.btnTimelinePlay) {
     els.btnTimelinePlay.addEventListener('click', () => {
@@ -4331,6 +6717,11 @@ function setupBindings() {
       setTimelinePlaying(false);
       setTimelineTime(0, { updateAudio: true });
       setStatus('Timeline stopped.');
+    });
+  }
+  if (els.btnTimelineInsertKeyframe) {
+    els.btnTimelineInsertKeyframe.addEventListener('click', () => {
+      insertMotionKeyframeAtTimeline(state.timeline.currentTime, { fromControls: false });
     });
   }
   if (els.btnTimelineLoadTranscript && els.timelineTranscriptLoader) {
@@ -4398,9 +6789,8 @@ function setupBindings() {
     });
   }
   if (els.timelineTrackShapeBody) {
-    els.timelineTrackShapeBody.addEventListener('pointerdown', (event) => {
-      beginTimelineScrubDrag(event, els.timelineTrackShapeBody);
-    });
+    els.timelineTrackShapeBody.addEventListener('pointerdown', onTimelineShapePointerDown);
+    els.timelineTrackShapeBody.addEventListener('contextmenu', onTimelineShapeContextMenu);
   }
   if (els.timelineRulerBody) {
     els.timelineRulerBody.addEventListener('pointerdown', (event) => {
@@ -4432,16 +6822,48 @@ function setupBindings() {
   if (els.btnCaptionApplyAll) {
     els.btnCaptionApplyAll.addEventListener('click', applyCaptionStyleToAllTimelineSegments);
   }
+
+  // ── Caption Styles Float Panel ──
+  if (els.btnOpenCaptionStyles) {
+    els.btnOpenCaptionStyles.addEventListener('click', openCaptionFloatPanel);
+  }
+  if (els.btnCaptionPanelClose) {
+    els.btnCaptionPanelClose.addEventListener('click', closeCaptionFloatPanel);
+  }
+  if (els.cfpBackdrop) {
+    els.cfpBackdrop.addEventListener('click', closeCaptionFloatPanel);
+  }
+  if (els.btnCfpSelected) {
+    els.btnCfpSelected.addEventListener('click', () => {
+      cfpApplyMode = 'selected';
+      els.btnCfpSelected.classList.add('active');
+      els.btnCfpAll.classList.remove('active');
+    });
+  }
+  if (els.btnCfpAll) {
+    els.btnCfpAll.addEventListener('click', () => {
+      cfpApplyMode = 'all';
+      els.btnCfpAll.classList.add('active');
+      els.btnCfpSelected.classList.remove('active');
+    });
+  }
   const captionCustomInputs = [
     els.captionTextColor,
     els.captionStrokeColor,
     els.captionHighlightColor,
+    els.captionHighlightTextColor,
+    els.captionHighlightFontFamily,
+    els.captionHighlightFontWeight,
+    els.captionHighlightPadY,
+    els.captionHighlightPadX,
+    els.captionHighlightRadius,
     els.captionOverlayBg,
     els.captionFontSize,
     els.captionStrokeWidth,
     els.captionLineHeight,
     els.captionLetterSpacing,
     els.captionOverlayOpacity,
+    els.captionFontFamily,
     els.captionActionMode,
     els.captionFontWeight,
     els.captionWordHighlight
@@ -4551,8 +6973,33 @@ function setupBindings() {
   if (els.btnMotionApply) {
     els.btnMotionApply.addEventListener('click', applyMotionToSelectedShapes);
   }
+  if (els.btnMotionInsertKeyframe) {
+    els.btnMotionInsertKeyframe.addEventListener('click', () => {
+      insertMotionKeyframeAtTimeline(state.timeline.currentTime, { fromControls: false });
+    });
+  }
+  if (els.btnMotionSetKeyframe) {
+    els.btnMotionSetKeyframe.addEventListener('click', () => {
+      insertMotionKeyframeAtTimeline(state.timeline.currentTime, { fromControls: true });
+    });
+  }
+  if (els.btnMotionDeleteKeyframe) {
+    els.btnMotionDeleteKeyframe.addEventListener('click', () => {
+      deleteMotionKeyframeAtTimeline(state.timeline.currentTime);
+    });
+  }
   if (els.btnMotionClear) {
     els.btnMotionClear.addEventListener('click', clearMotionFromSelectedShapes);
+  }
+
+  // Motion presets
+  const motionPresetIds = ['btnPresetFadeIn', 'btnPresetFlyLeft', 'btnPresetFlyRight', 'btnPresetFlyUp', 'btnPresetFlyDown', 'btnPresetZoomIn', 'btnPresetFadeOut', 'btnPresetFlyOutLeft', 'btnPresetFlyOutRight'];
+  for (const elId of motionPresetIds) {
+    const presetBtn = document.getElementById(elId);
+    if (presetBtn) {
+      const presetKey = elId.replace('btnPreset', '').replace(/([A-Z])/g, (m) => `_${m.toLowerCase()}`).replace(/^_/, '');
+      presetBtn.addEventListener('click', () => applyMotionPreset(presetKey));
+    }
   }
 
   // Alignment
@@ -4606,11 +7053,15 @@ function setupBindings() {
   els.stage.addEventListener('dblclick', (event) => {
     const world = toWorld(event.clientX, event.clientY);
     const hit = findShapeAt(world.x, world.y);
-    if (!hit || hit.type !== 'rect') {
+    if (!hit) {
       return;
     }
     setSelection([hit.id]);
-    editRectRadiusForShape(hit);
+    if (hit.type === 'text') {
+      beginCanvasTextEdit(hit);
+    } else if (hit.type === 'rect') {
+      editRectRadiusForShape(hit);
+    }
   });
 
   els.stage.addEventListener('wheel', (event) => {
@@ -4678,19 +7129,19 @@ function setupBindings() {
       groupSelection();
       return;
     }
+    // ── Global guard: suppress ALL bare-key shortcuts when typing in any input / textarea / select.
+    // Ctrl/Meta combos (handled above) and Escape always pass through.
+    if (!event.ctrlKey && !event.metaKey && event.key !== 'Escape' && isFormControlTarget(event.target)) {
+      return;
+    }
+
     if (event.key.toLowerCase() === 'k') {
-      if (isFormControlTarget(event.target)) {
-        return;
-      }
       event.preventDefault();
       toggleTimelinePlaying();
       return;
     }
 
     if (event.key.toLowerCase() === 'x') {
-      if (isFormControlTarget(event.target)) {
-        return;
-      }
       if (selectedTimelineSegmentIds().length) {
         event.preventDefault();
         splitSelectedTimelineClipAtPlayhead();
@@ -4698,11 +7149,30 @@ function setupBindings() {
       }
     }
 
+    if (event.key.toLowerCase() === 'i') {
+      event.preventDefault();
+      if (event.shiftKey) {
+        deleteMotionKeyframeAtTimeline(state.timeline.currentTime);
+      } else {
+        insertMotionKeyframeAtTimeline(state.timeline.currentTime, { fromControls: false });
+      }
+      return;
+    }
+
+    if (event.key === '[') {
+      event.preventDefault();
+      stepToAdjacentMotionKeyframe(-1);
+      return;
+    }
+
+    if (event.key === ']') {
+      event.preventDefault();
+      stepToAdjacentMotionKeyframe(1);
+      return;
+    }
+
     const isDeleteKey = event.key === 'Delete' || event.key === 'Backspace' || event.key === 'Del' || event.code === 'Delete';
     if (isDeleteKey) {
-      if (isFormControlTarget(event.target)) {
-        return;
-      }
       event.preventDefault();
       const timelineSelected = selectedTimelineSegmentIds().length;
       const shapeSelected = selectedShapeIds().length;
@@ -4725,23 +7195,38 @@ function setupBindings() {
     }
 
     if (event.key.toLowerCase() === 'f') {
-      if (isFormControlTarget(event.target)) {
-        return;
-      }
       event.preventDefault();
       toggleFocusMode();
       return;
     }
 
     if (event.key.toLowerCase() === 'h') {
-      if (isFormControlTarget(event.target)) {
-        return;
-      }
       event.preventDefault();
       if (window.matchMedia('(max-width: 1024px)').matches) {
         document.body.classList.toggle('menu-open');
       } else {
         toggleFocusMode();
+      }
+      return;
+    }
+
+    // Close caption float panel first on Escape
+    if (event.key === 'Escape' && els.captionFloatPanel && els.captionFloatPanel.classList.contains('open')) {
+      closeCaptionFloatPanel();
+      return;
+    }
+
+    // Present mode shortcuts
+    if (presentMode && event.code === 'Escape') {
+      exitPresentMode();
+      return;
+    }
+    if (presentMode && event.code === 'Space') {
+      event.preventDefault();
+      if (state.timeline.playing) {
+        setTimelinePlaying(false);
+      } else {
+        startPresentCountdown(() => setTimelinePlaying(true));
       }
       return;
     }
@@ -4755,7 +7240,6 @@ function setupBindings() {
     }
 
     if (event.key.toLowerCase() === 's') {
-      if (isFormControlTarget(event.target)) return;
       event.preventDefault();
       state.snapGrid = !state.snapGrid;
       els.btnSnap.textContent = state.snapGrid ? 'Snap: On' : 'Snap: Off';
@@ -4766,7 +7250,6 @@ function setupBindings() {
     }
 
     if (event.key.toLowerCase() === 'l') {
-      if (isFormControlTarget(event.target)) return;
       event.preventDefault();
       setTool('laser');
       return;
@@ -4857,6 +7340,112 @@ function setupBindings() {
     teardownTimelineAudio();
     flushAutosaveOnExit();
   });
+
+  // ── Script Editor ──
+  if (els.scriptEditorText) {
+    els.scriptEditorText.addEventListener('input', scriptEditorStat);
+  }
+  if (els.scriptSplitMode) {
+    els.scriptSplitMode.addEventListener('change', () => {
+      updateScriptModeUI();
+      scriptEditorStat();
+    });
+  }
+  if (els.scriptWordsPerCap) {
+    els.scriptWordsPerCap.addEventListener('input', scriptEditorStat);
+  }
+  if (els.scriptWPM) {
+    els.scriptWPM.addEventListener('input', () => {
+      if (els.scriptWpmValue) els.scriptWpmValue.textContent = els.scriptWPM.value;
+      scriptEditorStat();
+    });
+  }
+  if (els.btnScriptGenerate) {
+    els.btnScriptGenerate.addEventListener('click', () => generateCaptionsFromScript(false));
+  }
+  if (els.btnScriptAppend) {
+    els.btnScriptAppend.addEventListener('click', () => generateCaptionsFromScript(true));
+  }
+  if (els.btnScriptClear) {
+    els.btnScriptClear.addEventListener('click', () => {
+      if (els.scriptEditorText) {
+        els.scriptEditorText.value = '';
+        scriptEditorStat();
+      }
+    });
+  }
+  if (els.btnScriptFromTranscript) {
+    els.btnScriptFromTranscript.addEventListener('click', pullScriptFromTranscript);
+  }
+
+  // ── Format / Shorts ──
+  if (els.btnFormat16x9) {
+    els.btnFormat16x9.addEventListener('click', () => setCanvasFormat('16:9'));
+  }
+  if (els.btnFormat9x16) {
+    els.btnFormat9x16.addEventListener('click', () => setCanvasFormat('9:16'));
+  }
+  if (els.btnFormat1x1) {
+    els.btnFormat1x1.addEventListener('click', () => setCanvasFormat('1:1'));
+  }
+
+  // ── Caption Placement ──
+  if (els.btnCaptionPosTop) {
+    els.btnCaptionPosTop.addEventListener('click', () => setCaptionPlacementVertical('top'));
+  }
+  if (els.btnCaptionPosCenter) {
+    els.btnCaptionPosCenter.addEventListener('click', () => setCaptionPlacementVertical('center'));
+  }
+  if (els.btnCaptionPosBottom) {
+    els.btnCaptionPosBottom.addEventListener('click', () => setCaptionPlacementVertical('bottom'));
+  }
+  if (els.captionOffsetPct) {
+    els.captionOffsetPct.addEventListener('input', () => {
+      captionPlacement.offsetPct = Number(els.captionOffsetPct.value);
+      if (els.captionOffsetPctValue) els.captionOffsetPctValue.textContent = els.captionOffsetPct.value;
+      updateCaptionOverlayGeometry();
+      saveToLocalStorage();
+    });
+  }
+  if (els.captionZoneVisible) {
+    els.captionZoneVisible.addEventListener('change', () => {
+      captionPlacement.zoneVisible = els.captionZoneVisible.checked;
+      updateCaptionOverlayGeometry();
+      saveToLocalStorage();
+    });
+  }
+  setupCaptionZoneDrag();
+
+  // ── Webcam PiP ──
+  if (els.btnWebcamToggle) {
+    els.btnWebcamToggle.addEventListener('click', () => {
+      if (webcamState.enabled) {
+        stopWebcam();
+        render();
+      } else {
+        startWebcam();
+      }
+    });
+  }
+  if (els.webcamPosition) {
+    els.webcamPosition.addEventListener('change', () => {
+      webcamState.position = els.webcamPosition.value;
+      saveToLocalStorage();
+    });
+  }
+  if (els.webcamShape) {
+    els.webcamShape.addEventListener('change', () => {
+      webcamState.shape = els.webcamShape.value;
+      saveToLocalStorage();
+    });
+  }
+  if (els.webcamSize) {
+    els.webcamSize.addEventListener('input', () => {
+      webcamState.size = Number(els.webcamSize.value);
+      if (els.webcamSizeValue) els.webcamSizeValue.textContent = els.webcamSize.value;
+      saveToLocalStorage();
+    });
+  }
 }
 
 /* ═══════════════════════════════
@@ -4989,10 +7578,31 @@ function setSelectedLock(locked) {
   setStatus(locked ? `Locked ${items.length} shape(s).` : `Unlocked ${items.length} shape(s).`);
 }
 
-// Selected-shape motion is one timeline block per shape: start/duration/from/to/ease.
+// Selected-shape motion supports multi-keyframe offsets/opacity/trim data.
 function sameShapeMotion(a, b) {
   if (!a || !b) {
     return false;
+  }
+  const ka = Array.isArray(a.keyframes) ? a.keyframes : [];
+  const kb = Array.isArray(b.keyframes) ? b.keyframes : [];
+  if (ka.length !== kb.length) {
+    return false;
+  }
+  for (let i = 0; i < ka.length; i += 1) {
+    const left = ka[i];
+    const right = kb[i];
+    if (!left || !right) {
+      return false;
+    }
+    if (Math.abs(left.at - right.at) > 1e-6 ||
+      Math.abs(left.dx - right.dx) > 1e-6 ||
+      Math.abs(left.dy - right.dy) > 1e-6 ||
+      Math.abs(left.opacity - right.opacity) > 1e-6 ||
+      Math.abs((left.trimStart ?? 0) - (right.trimStart ?? 0)) > 1e-6 ||
+      Math.abs((left.trimEnd ?? 1) - (right.trimEnd ?? 1)) > 1e-6 ||
+      normalizeMotionEase(left.ease, a.ease) !== normalizeMotionEase(right.ease, b.ease)) {
+      return false;
+    }
   }
   return a.enabled === b.enabled &&
     Math.abs(a.start - b.start) < 1e-6 &&
@@ -5003,21 +7613,42 @@ function sameShapeMotion(a, b) {
     Math.abs(a.toY - b.toY) < 1e-6 &&
     Math.abs(a.fromOpacity - b.fromOpacity) < 1e-6 &&
     Math.abs(a.toOpacity - b.toOpacity) < 1e-6 &&
+    Math.abs((a.trimStart ?? 0) - (b.trimStart ?? 0)) < 1e-6 &&
+    Math.abs((a.trimEnd ?? 1) - (b.trimEnd ?? 1)) < 1e-6 &&
     a.ease === b.ease;
 }
 
 function readMotionControls() {
+  const trim = normalizeTrimWindow(
+    (Number(els.motionTrimStart && els.motionTrimStart.value) || 0) / 100,
+    (Number(els.motionTrimEnd && els.motionTrimEnd.value) || 100) / 100
+  );
+  const start = els.motionStart ? Number(els.motionStart.value) : state.timeline.currentTime;
+  const duration = els.motionDuration ? Number(els.motionDuration.value) : 1.2;
+  const fromX = els.motionFromX ? Number(els.motionFromX.value) : 0;
+  const fromY = els.motionFromY ? Number(els.motionFromY.value) : 0;
+  const toX = els.motionToX ? Number(els.motionToX.value) : 140;
+  const toY = els.motionToY ? Number(els.motionToY.value) : 0;
+  const fromOpacity = els.motionFromOpacity ? Number(els.motionFromOpacity.value) : 1;
+  const toOpacity = els.motionToOpacity ? Number(els.motionToOpacity.value) : 1;
+  const ease = els.motionEase ? els.motionEase.value : 'easeInOutCubic';
   return normalizeShapeMotion({
     enabled: true,
-    start: els.motionStart ? Number(els.motionStart.value) : state.timeline.currentTime,
-    duration: els.motionDuration ? Number(els.motionDuration.value) : 1.2,
-    fromX: els.motionFromX ? Number(els.motionFromX.value) : 0,
-    fromY: els.motionFromY ? Number(els.motionFromY.value) : 0,
-    toX: els.motionToX ? Number(els.motionToX.value) : 140,
-    toY: els.motionToY ? Number(els.motionToY.value) : 0,
-    fromOpacity: els.motionFromOpacity ? Number(els.motionFromOpacity.value) : 1,
-    toOpacity: els.motionToOpacity ? Number(els.motionToOpacity.value) : 1,
-    ease: els.motionEase ? els.motionEase.value : 'easeInOutCubic'
+    start,
+    duration,
+    fromX,
+    fromY,
+    toX,
+    toY,
+    fromOpacity,
+    toOpacity,
+    trimStart: trim.trimStart,
+    trimEnd: trim.trimEnd,
+    ease,
+    keyframes: [
+      { at: start, dx: fromX, dy: fromY, opacity: fromOpacity, trimStart: trim.trimStart, trimEnd: trim.trimEnd, ease },
+      { at: start + Math.max(0.05, Number(duration) || 1.2), dx: toX, dy: toY, opacity: toOpacity, trimStart: trim.trimStart, trimEnd: trim.trimEnd, ease }
+    ]
   }, {
     start: state.timeline.currentTime,
     duration: 1.2,
@@ -5027,6 +7658,8 @@ function readMotionControls() {
     toY: 0,
     fromOpacity: 1,
     toOpacity: 1,
+    trimStart: 0,
+    trimEnd: 1,
     ease: 'easeInOutCubic'
   });
 }
@@ -5045,43 +7678,88 @@ function syncSelectedShapeMotionControls() {
       toY: 0,
       fromOpacity: 1,
       toOpacity: 1,
+      trimStart: 0,
+      trimEnd: 1,
       ease: 'easeInOutCubic'
     });
+  const keyframes = motion.keyframes || [];
+  const focusIndex = keyframes.length
+    ? Math.max(0, findMotionKeyframeIndexNearTime(keyframes, state.timeline.currentTime, Number.POSITIVE_INFINITY))
+    : -1;
+  const focus = focusIndex >= 0
+    ? keyframes[focusIndex]
+    : {
+      dx: motion.fromX,
+      dy: motion.fromY,
+      opacity: motion.fromOpacity,
+      trimStart: motion.trimStart ?? 0,
+      trimEnd: motion.trimEnd ?? 1
+    };
+  const first = keyframes.length ? keyframes[0] : motion;
+  const last = keyframes.length ? keyframes[keyframes.length - 1] : motion;
   if (els.motionStart) {
-    els.motionStart.value = String(roundTimelineSeconds(motion.start));
+    els.motionStart.value = String(roundTimelineSeconds(first.at ?? motion.start));
   }
   if (els.motionDuration) {
-    els.motionDuration.value = String(roundTimelineSeconds(motion.duration));
+    const duration = keyframes.length
+      ? Math.max(0.05, (last.at ?? motion.start) - (first.at ?? motion.start))
+      : motion.duration;
+    els.motionDuration.value = String(roundTimelineSeconds(duration));
   }
   if (els.motionFromX) {
-    els.motionFromX.value = String(Math.round(motion.fromX));
+    els.motionFromX.value = String(Math.round(focus.dx ?? motion.fromX));
   }
   if (els.motionFromY) {
-    els.motionFromY.value = String(Math.round(motion.fromY));
+    els.motionFromY.value = String(Math.round(focus.dy ?? motion.fromY));
   }
   if (els.motionToX) {
-    els.motionToX.value = String(Math.round(motion.toX));
+    els.motionToX.value = String(Math.round(last.dx ?? motion.toX));
   }
   if (els.motionToY) {
-    els.motionToY.value = String(Math.round(motion.toY));
+    els.motionToY.value = String(Math.round(last.dy ?? motion.toY));
   }
   if (els.motionFromOpacity) {
-    els.motionFromOpacity.value = String(Math.round(motion.fromOpacity * 100) / 100);
+    els.motionFromOpacity.value = String(Math.round((focus.opacity ?? motion.fromOpacity) * 100) / 100);
   }
   if (els.motionToOpacity) {
-    els.motionToOpacity.value = String(Math.round(motion.toOpacity * 100) / 100);
+    els.motionToOpacity.value = String(Math.round((last.opacity ?? motion.toOpacity) * 100) / 100);
+  }
+  if (els.motionTrimStart) {
+    els.motionTrimStart.value = String(Math.round(clamp((focus.trimStart ?? motion.trimStart ?? 0) * 100, 0, 100)));
+  }
+  if (els.motionTrimEnd) {
+    els.motionTrimEnd.value = String(Math.round(clamp((focus.trimEnd ?? motion.trimEnd ?? 1) * 100, 0, 100)));
   }
   if (els.motionEase) {
     els.motionEase.value = motion.ease;
   }
 
   const hasUnlocked = selected.length > 0;
-  const hasMotion = selected.some((shape) => !!shape.motion);
+  const hasMotion = selected.some((shape) => !!(shape.motion && shape.motion.enabled));
+  const hasKeyframeNearPlayhead = selected.some((shape) => {
+    if (!shape || !shape.motion || !shape.motion.enabled) {
+      return false;
+    }
+    const motion = normalizeShapeMotion(shape.motion, { start: state.timeline.currentTime, duration: 0.2 });
+    return findMotionKeyframeIndexNearTime(motion.keyframes, state.timeline.currentTime) >= 0;
+  });
   if (els.btnMotionApply) {
     els.btnMotionApply.disabled = !hasUnlocked;
   }
+  if (els.btnMotionInsertKeyframe) {
+    els.btnMotionInsertKeyframe.disabled = !hasUnlocked;
+  }
+  if (els.btnMotionSetKeyframe) {
+    els.btnMotionSetKeyframe.disabled = !hasUnlocked;
+  }
+  if (els.btnMotionDeleteKeyframe) {
+    els.btnMotionDeleteKeyframe.disabled = !hasKeyframeNearPlayhead;
+  }
   if (els.btnMotionClear) {
     els.btnMotionClear.disabled = !hasMotion;
+  }
+  if (els.btnTimelineInsertKeyframe) {
+    els.btnTimelineInsertKeyframe.disabled = !hasUnlocked;
   }
 }
 
@@ -5099,7 +7777,7 @@ function applyMotionToSelectedShapes() {
     if (prev && sameShapeMotion(prev, nextMotion)) {
       continue;
     }
-    shape.motion = { ...nextMotion };
+    shape.motion = JSON.parse(JSON.stringify(nextMotion));
     changed += 1;
   }
   if (!changed) {
@@ -5115,6 +7793,71 @@ function applyMotionToSelectedShapes() {
   render();
   syncSelectedShapeMotionControls();
   setStatus(`Applied motion to ${changed} shape(s).`);
+}
+
+function applyMotionPreset(presetKey) {
+  const targets = selectedUnlockedShapes();
+  if (!targets.length) {
+    setStatus('Select at least one unlocked shape first.');
+    return;
+  }
+  const t = state.timeline.currentTime;
+  const dur = 0.45;
+  const ease = 'easeOutCubic';
+  const fly = 90;
+  let kf0, kf1;
+  switch (presetKey) {
+    case 'fade_in':
+      kf0 = { at: t, dx: 0, dy: 0, opacity: 0, trimStart: 0, trimEnd: 1, ease };
+      kf1 = { at: t + dur, dx: 0, dy: 0, opacity: 1, trimStart: 0, trimEnd: 1, ease };
+      break;
+    case 'fly_left':
+      kf0 = { at: t, dx: -fly, dy: 0, opacity: 0, trimStart: 0, trimEnd: 1, ease };
+      kf1 = { at: t + dur, dx: 0, dy: 0, opacity: 1, trimStart: 0, trimEnd: 1, ease };
+      break;
+    case 'fly_right':
+      kf0 = { at: t, dx: fly, dy: 0, opacity: 0, trimStart: 0, trimEnd: 1, ease };
+      kf1 = { at: t + dur, dx: 0, dy: 0, opacity: 1, trimStart: 0, trimEnd: 1, ease };
+      break;
+    case 'fly_up':
+      kf0 = { at: t, dx: 0, dy: fly, opacity: 0, trimStart: 0, trimEnd: 1, ease };
+      kf1 = { at: t + dur, dx: 0, dy: 0, opacity: 1, trimStart: 0, trimEnd: 1, ease };
+      break;
+    case 'fly_down':
+      kf0 = { at: t, dx: 0, dy: -fly, opacity: 0, trimStart: 0, trimEnd: 1, ease };
+      kf1 = { at: t + dur, dx: 0, dy: 0, opacity: 1, trimStart: 0, trimEnd: 1, ease };
+      break;
+    case 'zoom_in':
+      kf0 = { at: t, dx: 0, dy: 20, opacity: 0, trimStart: 0, trimEnd: 1, ease };
+      kf1 = { at: t + dur, dx: 0, dy: 0, opacity: 1, trimStart: 0, trimEnd: 1, ease };
+      break;
+    case 'fade_out':
+      kf0 = { at: t, dx: 0, dy: 0, opacity: 1, trimStart: 0, trimEnd: 1, ease };
+      kf1 = { at: t + dur, dx: 0, dy: 0, opacity: 0, trimStart: 0, trimEnd: 1, ease };
+      break;
+    case 'fly_out_left':
+      kf0 = { at: t, dx: 0, dy: 0, opacity: 1, trimStart: 0, trimEnd: 1, ease };
+      kf1 = { at: t + dur, dx: -fly, dy: 0, opacity: 0, trimStart: 0, trimEnd: 1, ease };
+      break;
+    case 'fly_out_right':
+      kf0 = { at: t, dx: 0, dy: 0, opacity: 1, trimStart: 0, trimEnd: 1, ease };
+      kf1 = { at: t + dur, dx: fly, dy: 0, opacity: 0, trimStart: 0, trimEnd: 1, ease };
+      break;
+    default:
+      setStatus(`Unknown preset: ${presetKey}`);
+      return;
+  }
+  for (const shape of targets) {
+    shape.motion = normalizeShapeMotion({ enabled: true, keyframes: [kf0, kf1] });
+  }
+  invalidateShapeCaches();
+  markLayerPanelDirty();
+  refreshTimelineDurationFromSources({ preserveExisting: false });
+  renderTimelineEditor({ keepScroll: true });
+  pushHistory();
+  render();
+  syncSelectedShapeMotionControls();
+  setStatus(`Applied "${presetKey.replace(/_/g, ' ')}" preset to ${targets.length} shape(s).`);
 }
 
 function clearMotionFromSelectedShapes() {
@@ -5200,6 +7943,57 @@ function editRectRadiusForShape(shape) {
 function editSelectedRectRadius() {
   const rect = selectedUnlockedShapes().find((shape) => shape.type === 'rect');
   editRectRadiusForShape(rect || null);
+}
+
+function beginCanvasTextEdit(shape) {
+  if (!shape || shape.type !== 'text' || shape.locked) {
+    return;
+  }
+  const editor = els.canvasTextEditor;
+  if (!editor) {
+    return;
+  }
+  const stageRect = getStageRect();
+  const screen = toScreen(shape.x, shape.y);
+  const fontSize = Math.max(12, shape.size || 28) * state.camera.scale;
+  editor.dataset.shapeId = shape.id;
+  editor.value = String(shape.text || '');
+  editor.style.left = `${screen.x}px`;
+  editor.style.top = `${screen.y - fontSize * 0.6}px`;
+  editor.style.fontSize = `${fontSize}px`;
+  editor.style.minWidth = `${Math.max(80, fontSize * 4)}px`;
+  editor.style.display = 'block';
+  editor.focus();
+  editor.select();
+}
+
+function commitCanvasTextEdit() {
+  const editor = els.canvasTextEditor;
+  if (!editor || editor.style.display === 'none') {
+    return;
+  }
+  const shapeId = editor.dataset.shapeId;
+  const shape = shapeId ? state.shapes.find((s) => s.id === shapeId) : null;
+  if (shape && shape.type === 'text') {
+    const newText = editor.value.trim();
+    if (newText !== shape.text) {
+      shape.text = newText || 'Text';
+      invalidateShapeCaches(shape.id);
+      pushHistory();
+      render();
+    }
+  }
+  editor.style.display = 'none';
+  editor.dataset.shapeId = '';
+}
+
+function cancelCanvasTextEdit() {
+  const editor = els.canvasTextEditor;
+  if (!editor) {
+    return;
+  }
+  editor.style.display = 'none';
+  editor.dataset.shapeId = '';
 }
 
 function alignSelected(mode) {
@@ -5422,6 +8216,7 @@ function initControllers() {
     onSelectionChanged: () => {
       markLayerPanelDirty();
       syncSelectedShapeMotionControls();
+      renderTimelineEditor({ keepScroll: true });
     }
   });
   ({ setSelection, clearSelection, selectedShapeIds, selectedShapes, finalizeMarqueeSelection, drawMarqueeOverlay } = selectionController);
@@ -5459,7 +8254,13 @@ function initControllers() {
     renderLayers: renderLayerPanel,
     shouldRenderLayers: shouldRenderLayerPanel
   });
-  renderNow = renderController.render;
+  const baseRenderNow = renderController.render;
+  renderNow = () => {
+    baseRenderNow();
+    if (webcamState.enabled) {
+      drawWebcamPiP();
+    }
+  };
   render = () => {
     renderNow();
     ensureRenderLoop();
@@ -5511,6 +8312,8 @@ function init() {
   syncControls();
   initTimelineUI();
   setupBindings();
+  updateScriptModeUI();
+  scriptEditorStat();
   resizeCanvas();
   ensureRenderLoop();
 }

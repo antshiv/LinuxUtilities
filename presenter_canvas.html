@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LinuxUtilities Presenter Canvas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@700;800;900&family=Oswald:wght@600;700&family=Sora:wght@700;800&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg: #0b0f17;
@@ -114,8 +117,8 @@
 
     .tool-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 6px;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 5px;
     }
 
     button, select, input[type="number"], input[type="text"] {
@@ -154,32 +157,33 @@
     }
 
     button.tool {
-      min-height: 50px;
-      font-size: 11px;
-      padding: 7px 8px;
-      line-height: 1.15;
-      justify-content: flex-start;
+      min-height: 42px;
+      font-size: 10px;
+      padding: 4px 3px;
+      line-height: 1.1;
+      justify-content: center;
       flex-direction: column;
-      align-items: stretch;
-      gap: 4px;
+      align-items: center;
+      gap: 2px;
       background: linear-gradient(180deg, #1e2b46, #1a253c);
     }
 
     button.tool .tool-row {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 7px;
-      justify-content: space-between;
+      gap: 2px;
+      width: 100%;
     }
 
     button.tool .tool-icon {
-      min-width: 20px;
-      height: 20px;
+      width: 22px;
+      height: 22px;
       border-radius: 6px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 800;
       color: #e8f2ff;
       background: linear-gradient(140deg, #2f4f74, #2b3e61);
@@ -187,25 +191,18 @@
     }
 
     button.tool .tool-label {
-      flex: 1;
-      text-align: left;
-      color: #dbe8ff;
-      font-weight: 700;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      display: none;
     }
 
     button.tool .tool-hotkey {
-      margin-left: auto;
-      border: 1px solid rgba(140, 166, 214, 0.42);
-      border-radius: 6px;
+      border: 1px solid rgba(140, 166, 214, 0.32);
+      border-radius: 4px;
       background: #152036;
-      color: #bdd2f4;
-      padding: 1px 5px;
+      color: #9db4d8;
+      padding: 0px 3px;
       font-family: "JetBrains Mono", "Fira Mono", monospace;
-      font-size: 10px;
-      line-height: 1.2;
+      font-size: 9px;
+      line-height: 1.3;
     }
 
     button.tool.active {
@@ -417,6 +414,24 @@
       overflow: hidden;
     }
 
+    .canvas-text-editor {
+      position: absolute;
+      z-index: 20;
+      min-width: 80px;
+      min-height: 28px;
+      padding: 4px 8px;
+      background: rgba(10, 16, 32, 0.92);
+      border: 1.5px solid rgba(120, 200, 255, 0.7);
+      border-radius: 6px;
+      color: #e9f4ff;
+      font-family: "Fira Sans", "Noto Sans", sans-serif;
+      font-size: 18px;
+      line-height: 1.4;
+      resize: none;
+      outline: none;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.5);
+    }
+
     canvas {
       position: absolute;
       inset: 0;
@@ -504,9 +519,60 @@
       margin: 3px 0;
       font-size: 11px;
       line-height: 1.3;
+      display: block;
+    }
+
+    .transcript-seek {
+      width: 100%;
+      margin: 0;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
       display: flex;
       gap: 7px;
       align-items: flex-start;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .transcript-seek .label {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .transcript-word-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 6px;
+    }
+
+    .transcript-word {
+      border: 1px solid #284470;
+      border-radius: 999px;
+      background: #101b31;
+      color: #b9cff5;
+      padding: 2px 7px;
+      font-size: 10px;
+      line-height: 1.2;
+      cursor: pointer;
+      transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+    }
+
+    .transcript-word:hover {
+      border-color: #4875b8;
+      color: #e7f1ff;
+    }
+
+    .transcript-word.active {
+      border-color: #ffe38a;
+      background: #ffe05d;
+      color: #121826;
     }
 
     .transcript-item .time {
@@ -523,48 +589,179 @@
       color: #eff7ff;
     }
 
+    .transcript-item.active .transcript-word {
+      border-color: #5d85c1;
+      background: #173056;
+      color: #d6e6ff;
+    }
+
+    .transcript-item.active .transcript-word.active {
+      border-color: #ffe38a;
+      background: #ffe05d;
+      color: #101521;
+    }
+
+    /* Inline transcript edit */
+    .transcript-item-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 3px;
+    }
+    .transcript-item-header .transcript-seek {
+      flex: 1;
+      min-width: 0;
+    }
+    .transcript-edit-btn {
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      min-height: 22px;
+      padding: 0;
+      background: transparent;
+      border-color: transparent;
+      border-radius: 5px;
+      font-size: 12px;
+      color: #4a6a9a;
+      opacity: 0;
+      transition: opacity 0.12s, color 0.12s, background 0.12s;
+    }
+    .transcript-item:hover .transcript-edit-btn,
+    .transcript-item.editing .transcript-edit-btn {
+      opacity: 1;
+    }
+    .transcript-edit-btn:hover {
+      color: #a8c8f0;
+      background: rgba(100, 160, 255, 0.12);
+      border-color: rgba(100, 160, 255, 0.2);
+    }
+    .transcript-edit-area {
+      display: none;
+      margin-top: 6px;
+    }
+    .transcript-item.editing .transcript-edit-area {
+      display: block;
+    }
+    .transcript-item.editing .transcript-word-row {
+      display: none;
+    }
+    .transcript-edit-input {
+      width: 100%;
+      min-height: 52px;
+      background: #0d1828;
+      border: 1.5px solid #3060a0;
+      border-radius: 7px;
+      color: #dce8ff;
+      font-size: 12px;
+      font-family: inherit;
+      line-height: 1.45;
+      padding: 7px 10px;
+      resize: vertical;
+      box-sizing: border-box;
+      outline: none;
+    }
+    .transcript-edit-input:focus {
+      border-color: #5aa0f0;
+      box-shadow: 0 0 0 2px rgba(90, 160, 240, 0.2);
+    }
+    .transcript-edit-hint {
+      font-size: 10px;
+      color: #5a7aaa;
+      margin: 3px 1px 0;
+    }
+    .transcript-edit-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .transcript-edit-actions .btn-save {
+      background: linear-gradient(120deg, #284f88, #1c3f72);
+      border-color: #3a72c0;
+      color: #d0e8ff;
+      font-size: 11px;
+      padding: 3px 12px;
+      min-height: 26px;
+      border-radius: 5px;
+    }
+    .transcript-edit-actions .btn-save:hover {
+      border-color: #60a0f0;
+      background: linear-gradient(120deg, #2f5c9a, #244882);
+    }
+    .transcript-edit-actions .btn-cancel {
+      background: transparent;
+      border-color: rgba(80, 110, 160, 0.3);
+      color: #6a85b0;
+      font-size: 11px;
+      padding: 3px 10px;
+      min-height: 26px;
+      border-radius: 5px;
+    }
+
     .caption-template-list {
       margin-top: 8px;
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 6px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
     }
 
     .caption-template-list button {
-      min-height: 38px;
+      min-height: 72px;
       font-size: 10px;
       display: flex;
       flex-direction: column;
-      align-items: flex-start;
-      justify-content: center;
-      gap: 2px;
-      padding: 6px 7px;
-      text-align: left;
+      align-items: stretch;
+      justify-content: flex-start;
+      gap: 0;
+      padding: 5px 6px 6px;
+      text-align: center;
       line-height: 1.15;
+      border-radius: 10px;
+      background: #111826;
+      overflow: hidden;
     }
 
-    .caption-template-list button .name {
-      font-weight: 800;
-      color: #e8f1ff;
-      letter-spacing: 0.02em;
-      font-size: 10px;
+    .caption-template-list button:hover {
+      border-color: #6aadff;
+      background: #151f30;
     }
 
-    .caption-template-list button .meta {
-      color: #9fb7de;
-      font-weight: 600;
+    .tmpl-preview {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      padding: 6px 5px 5px;
+      text-align: center;
+      overflow: hidden;
+      min-height: 46px;
+      line-height: 1.25;
+      word-break: break-word;
+    }
+
+    .tmpl-name {
+      display: block;
       font-size: 9px;
+      font-weight: 700;
+      color: #7a93bf;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 5px;
+      padding-top: 4px;
+      border-top: 1px solid rgba(255,255,255,0.06);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 100%;
     }
 
     .caption-template-list button.active {
       border-color: #88d8bf;
-      background: linear-gradient(130deg, #22483f, #1d3a35);
-      color: #e8fff5;
+      background: linear-gradient(130deg, #172f27, #132520);
       box-shadow: 0 0 0 1px rgba(136, 216, 191, 0.36);
+    }
+
+    .caption-template-list button.active .tmpl-name {
+      color: #7be8c8;
+      border-top-color: rgba(136, 216, 191, 0.2);
     }
 
     .caption-custom {
@@ -638,6 +835,113 @@
     body.focus .sidebar { display: none; }
     body.focus .focus-toggle { display: block; }
 
+    /* ── Present / Recording Mode ── */
+    body.present-mode .app { grid-template-columns: 1fr; }
+    body.present-mode .sidebar { display: none; }
+    body.present-mode .timeline-dock {
+      opacity: 0.12;
+      transition: opacity 0.3s;
+    }
+    body.present-mode .timeline-dock:hover,
+    body.present-mode .timeline-dock:focus-within {
+      opacity: 1;
+    }
+
+    /* Teleprompter */
+    .teleprompter {
+      position: absolute;
+      z-index: 25;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      gap: 10px;
+      pointer-events: none;
+      padding: 14px 10px;
+    }
+    body.present-mode .teleprompter { display: flex; }
+    .tp-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(122, 199, 255, 0.5);
+      margin-bottom: 2px;
+    }
+    .tp-current {
+      font-size: clamp(15px, 2.2vw, 26px);
+      font-weight: 800;
+      color: rgba(255, 255, 255, 0.95);
+      line-height: 1.3;
+      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+      word-break: break-word;
+    }
+    .tp-next {
+      font-size: clamp(11px, 1.5vw, 18px);
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.4);
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    /* REC badge */
+    .rec-badge {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 30;
+      display: none;
+      align-items: center;
+      gap: 7px;
+      background: rgba(0, 0, 0, 0.68);
+      border: 1px solid rgba(255, 59, 59, 0.4);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.04em;
+      pointer-events: none;
+    }
+    body.present-mode.is-playing .rec-badge { display: flex; }
+    .rec-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ff3b3b;
+      animation: recPulse 1.2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes recPulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.25; }
+    }
+
+    /* Countdown overlay */
+    .countdown-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 40;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.52);
+      pointer-events: none;
+    }
+    .countdown-overlay.active { display: flex; }
+    .countdown-num {
+      font-size: min(18vw, 180px);
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 60px rgba(122, 199, 255, 0.5);
+      animation: countdownPop 0.92s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    @keyframes countdownPop {
+      0%   { transform: scale(1.4); opacity: 0; }
+      15%  { transform: scale(1);   opacity: 1; }
+      80%  { transform: scale(1);   opacity: 1; }
+      100% { transform: scale(0.7); opacity: 0; }
+    }
+
     @media (max-width: 1024px) {
       .app { grid-template-columns: 1fr; }
       .sidebar {
@@ -664,6 +968,7 @@
       }
       .caption-template-list {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        /* already 2-col on desktop, stays 2-col on mobile */
       }
     }
 
@@ -901,6 +1206,10 @@
       cursor: crosshair;
     }
 
+    .timeline-track-body.shapes {
+      cursor: crosshair;
+    }
+
     .timeline-audio-clip,
     .timeline-shape-clip {
       position: absolute;
@@ -931,6 +1240,39 @@
       border-color: rgba(116, 228, 196, 0.65);
       background: linear-gradient(135deg, rgba(22, 114, 95, 0.95), rgba(14, 82, 69, 0.98));
       box-shadow: inset 0 0 0 1px rgba(174, 242, 221, 0.2);
+      pointer-events: auto;
+      cursor: pointer;
+      overflow: visible;
+    }
+
+    .timeline-shape-clip.motion.active {
+      border-color: rgba(170, 247, 226, 0.98);
+      box-shadow: 0 0 0 1px rgba(140, 233, 207, 0.7), inset 0 0 0 1px rgba(205, 255, 241, 0.34);
+    }
+
+    .timeline-kf-marker {
+      position: absolute;
+      top: -4px;
+      width: 8px;
+      height: 8px;
+      border: 1px solid rgba(180, 255, 229, 0.96);
+      background: rgba(66, 193, 154, 0.95);
+      transform: translateX(-50%) rotate(45deg);
+      border-radius: 1px;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+      pointer-events: auto;
+      cursor: ew-resize;
+      transition: transform 120ms ease, box-shadow 120ms ease;
+    }
+
+    .timeline-kf-marker:hover {
+      transform: translateX(-50%) rotate(45deg) scale(1.12);
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.22), 0 0 10px rgba(155, 247, 221, 0.42);
+    }
+
+    .timeline-kf-marker.current {
+      border-color: rgba(255, 238, 152, 0.98);
+      background: rgba(255, 223, 103, 0.96);
     }
 
     .timeline-clip {
@@ -996,6 +1338,29 @@
       border-bottom-right-radius: 7px;
     }
 
+    .timeline-word-marker {
+      position: absolute;
+      top: 4px;
+      bottom: 4px;
+      width: 1px;
+      background: rgba(160, 210, 255, 0.28);
+      pointer-events: none;
+      border-radius: 1px;
+    }
+    .timeline-word-marker.active {
+      background: rgba(120, 240, 195, 0.7);
+      width: 2px;
+      box-shadow: 0 0 3px rgba(120, 240, 195, 0.5);
+    }
+    .timeline-clip.oneblock {
+      background: linear-gradient(135deg, #2a5544, #1f3d36);
+      border-color: rgba(80, 200, 150, 0.5);
+    }
+    .timeline-clip.oneblock.current {
+      border-color: #78f0c9;
+      box-shadow: 0 0 0 1px rgba(80, 236, 187, 0.62);
+    }
+
     .timeline-playhead {
       position: absolute;
       top: 0;
@@ -1043,14 +1408,350 @@
       display: inline-block;
       padding: 0 0.06em;
       border-radius: 0.22em;
-      transition: background 0.1s ease, color 0.1s ease, transform 0.08s ease;
+      transition: background 0.1s ease, color 0.1s ease, transform 0.08s ease, padding 0.08s ease, border-radius 0.08s ease, font-weight 0.08s ease;
     }
 
     .live-transcript-overlay .word.active {
       background: var(--caption-highlight-bg, #ffe05d);
       color: var(--caption-highlight-color, #0f1118);
+      font-family: var(--caption-highlight-font-family, inherit);
+      font-weight: var(--caption-highlight-font-weight, inherit);
+      border-radius: var(--caption-highlight-radius, 3px);
+      padding: var(--caption-highlight-pad-y, 0px) var(--caption-highlight-pad-x, 3px);
       transform: translateY(-0.02em);
     }
+
+    /* ── Caption mode: CapCut Black (per-word pill) ── */
+    .live-transcript-overlay[data-caption-mode="capcut_black"] {
+      background: transparent;
+    }
+    .live-transcript-overlay[data-caption-mode="capcut_black"] .word {
+      display: inline-block;
+      background: rgba(0, 0, 0, 0.84);
+      border-radius: 0.28em;
+      padding: 0.05em 0.22em;
+      margin: 0 0.04em;
+      transition: background 0.07s, color 0.07s, transform 0.07s;
+      transform: translateY(0);
+    }
+    .live-transcript-overlay[data-caption-mode="capcut_black"] .word.active {
+      background: var(--caption-highlight-bg, #ff4d79);
+      color: var(--caption-highlight-color, #fff);
+      font-family: var(--caption-highlight-font-family, inherit);
+      font-weight: var(--caption-highlight-font-weight, inherit);
+      border-radius: var(--caption-highlight-radius, 4px);
+      padding: max(2px, var(--caption-highlight-pad-y, 2px)) max(6px, var(--caption-highlight-pad-x, 6px));
+      transform: translateY(-0.04em) scale(1.04);
+    }
+
+    /* ── Caption mode: Word Pop (scale-punch) ── */
+    .live-transcript-overlay[data-caption-mode="word_pop"] .word {
+      display: inline-block;
+      transition: transform 0.13s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.08s, color 0.08s, border-radius 0.08s, padding 0.08s;
+      transform-origin: center bottom;
+      transform: scale(1) translateY(0);
+    }
+    .live-transcript-overlay[data-caption-mode="word_pop"] .word.active {
+      transform: scale(1.28) translateY(-0.07em);
+      background: var(--caption-highlight-bg, #ffe05d);
+      color: var(--caption-highlight-color, #0c0f18);
+      font-family: var(--caption-highlight-font-family, inherit);
+      font-weight: var(--caption-highlight-font-weight, inherit);
+      border-radius: var(--caption-highlight-radius, 3px);
+      padding: var(--caption-highlight-pad-y, 0px) var(--caption-highlight-pad-x, 2px);
+    }
+
+    /* ── Caption mode: Slide Up (spring-in on segment change) ── */
+    @keyframes captionSlideIn {
+      from { opacity: 0; transform: translateX(-50%) translateY(24px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    .live-transcript-overlay[data-caption-mode="slide_up"].caption-entering {
+      animation: captionSlideIn 0.32s cubic-bezier(0.22, 1.4, 0.36, 1) forwards;
+    }
+    .live-transcript-overlay[data-caption-mode="slide_up"] .word.active {
+      color: var(--caption-highlight-bg, #7bffd6);
+      transform: translateY(-0.03em);
+    }
+
+    /* ── Script Editor ── */
+    .script-editor-area {
+      width: 100%;
+      min-height: 110px;
+      resize: vertical;
+      background: #0e192d;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: #e2ecff;
+      font-family: "Fira Sans", "Noto Sans", sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      padding: 8px 10px;
+      margin-top: 6px;
+    }
+    .script-editor-area:focus {
+      outline: 2px solid rgba(126, 191, 255, 0.6);
+      border-color: #6aadff;
+    }
+    .script-editor-area::placeholder {
+      color: #4a5f82;
+    }
+    .script-controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .script-controls label {
+      margin: 0;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #afbfde;
+    }
+    .script-controls select,
+    .script-controls input[type="number"] {
+      min-height: 28px;
+      font-size: 11px;
+      width: 100%;
+    }
+    .script-stat {
+      margin-top: 6px;
+      font-size: 10px;
+      color: #7a93bf;
+      min-height: 14px;
+    }
+
+    /* ── Caption position controls ── */
+    .caption-pos-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 5px;
+      margin-top: 6px;
+    }
+    .caption-pos-btn {
+      min-height: 32px;
+      font-size: 10px;
+      font-weight: 700;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      padding: 5px 4px;
+    }
+    .caption-pos-btn .pos-icon {
+      font-size: 14px;
+      line-height: 1;
+    }
+    .caption-pos-btn.active {
+      border-color: #76d0b8;
+      background: linear-gradient(130deg, #1a3d35, #163329);
+      color: #b8ffe8;
+      box-shadow: 0 0 0 1px rgba(118, 208, 184, 0.4);
+    }
+
+    /* ── Caption zone indicator (canvas overlay) ── */
+    .caption-zone-indicator {
+      position: absolute;
+      pointer-events: auto;
+      z-index: 8;
+      border: 1.5px dashed rgba(118, 208, 184, 0.55);
+      border-radius: 6px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 4px 7px;
+      cursor: ns-resize;
+      user-select: none;
+      transition: top 0.2s ease, bottom 0.2s ease, left 0.2s ease, width 0.2s ease;
+    }
+    .caption-zone-indicator:hover {
+      border-color: rgba(118, 208, 184, 0.9);
+      background: rgba(118, 208, 184, 0.06);
+    }
+    .caption-zone-indicator.dragging {
+      transition: none;
+      cursor: grabbing;
+      border-color: rgba(118, 208, 184, 1);
+      background: rgba(118, 208, 184, 0.1);
+    }
+    .caption-zone-indicator .cz-label {
+      font-size: 9px;
+      font-weight: 700;
+      color: rgba(118, 208, 184, 0.7);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      line-height: 1;
+    }
+    .caption-zone-indicator.hidden {
+      display: none;
+    }
+
+    /* ── Canvas format safe-zone guide ── */
+    .format-guide {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 8;
+    }
+    .format-guide-mask {
+      position: absolute;
+      background: rgba(0, 0, 0, 0.58);
+    }
+    .format-guide-frame {
+      position: absolute;
+      border: 1.5px dashed rgba(120, 184, 255, 0.55);
+      border-radius: 2px;
+    }
+    .format-guide-label {
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      color: rgba(160, 210, 255, 0.7);
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      white-space: nowrap;
+      background: rgba(0, 0, 0, 0.45);
+      padding: 2px 7px;
+      border-radius: 999px;
+    }
+
+    /* ── Caption Styles Floating Panel ── */
+    .caption-float-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 272px;
+      background: var(--panel);
+      border-left: 1px solid var(--border);
+      box-shadow: -12px 0 40px rgba(0, 0, 0, 0.5);
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .caption-float-panel.open {
+      transform: translateX(0);
+    }
+    .cfp-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 12px 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .cfp-header-title {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 0.01em;
+    }
+    .cfp-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      line-height: 1;
+    }
+    .cfp-close:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+    .cfp-apply-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .cfp-apply-label {
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .cfp-apply-btns {
+      display: flex;
+      gap: 4px;
+      flex: 1;
+    }
+    .cfp-apply-btn {
+      flex: 1;
+      font-size: 11px;
+      padding: 4px 6px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .cfp-apply-btn.active {
+      background: var(--accent);
+      color: #05080f;
+      border-color: transparent;
+      font-weight: 700;
+    }
+    .cfp-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .cfp-card {
+      width: 100%;
+      border-radius: 10px;
+      border: 2px solid transparent;
+      background: #111826;
+      cursor: pointer;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+      padding: 0;
+      transition: border-color 0.12s;
+    }
+    .cfp-card:hover { border-color: rgba(122, 199, 255, 0.35); }
+    .cfp-card.active {
+      border-color: #88d8bf;
+      box-shadow: 0 0 0 1px rgba(136, 216, 191, 0.3);
+    }
+    .cfp-card-preview {
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 14px;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .cfp-card-name {
+      font-size: 10px;
+      font-weight: 700;
+      color: #7a93bf;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 5px 10px 6px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .cfp-card.active .cfp-card-name { color: #7be8c8; }
+    /* Backdrop to close panel by clicking outside */
+    .cfp-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 59;
+      display: none;
+    }
+    .cfp-backdrop.open { display: block; }
   </style>
 </head>
 <body>
@@ -1113,6 +1814,50 @@
         </div>
       </section>
 
+      <section class="group collapsible" data-panel="script">
+        <div class="group-head">
+          <h3>Script Editor</h3>
+          <button type="button" class="group-toggle" data-toggle-panel="script" aria-controls="scriptBody" aria-expanded="true">Hide</button>
+        </div>
+        <div class="group-body" id="scriptBody">
+          <textarea
+            id="scriptEditorText"
+            class="script-editor-area"
+            placeholder="Type your narration here…&#10;&#10;One Block: whole text becomes ONE caption clip.&#10;Words are timed by WPM and shown N-at-a-time on screen."
+            spellcheck="true"
+          ></textarea>
+          <div class="script-stat" id="scriptEditorStat"></div>
+          <div class="script-controls">
+            <div>
+              <label for="scriptSplitMode">Mode</label>
+              <select id="scriptSplitMode">
+                <option value="oneblock" selected>One Block (all words)</option>
+                <option value="sentence">Split at sentence</option>
+                <option value="line">Split at line break</option>
+                <option value="words">Split every N words</option>
+              </select>
+            </div>
+            <div id="scriptWordCountRow">
+              <label for="scriptWordsPerCap" id="scriptWordsPerCapLabel">Words per view</label>
+              <input id="scriptWordsPerCap" type="number" min="1" max="12" step="1" value="4">
+            </div>
+            <div>
+              <label for="scriptWPM">Speaking speed <span id="scriptWpmValue">130</span> WPM</label>
+              <input id="scriptWPM" type="range" min="80" max="220" step="5" value="130">
+            </div>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <button id="btnScriptGenerate" class="primary">Generate Caption</button>
+            <button id="btnScriptAppend">Append to Timeline</button>
+          </div>
+          <div class="row">
+            <button id="btnScriptClear" class="warn">Clear Script</button>
+            <button id="btnScriptFromTranscript">Pull from Transcript</button>
+          </div>
+          <p class="sub" style="margin:8px 0 0">One Block: whole script → one clip on the timeline. Words timed by WPM, displayed N-at-a-time. Drag the clip to reposition; click words in the list to seek.</p>
+        </div>
+      </section>
+
       <section class="group collapsible" data-panel="timeline">
         <div class="group-head">
           <h3>Timeline / Transcript</h3>
@@ -1132,13 +1877,104 @@
           <div class="timeline-time" id="timelineTimeLabel">00:00.00 / 00:00.00</div>
           <div class="transcript-now" id="transcriptNow">Load transcript JSON to preview timed text.</div>
           <div class="transcript-list" id="transcriptList"></div>
+          <div class="row" style="margin-bottom:6px">
+            <button id="btnOpenCaptionStyles" style="flex:1;font-weight:700">🎨 Browse Styles</button>
+          </div>
           <div class="caption-template-list" id="captionTemplateList">
-            <button type="button" data-caption-template="typewriter"><span class="name">Typewriter</span><span class="meta">char reveal</span></button>
-            <button type="button" data-caption-template="karaoke_classic"><span class="name">Karaoke</span><span class="meta">active word</span></button>
-            <button type="button" data-caption-template="impact_yellow"><span class="name">Impact Yellow</span><span class="meta">bold + punch</span></button>
-            <button type="button" data-caption-template="clean_paragraph"><span class="name">Clean Paragraph</span><span class="meta">minimal subtitle</span></button>
-            <button type="button" data-caption-template="bold_two_words"><span class="name">Bold Two Words</span><span class="meta">headline style</span></button>
-            <button type="button" data-caption-template="custom"><span class="name">Custom</span><span class="meta">manual controls</span></button>
+
+            <!-- Typewriter -->
+            <button type="button" data-caption-template="typewriter">
+              <span class="tmpl-preview" style="background:#081321">
+                <span style="color:#e9f2ff;font-weight:700;font-size:13px;letter-spacing:0.01em">
+                  Hello<span style="color:#7be0ff;font-weight:400">|</span>
+                </span>
+              </span>
+              <span class="tmpl-name">Typewriter</span>
+            </button>
+
+            <!-- Karaoke Classic -->
+            <button type="button" data-caption-template="karaoke_classic">
+              <span class="tmpl-preview" style="background:#0b1018">
+                <span style="color:#f7fbff;font-weight:800;font-size:12px">
+                  how <mark style="background:#ffe05d;color:#121315;border-radius:3px;padding:0 3px;font-style:normal">can</mark> i
+                </span>
+              </span>
+              <span class="tmpl-name">Karaoke</span>
+            </button>
+
+            <!-- Impact Yellow -->
+            <button type="button" data-caption-template="impact_yellow">
+              <span class="tmpl-preview" style="background:#06090f;flex-direction:column;gap:1px">
+                <span style="color:#ffe25a;font-weight:900;font-size:11px;letter-spacing:0.5px;text-transform:uppercase;text-shadow:-1px -1px 0 #020306,1px -1px 0 #020306,-1px 1px 0 #020306,1px 1px 0 #020306;font-family:'Oswald',Impact,sans-serif">
+                  THIS IS A
+                </span>
+                <span style="color:#ffe25a;font-weight:900;font-size:11px;letter-spacing:0.5px;text-transform:uppercase;text-shadow:-1px -1px 0 #020306,1px -1px 0 #020306,-1px 1px 0 #020306,1px 1px 0 #020306;font-family:'Oswald',Impact,sans-serif">
+                  <mark style="background:#5aff9f;color:#03120a;border-radius:2px;padding:0 3px;font-style:normal">CAPTION</mark>
+                </span>
+              </span>
+              <span class="tmpl-name">Impact: Yellow</span>
+            </button>
+
+            <!-- Clean Paragraph -->
+            <button type="button" data-caption-template="clean_paragraph">
+              <span class="tmpl-preview" style="background:rgba(16,23,38,0.5)">
+                <span style="color:#f2f5fa;font-weight:600;font-size:10px;line-height:1.4">
+                  This is a clean caption with white text
+                </span>
+              </span>
+              <span class="tmpl-name">Classic</span>
+            </button>
+
+            <!-- Bold Two Words -->
+            <button type="button" data-caption-template="bold_two_words">
+              <span class="tmpl-preview" style="background:#04060a;flex-direction:column;line-height:1.1;gap:1px">
+                <span style="color:#ffffff;font-weight:900;font-size:16px;font-family:'Oswald',Impact,sans-serif;letter-spacing:0.5px;text-shadow:-1.5px -1.5px 0 #05070d,1.5px -1.5px 0 #05070d,-1.5px 1.5px 0 #05070d,1.5px 1.5px 0 #05070d">TWO</span>
+                <span style="color:#ffd95a;font-weight:900;font-size:16px;font-family:'Oswald',Impact,sans-serif;letter-spacing:0.5px;text-shadow:-1.5px -1.5px 0 #05070d,1.5px -1.5px 0 #05070d,-1.5px 1.5px 0 #05070d,1.5px 1.5px 0 #05070d">WORD</span>
+              </span>
+              <span class="tmpl-name">Bold: Two Words</span>
+            </button>
+
+            <!-- CapCut Black -->
+            <button type="button" data-caption-template="capcut_black">
+              <span class="tmpl-preview" style="background:transparent;flex-wrap:wrap;gap:4px;padding:8px 4px">
+                <span style="background:rgba(0,0,0,0.85);color:#fff;border-radius:4px;padding:2px 6px;font-size:11px;font-weight:800">how</span>
+                <span style="background:#ff4d79;color:#fff;border-radius:4px;padding:2px 6px;font-size:11px;font-weight:800">can</span>
+                <span style="background:rgba(0,0,0,0.85);color:#fff;border-radius:4px;padding:2px 6px;font-size:11px;font-weight:800">i</span>
+              </span>
+              <span class="tmpl-name">CapCut Pills</span>
+            </button>
+
+            <!-- Word Pop -->
+            <button type="button" data-caption-template="word_pop">
+              <span class="tmpl-preview" style="background:rgba(0,0,0,0.72)">
+                <span style="color:#fff;font-weight:900;font-size:10px;text-shadow:-1px -1px 0 #030608,1px -1px 0 #030608,-1px 1px 0 #030608,1px 1px 0 #030608">
+                  how
+                  <span style="color:#ffe05d;font-size:15px;display:inline-block;transform:scale(1.2) translateY(-1px);background:rgba(255,224,93,0.12);border-radius:3px;padding:0 2px">CAN</span>
+                  i make
+                </span>
+              </span>
+              <span class="tmpl-name">Word Pop</span>
+            </button>
+
+            <!-- Slide Up -->
+            <button type="button" data-caption-template="slide_up">
+              <span class="tmpl-preview" style="background:rgba(6,11,21,0.8)">
+                <span style="color:#fff;font-weight:800;font-size:11px;text-shadow:-1px -1px 0 #030608,1px 1px 0 #030608">
+                  how can <span style="color:#7bffd6">i</span> make
+                </span>
+              </span>
+              <span class="tmpl-name">Slide Up</span>
+            </button>
+
+            <!-- Custom -->
+            <button type="button" data-caption-template="custom" style="grid-column: 1 / -1;">
+              <span class="tmpl-preview" style="background:rgba(16,24,41,0.5);flex-direction:row;gap:8px;padding:6px 10px">
+                <span style="font-size:18px;opacity:0.6">⚙</span>
+                <span style="color:#c9dcff;font-weight:700;font-size:11px;text-align:left">Custom — manually set colors,<br>font, size, stroke &amp; mode</span>
+              </span>
+              <span class="tmpl-name">Custom</span>
+            </button>
+
           </div>
           <div class="row" style="margin-top:8px">
             <button id="btnCaptionApplyAll">Apply To All Clips</button>
@@ -1152,6 +1988,31 @@
               <input id="captionStrokeColor" type="color" value="#05070d">
               <label for="captionHighlightColor">Highlight</label>
               <input id="captionHighlightColor" type="color" value="#ffe05d">
+              <label for="captionHighlightTextColor">HL Text</label>
+              <input id="captionHighlightTextColor" type="color" value="#121315">
+              <label for="captionHighlightFontFamily">HL Font</label>
+              <select id="captionHighlightFontFamily">
+                <option value="">Same as caption</option>
+                <option value="Sora">Sora</option>
+                <option value="Oswald">Oswald</option>
+                <option value="Nunito">Nunito</option>
+                <option value="Bebas Neue">Bebas Neue</option>
+                <option value="Impact">Impact</option>
+              </select>
+              <label for="captionHighlightFontWeight">HL Weight</label>
+              <select id="captionHighlightFontWeight">
+                <option value="500">Medium</option>
+                <option value="600">Semi Bold</option>
+                <option value="700" selected>Bold</option>
+                <option value="800">Extra Bold</option>
+                <option value="900">Black</option>
+              </select>
+              <label for="captionHighlightPadY">HL Height</label>
+              <input id="captionHighlightPadY" type="number" min="0" max="18" step="0.5" value="0">
+              <label for="captionHighlightPadX">HL Width</label>
+              <input id="captionHighlightPadX" type="number" min="0" max="18" step="0.5" value="3">
+              <label for="captionHighlightRadius">HL Radius</label>
+              <input id="captionHighlightRadius" type="number" min="0" max="24" step="0.5" value="3">
               <label for="captionOverlayBg">Background</label>
               <input id="captionOverlayBg" type="color" value="#111111">
               <label for="captionFontSize">Font Size</label>
@@ -1164,11 +2025,23 @@
               <input id="captionLetterSpacing" type="number" min="-1" max="5" step="0.1" value="0">
               <label for="captionOverlayOpacity">BG Opacity</label>
               <input id="captionOverlayOpacity" type="number" min="0" max="1" step="0.05" value="0.76">
+              <label for="captionFontFamily">Font</label>
+              <select id="captionFontFamily">
+                <option value="">Default</option>
+                <option value="Sora">Sora</option>
+                <option value="Oswald">Oswald</option>
+                <option value="Nunito">Nunito</option>
+                <option value="Bebas Neue">Bebas Neue</option>
+                <option value="Impact">Impact</option>
+              </select>
               <label for="captionActionMode">Action</label>
               <select id="captionActionMode">
                 <option value="plain">Plain</option>
-                <option value="karaoke" selected>Karaoke Word Highlight</option>
+                <option value="karaoke" selected>Karaoke</option>
                 <option value="typewriter">Typewriter</option>
+                <option value="capcut_black">CapCut Black</option>
+                <option value="word_pop">Word Pop</option>
+                <option value="slide_up">Slide Up</option>
               </select>
               <label for="captionFontWeight">Font Weight</label>
               <select id="captionFontWeight">
@@ -1210,6 +2083,11 @@
             <input id="strokeColor" type="color" value="#6ec8ff" style="flex:initial;width:72px;padding:2px;height:34px">
             <label for="bgColor" style="margin:0">Canvas</label>
             <input id="bgColor" type="color" value="#06080f" style="flex:initial;width:72px;padding:2px;height:34px">
+          </div>
+          <div class="row tight" style="margin-top:6px">
+            <input id="fillEnabled" type="checkbox">
+            <label for="fillEnabled" style="margin:0">Fill</label>
+            <input id="fillColor" type="color" value="#6ec8ff" style="flex:initial;width:56px;padding:2px;height:28px;margin-left:6px">
           </div>
           <div class="palette" id="palette"></div>
           <div class="recent-row" id="recentColors"></div>
@@ -1336,6 +2214,14 @@
               <label for="motionToOpacity">To Opacity</label>
               <input id="motionToOpacity" type="number" min="0" max="1" step="0.05" value="1">
             </div>
+            <div class="motion-field">
+              <label for="motionTrimStart">Trim Start %</label>
+              <input id="motionTrimStart" type="number" min="0" max="100" step="1" value="0">
+            </div>
+            <div class="motion-field">
+              <label for="motionTrimEnd">Trim End %</label>
+              <input id="motionTrimEnd" type="number" min="0" max="100" step="1" value="100">
+            </div>
             <div class="motion-field" style="grid-column: 1 / -1;">
               <label for="motionEase">Easing</label>
               <select id="motionEase">
@@ -1347,10 +2233,30 @@
             </div>
           </div>
           <div class="row">
+            <button id="btnMotionInsertKeyframe">Insert KF @ Playhead</button>
+            <button id="btnMotionSetKeyframe">Set KF From Controls</button>
+            <button id="btnMotionDeleteKeyframe" class="warn">Delete KF @ Playhead</button>
+          </div>
+          <div class="row">
             <button id="btnMotionApply">Apply Motion</button>
             <button id="btnMotionClear">Clear Motion</button>
           </div>
-          <p class="sub" style="margin:8px 0 0">Apply to selected unlocked shapes. Scrub/play timeline to preview movement and fade.</p>
+          <div class="section-label" style="margin-top:10px;margin-bottom:4px;font-size:10px;color:#8aa4c8;text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Entrance Presets</div>
+          <div class="mini-grid" style="grid-template-columns:repeat(3,1fr);">
+            <button id="btnPresetFadeIn" title="Fade In — opacity 0→1">Fade In</button>
+            <button id="btnPresetFlyLeft" title="Fly from left — slide in from left">Fly Left</button>
+            <button id="btnPresetFlyRight" title="Fly from right — slide in from right">Fly Right</button>
+            <button id="btnPresetFlyUp" title="Fly from below — slide up into position">Fly Up</button>
+            <button id="btnPresetFlyDown" title="Fly from above — drop in from top">Fly Down</button>
+            <button id="btnPresetZoomIn" title="Zoom In — scale up from center (via opacity)">Zoom In</button>
+          </div>
+          <div class="section-label" style="margin-top:8px;margin-bottom:4px;font-size:10px;color:#8aa4c8;text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Exit Presets</div>
+          <div class="mini-grid" style="grid-template-columns:repeat(3,1fr);">
+            <button id="btnPresetFadeOut" title="Fade Out — opacity 1→0">Fade Out</button>
+            <button id="btnPresetFlyOutLeft" title="Fly out left — slide off to the left">Fly Left</button>
+            <button id="btnPresetFlyOutRight" title="Fly out right — slide off to the right">Fly Right</button>
+          </div>
+          <p class="sub" style="margin:8px 0 0">Apply Motion creates two keyframes (start/end). Right-click in Shapes timeline to insert keyframes; Set KF writes current control values to the playhead keyframe. Trim path currently affects line/arrow shapes.</p>
           <p class="sub" style="margin:8px 0 0">Tip: Shift+Click or drag to multi-select. Alt+drag subtracts. Select one line/rect to reveal editable points.</p>
         </div>
       </section>
@@ -1402,9 +2308,65 @@
             <button id="btnLoadJson">Load JSON</button>
             <button id="btnExportDsl">Export DSL Starter</button>
             <button id="btnExportPng">Export PNG</button>
+            <button id="btnExportSRT">Export SRT</button>
           </div>
           <input id="fileLoader" type="file" accept="application/json" style="display:none">
           <p class="sub" style="margin:8px 0 0">Save canvas JSON for edits, or export a storyboard DSL starter for timeline animation in the Storyboard Player.</p>
+        </div>
+      </section>
+
+      <section class="group collapsible collapsed" data-panel="format">
+        <div class="group-head">
+          <h3>Format / Shorts</h3>
+          <button type="button" class="group-toggle" data-toggle-panel="format" aria-controls="formatBody" aria-expanded="false">Show</button>
+        </div>
+        <div class="group-body" id="formatBody">
+          <div class="mini-grid">
+            <button id="btnFormat16x9">16:9</button>
+            <button id="btnFormat9x16">9:16 Shorts</button>
+            <button id="btnFormat1x1">1:1 Square</button>
+          </div>
+          <p class="sub" style="margin:8px 0 0">Overlay safe-zone guides for the selected format. 9:16 = vertical short, 1:1 = square post.</p>
+
+          <label style="margin-top:10px">Caption Placement</label>
+          <div class="caption-pos-grid">
+            <button id="btnCaptionPosTop" class="caption-pos-btn" title="Place caption at top of frame">
+              <span class="pos-icon">⬆</span>Top
+            </button>
+            <button id="btnCaptionPosCenter" class="caption-pos-btn" title="Place caption at center of frame">
+              <span class="pos-icon">⬛</span>Center
+            </button>
+            <button id="btnCaptionPosBottom" class="caption-pos-btn active" title="Place caption at bottom of frame">
+              <span class="pos-icon">⬇</span>Bottom
+            </button>
+          </div>
+          <label for="captionOffsetPct" style="margin-top:8px">
+            Edge offset <span id="captionOffsetPctValue">12</span>%
+          </label>
+          <input id="captionOffsetPct" type="range" min="2" max="48" step="1" value="12">
+          <div class="row tight" style="margin-top:6px">
+            <input id="captionZoneVisible" type="checkbox" checked>
+            <label for="captionZoneVisible" style="margin:0;font-size:11px">Show placement zone</label>
+          </div>
+
+          <label style="margin-top:10px">Webcam PiP</label>
+          <div class="row">
+            <button id="btnWebcamToggle">Enable Cam</button>
+            <select id="webcamPosition">
+              <option value="br">Bottom Right</option>
+              <option value="bl">Bottom Left</option>
+              <option value="tr">Top Right</option>
+              <option value="tl">Top Left</option>
+            </select>
+          </div>
+          <div class="row">
+            <select id="webcamShape">
+              <option value="circle">Circle</option>
+              <option value="rounded">Rounded Rect</option>
+            </select>
+          </div>
+          <label for="webcamSize">Cam Size <span id="webcamSizeValue">80</span>px</label>
+          <input id="webcamSize" type="range" min="60" max="200" step="10" value="80">
         </div>
       </section>
 
@@ -1425,6 +2387,7 @@
       <button class="focus-toggle" id="focusToggleBtn">Press H to show controls</button>
       <button class="focus-toggle menu-btn" id="menuBtn" style="left:12px;bottom:52px">Menu</button>
       <canvas id="stage" aria-label="Presenter drawing canvas"></canvas>
+      <textarea id="canvasTextEditor" class="canvas-text-editor" style="display:none" spellcheck="false" rows="3"></textarea>
       <div class="hud">
         <div class="pill" id="toolPill">Tool: Pen</div>
         <div class="pill" id="zoomPill">Zoom: 100%</div>
@@ -1434,11 +2397,37 @@
       </div>
       <div class="snap-badge" id="snapBadge">▦ Snap to Grid</div>
       <div class="laser-dot" id="laserDot"></div>
+      <div class="format-guide" id="formatGuide"></div>
+      <div class="caption-zone-indicator" id="captionZoneIndicator">
+        <span class="cz-label">Caption Zone</span>
+      </div>
+      <video id="webcamFeed" style="display:none;position:absolute;pointer-events:none" aria-hidden="true" muted playsinline autoplay></video>
       <div class="live-transcript-overlay" id="liveTranscriptOverlay"></div>
+
+      <!-- Teleprompter — lives in the pillarbox / letterbox area outside the safe zone -->
+      <div class="teleprompter" id="teleprompter">
+        <div class="tp-label">Now speaking</div>
+        <div class="tp-current" id="tpCurrent"></div>
+        <div class="tp-next" id="tpNext"></div>
+      </div>
+
+      <!-- REC badge -->
+      <div class="rec-badge" id="recBadge">
+        <span class="rec-dot"></span>
+        <span>REC</span>
+        <span class="rec-time" id="recTime">0:00</span>
+      </div>
+
+      <!-- 3-2-1 countdown overlay -->
+      <div class="countdown-overlay" id="countdownOverlay">
+        <span class="countdown-num" id="countdownNum">3</span>
+      </div>
       <div class="timeline-dock" id="timelineDock">
         <div class="timeline-toolbar">
+          <button id="btnPresent" title="Enter present mode: hides sidebar, shows teleprompter. Space=play, Esc=exit">Present</button>
           <button id="btnTimelineDockPlay">Play</button>
           <button id="btnTimelineDockStop">Stop</button>
+          <button id="btnTimelineInsertKeyframe">Insert KF</button>
           <button id="btnTimelineSplit">Split</button>
           <button id="btnTimelineDeleteClip" class="warn">Delete Clip</button>
           <label class="inline" for="timelineSnap">
@@ -1469,7 +2458,7 @@
             </div>
             <div class="timeline-track">
               <div class="timeline-track-label">Shapes</div>
-              <div class="timeline-track-body" id="timelineTrackShapeBody"></div>
+              <div class="timeline-track-body shapes" id="timelineTrackShapeBody"></div>
             </div>
             <div class="timeline-track">
               <div class="timeline-track-label">Captions</div>
@@ -1498,6 +2487,8 @@
         <tr><td><span class="kbd">Ctrl+Shift+G</span></td><td>Ungroup selected shapes</td></tr>
         <tr><td><span class="kbd">K</span></td><td>Play/Pause timeline</td></tr>
         <tr><td><span class="kbd">X</span></td><td>Split selected timeline clip at playhead</td></tr>
+        <tr><td><span class="kbd">I</span> / <span class="kbd">Shift+I</span></td><td>Insert/Delete motion keyframe at playhead</td></tr>
+        <tr><td><span class="kbd">[</span> / <span class="kbd">]</span></td><td>Jump to previous/next motion keyframe</td></tr>
         <tr><td><span class="kbd">Ctrl+Z</span></td><td>Undo</td></tr>
         <tr><td><span class="kbd">Ctrl+Shift+Z</span> / <span class="kbd">Ctrl+Y</span></td><td>Redo</td></tr>
         <tr><td><span class="kbd">Ctrl+S</span></td><td>Save JSON</td></tr>
@@ -1521,6 +2512,25 @@
         <tr><td><span class="kbd">?</span></td><td>This overlay</td></tr>
       </table>
       <p style="margin:12px 0 0;font-size:11px;color:var(--muted)">Press <span class="kbd">?</span> or click outside to close.</p>
+    </div>
+  </div>
+
+  <!-- Caption Styles floating panel (Descript-style) -->
+  <div class="cfp-backdrop" id="cfpBackdrop"></div>
+  <div class="caption-float-panel" id="captionFloatPanel" role="dialog" aria-label="Caption Styles">
+    <div class="cfp-header">
+      <span class="cfp-header-title">🎨 Caption Styles</span>
+      <button class="cfp-close" id="btnCaptionPanelClose" title="Close (Esc)">✕</button>
+    </div>
+    <div class="cfp-apply-row">
+      <span class="cfp-apply-label">Apply to</span>
+      <div class="cfp-apply-btns">
+        <button class="cfp-apply-btn active" id="btnCfpSelected">Selected</button>
+        <button class="cfp-apply-btn" id="btnCfpAll">All clips</button>
+      </div>
+    </div>
+    <div class="cfp-scroll" id="cfpScroll">
+      <!-- Cards generated by JS from CAPTION_TEMPLATE_PRESETS -->
     </div>
   </div>
 
