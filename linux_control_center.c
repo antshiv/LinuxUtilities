@@ -277,6 +277,8 @@ typedef struct {
     guint thumb_columns;
     gboolean thumb_ui_syncing;
     gboolean dock_ui_syncing;
+    gboolean night_switch_internal_update;
+    guint night_apply_source_id;
     guint ui_state_save_source_id;
     guint thumb_anim_source_id;
     gint thumb_anim_target_pos;
@@ -3116,13 +3118,22 @@ static void gtk4_on_theme_selected(GObject *dropdown, GParamSpec *pspec, gpointe
 
 static void gtk4_night_refresh(Gtk4State *state) {
     gchar *redshift = NULL;
+    gboolean auto_on = FALSE;
     if (!state || !state->night_status) {
         return;
     }
+    if (state->night_auto_switch) {
+        auto_on = gtk_switch_get_active(GTK_SWITCH(state->night_auto_switch));
+    }
     redshift = g_find_program_in_path("redshift");
     if (redshift) {
-        gtk_label_set_text(GTK_LABEL(state->night_status),
-                           "Night Light ready. Auto uses geoclue2; Manual uses slider + Apply.");
+        if (auto_on) {
+            gtk_label_set_text(GTK_LABEL(state->night_status),
+                               "Auto Night Light enabled (geoclue2 + randr). Manual actions pause auto.");
+        } else {
+            gtk_label_set_text(GTK_LABEL(state->night_status),
+                               "Manual Night Light mode. Apply/Warm/Cool hold temperature until Resume Auto.");
+        }
     } else {
         gtk_label_set_text(GTK_LABEL(state->night_status),
                            "redshift not found. Install with: sudo apt install redshift");
@@ -3133,14 +3144,28 @@ static void gtk4_night_refresh(Gtk4State *state) {
 static void gtk4_night_apply_manual(Gtk4State *state) {
     gint kelvin = 4200;
     gchar *cmd = NULL;
+    gchar *msg = NULL;
     if (!state || !state->night_scale) {
         return;
     }
+    if (state->night_auto_switch &&
+        gtk_switch_get_active(GTK_SWITCH(state->night_auto_switch))) {
+        /* Pause auto mode in UI without firing auto-off command (avoid reset/apply race). */
+        state->night_switch_internal_update = TRUE;
+        gtk_switch_set_active(GTK_SWITCH(state->night_auto_switch), FALSE);
+        state->night_switch_internal_update = FALSE;
+    }
     kelvin = (gint)gtk_range_get_value(GTK_RANGE(state->night_scale));
-    cmd = g_strdup_printf("redshift -O %d", kelvin);
+    cmd = g_strdup_printf(
+        "bash -lc \"pkill -x redshift >/dev/null 2>&1 || true; redshift -m randr -P -O %d >/dev/null 2>&1\"",
+        kelvin);
     gtk4_spawn_with_feedback(state, cmd, "Applied manual Night Light temperature.");
     g_free(cmd);
-    gtk4_night_refresh(state);
+    if (state->night_status) {
+        msg = g_strdup_printf("Manual Night Light hold at %dK. Click Resume Auto for timezone mode.", kelvin);
+        gtk_label_set_text(GTK_LABEL(state->night_status), msg);
+        g_free(msg);
+    }
 }
 
 static void gtk4_on_night_apply(GtkButton *button, gpointer user_data) {
@@ -3157,7 +3182,6 @@ static void gtk4_on_night_warmer(GtkButton *button, gpointer user_data) {
     }
     v = gtk_range_get_value(GTK_RANGE(state->night_scale));
     gtk_range_set_value(GTK_RANGE(state->night_scale), CLAMP(v - 200.0, 1500.0, 6500.0));
-    gtk4_night_apply_manual(state);
 }
 
 static void gtk4_on_night_cooler(GtkButton *button, gpointer user_data) {
@@ -3169,15 +3193,63 @@ static void gtk4_on_night_cooler(GtkButton *button, gpointer user_data) {
     }
     v = gtk_range_get_value(GTK_RANGE(state->night_scale));
     gtk_range_set_value(GTK_RANGE(state->night_scale), CLAMP(v + 200.0, 1500.0, 6500.0));
+}
+
+static gboolean gtk4_on_night_scale_apply_timeout(gpointer user_data) {
+    Gtk4State *state = user_data;
+    if (!state) {
+        return G_SOURCE_REMOVE;
+    }
+    state->night_apply_source_id = 0;
     gtk4_night_apply_manual(state);
+    return G_SOURCE_REMOVE;
+}
+
+static void gtk4_on_night_scale_value_changed(GtkRange *range, gpointer user_data) {
+    Gtk4State *state = user_data;
+    (void)range;
+    if (!state) {
+        return;
+    }
+    if (state->night_apply_source_id != 0) {
+        g_source_remove(state->night_apply_source_id);
+        state->night_apply_source_id = 0;
+    }
+    state->night_apply_source_id = g_timeout_add(120, gtk4_on_night_scale_apply_timeout, state);
 }
 
 static void gtk4_on_night_disable(GtkButton *button, gpointer user_data) {
     Gtk4State *state = user_data;
     (void)button;
-    gtk4_spawn_with_feedback(state, "redshift -x", "Night Light disabled.");
+    if (state && state->night_auto_switch &&
+        gtk_switch_get_active(GTK_SWITCH(state->night_auto_switch))) {
+        gtk_switch_set_active(GTK_SWITCH(state->night_auto_switch), FALSE);
+    } else {
+        gtk4_spawn_with_feedback(state,
+                                 "bash -lc \"redshift -x >/dev/null 2>&1; pkill -x redshift >/dev/null 2>&1 || true\"",
+                                 "Night Light disabled.");
+    }
     if (state && state->night_status) {
         gtk_label_set_text(GTK_LABEL(state->night_status), "Night Light disabled.");
+    }
+}
+
+static void gtk4_on_night_resume_auto(GtkButton *button, gpointer user_data) {
+    Gtk4State *state = user_data;
+    (void)button;
+    if (!state) {
+        return;
+    }
+    if (state->night_auto_switch &&
+        !gtk_switch_get_active(GTK_SWITCH(state->night_auto_switch))) {
+        gtk_switch_set_active(GTK_SWITCH(state->night_auto_switch), TRUE);
+        return;
+    }
+    gtk4_spawn_with_feedback(state,
+                             "bash -lc \"pkill -x redshift >/dev/null 2>&1 || true; redshift -l geoclue2 -t 5700:3600 -m randr >/dev/null 2>&1 &\"",
+                             "Auto Night Light resumed.");
+    if (state->night_status) {
+        gtk_label_set_text(GTK_LABEL(state->night_status), "Auto Night Light resumed (geoclue2 + randr).");
     }
 }
 
@@ -3189,6 +3261,9 @@ static void gtk4_on_night_refresh(GtkButton *button, gpointer user_data) {
 static gboolean gtk4_on_night_auto_toggled(GtkSwitch *sw, gboolean state, gpointer user_data) {
     Gtk4State *app = user_data;
     (void)sw;
+    if (app && app->night_switch_internal_update) {
+        return FALSE;
+    }
     if (state) {
         gtk4_spawn_with_feedback(app,
                                  "bash -lc \"pkill -x redshift >/dev/null 2>&1 || true; redshift -l geoclue2 -t 5700:3600 -m randr >/dev/null 2>&1 &\"",
@@ -3961,6 +4036,7 @@ static GtkWidget *gtk4_build_night_tab(Gtk4State *state) {
     GtkWidget *apply = gtk_button_new_with_label("Apply Manual");
     GtkWidget *warmer = gtk_button_new_with_label("Warmer");
     GtkWidget *cooler = gtk_button_new_with_label("Cooler");
+    GtkWidget *resume_auto = gtk_button_new_with_label("Resume Auto");
     GtkWidget *disable = gtk_button_new_with_label("Turn Off");
     GtkWidget *refresh = gtk_button_new_with_label("Refresh");
 
@@ -3985,6 +4061,7 @@ static GtkWidget *gtk4_build_night_tab(Gtk4State *state) {
     gtk_box_append(GTK_BOX(buttons), apply);
     gtk_box_append(GTK_BOX(buttons), warmer);
     gtk_box_append(GTK_BOX(buttons), cooler);
+    gtk_box_append(GTK_BOX(buttons), resume_auto);
     gtk_box_append(GTK_BOX(buttons), disable);
     gtk_box_append(GTK_BOX(buttons), refresh);
 
@@ -4002,8 +4079,10 @@ static GtkWidget *gtk4_build_night_tab(Gtk4State *state) {
     g_signal_connect(apply, "clicked", G_CALLBACK(gtk4_on_night_apply), state);
     g_signal_connect(warmer, "clicked", G_CALLBACK(gtk4_on_night_warmer), state);
     g_signal_connect(cooler, "clicked", G_CALLBACK(gtk4_on_night_cooler), state);
+    g_signal_connect(resume_auto, "clicked", G_CALLBACK(gtk4_on_night_resume_auto), state);
     g_signal_connect(disable, "clicked", G_CALLBACK(gtk4_on_night_disable), state);
     g_signal_connect(refresh, "clicked", G_CALLBACK(gtk4_on_night_refresh), state);
+    g_signal_connect(scale, "value-changed", G_CALLBACK(gtk4_on_night_scale_value_changed), state);
     g_signal_connect(auto_switch, "state-set", G_CALLBACK(gtk4_on_night_auto_toggled), state);
     return root;
 }
@@ -5329,6 +5408,10 @@ static gboolean gtk4_on_window_close_request(GtkWindow *window, gpointer user_da
         return FALSE;
     }
     gtk4_thumb_cancel_animation(state);
+    if (state->night_apply_source_id != 0) {
+        g_source_remove(state->night_apply_source_id);
+        state->night_apply_source_id = 0;
+    }
     if (state->ui_state_save_source_id != 0) {
         g_source_remove(state->ui_state_save_source_id);
         state->ui_state_save_source_id = 0;
@@ -5342,6 +5425,10 @@ static void gtk4_state_free(Gtk4State *state) {
         return;
     }
     gtk4_thumb_cancel_animation(state);
+    if (state->night_apply_source_id != 0) {
+        g_source_remove(state->night_apply_source_id);
+        state->night_apply_source_id = 0;
+    }
     if (state->ui_state_save_source_id != 0) {
         g_source_remove(state->ui_state_save_source_id);
         state->ui_state_save_source_id = 0;
