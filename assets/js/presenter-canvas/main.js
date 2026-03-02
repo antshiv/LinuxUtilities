@@ -115,6 +115,7 @@ const BUTTON_ICON_LABELS = {
   btnTimelineStop: { icon: '■' },
   btnTimelineLoadTranscript: { icon: '≣', label: 'Load Transcript' },
   btnTimelineLoadAudio: { icon: '♪', label: 'Load Audio' },
+  btnTimelineMicRecord: { icon: '◉', label: 'Record Mic' },
   btnTimelineAddCaption: { icon: '+T', label: 'Add Caption At Time' },
   btnCaptionApplyAll: { icon: '◎', label: 'Apply To All Clips' },
   btnCaptionApplySelected: { icon: '◉', label: 'Apply To Selected Clip(s)' },
@@ -207,6 +208,7 @@ const els = {
   btnTimelineStop: document.getElementById('btnTimelineStop'),
   btnTimelineLoadTranscript: document.getElementById('btnTimelineLoadTranscript'),
   btnTimelineLoadAudio: document.getElementById('btnTimelineLoadAudio'),
+  btnTimelineMicRecord: document.getElementById('btnTimelineMicRecord'),
   btnTimelineAddCaption: document.getElementById('btnTimelineAddCaption'),
   timelineScrub: document.getElementById('timelineScrub'),
   timelineTimeLabel: document.getElementById('timelineTimeLabel'),
@@ -385,7 +387,11 @@ const DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
 const timelineRuntime = {
   audio: null,
   audioUrl: '',
-  activeIndex: -1
+  activeIndex: -1,
+  micRecorder: null,
+  micStream: null,
+  micChunks: [],
+  micFileExt: 'webm'
 };
 const TIMELINE_MIN_CLIP_SEC = 0.08;
 const TIMELINE_LABEL_WIDTH = 78;
@@ -969,6 +975,39 @@ function getSafeZoneRect() {
  * Re-positions the live-transcript-overlay and caption-zone-indicator
  * so they sit at the correct spot inside the active format frame.
  */
+function captionZoneTargetHeightPx(style, overlay) {
+  const fontPx = clamp(Number(style && style.fontSize) || 22, 14, 96);
+  const lineHeight = clamp(Number(style && style.lineHeight) || 1.34, 1.05, 2.2);
+  const hlPadY = clamp(Number(style && style.highlightPadY) || 0, 0, 18);
+  let target = Math.round(fontPx * lineHeight + 12 + hlPadY * 2);
+  if (overlay) {
+    const overlayRect = overlay.getBoundingClientRect();
+    const overlayHeight = Math.round(Number(overlayRect.height) || 0);
+    if (overlayHeight > 0) {
+      target = Math.round(overlayHeight + 10);
+    }
+  }
+  return clamp(target, 34, 86);
+}
+
+function syncCaptionPlacementControls() {
+  if (els.btnCaptionPosTop) {
+    els.btnCaptionPosTop.classList.toggle('active', captionPlacement.vertical === 'top');
+  }
+  if (els.btnCaptionPosCenter) {
+    els.btnCaptionPosCenter.classList.toggle('active', captionPlacement.vertical === 'center');
+  }
+  if (els.btnCaptionPosBottom) {
+    els.btnCaptionPosBottom.classList.toggle('active', captionPlacement.vertical === 'bottom');
+  }
+  if (els.captionOffsetPct) {
+    els.captionOffsetPct.value = String(captionPlacement.offsetPct);
+  }
+  if (els.captionOffsetPctValue) {
+    els.captionOffsetPctValue.textContent = String(captionPlacement.offsetPct);
+  }
+}
+
 function updateCaptionOverlayGeometry() {
   const overlay = els.liveTranscriptOverlay;
   const indicator = els.captionZoneIndicator;
@@ -980,12 +1019,17 @@ function updateCaptionOverlayGeometry() {
   const PAD = 16; // horizontal padding inside frame
   const overlayWidth = frame.width - PAD * 2;
   const offsetPx = Math.round(frame.height * (captionPlacement.offsetPct / 100));
+  const style = normalizeCaptionStyle(state.timeline.captionStyle, captionDefaultStyle());
+  const showZone = captionPlacement.zoneVisible && !state.timeline.playing;
+  const allowDrag = showZone;
 
   // ── position the overlay ──
   overlay.style.left      = `${frame.left + PAD}px`;
   overlay.style.width     = `${overlayWidth}px`;
   overlay.style.minWidth  = '0';
   overlay.style.maxWidth  = `${overlayWidth}px`;
+  overlay.classList.toggle('draggable', allowDrag);
+  overlay.style.pointerEvents = allowDrag ? 'auto' : 'none';
 
   if (captionPlacement.vertical === 'bottom') {
     overlay.style.bottom  = `${frame.top + offsetPx}px`;
@@ -1006,8 +1050,7 @@ function updateCaptionOverlayGeometry() {
   if (!indicator) {
     return;
   }
-  const zoneHeight = Math.max(40, Math.round(frame.height * 0.14));
-  const showZone = captionPlacement.zoneVisible && !state.timeline.playing;
+  const zoneHeight = captionZoneTargetHeightPx(style, overlay);
   indicator.classList.toggle('hidden', !showZone);
 
   if (showZone) {
@@ -1030,11 +1073,24 @@ function updateCaptionOverlayGeometry() {
 
 function setCaptionPlacementVertical(v) {
   captionPlacement.vertical = v;
-  if (els.btnCaptionPosTop)    els.btnCaptionPosTop.classList.toggle('active', v === 'top');
-  if (els.btnCaptionPosCenter) els.btnCaptionPosCenter.classList.toggle('active', v === 'center');
-  if (els.btnCaptionPosBottom) els.btnCaptionPosBottom.classList.toggle('active', v === 'bottom');
+  syncCaptionPlacementControls();
   updateCaptionOverlayGeometry();
   saveToLocalStorage();
+}
+
+function applyCaptionPlacementFromRelativePct(relPct) {
+  let newVertical = 'center';
+  let newOffsetPct = captionPlacement.offsetPct;
+  if (relPct < 38) {
+    newVertical = 'top';
+    newOffsetPct = clamp(Math.round(relPct), 2, 48);
+  } else if (relPct > 62) {
+    newVertical = 'bottom';
+    newOffsetPct = clamp(Math.round(100 - relPct), 2, 48);
+  }
+  captionPlacement.vertical = newVertical;
+  captionPlacement.offsetPct = newOffsetPct;
+  syncCaptionPlacementControls();
 }
 
 function setupCaptionZoneDrag() {
@@ -1061,35 +1117,14 @@ function setupCaptionZoneDrag() {
     if (!dragging) return;
     const frame = getSafeZoneRect();
     if (!frame.height) return;
+    const style = normalizeCaptionStyle(state.timeline.captionStyle, captionDefaultStyle());
 
     const deltaY = e.clientY - startClientY;
-    const zoneHeight = Math.max(40, Math.round(frame.height * 0.14));
+    const zoneHeight = captionZoneTargetHeightPx(style, els.liveTranscriptOverlay);
     // Center of indicator relative to top of frame
     const centerInFrame = (startIndicatorTopPx + deltaY + zoneHeight / 2) - frame.top;
     const relPct = clamp((centerInFrame / frame.height) * 100, 3, 97);
-
-    // Map position to anchor mode + offsetPct
-    let newVertical, newOffsetPct;
-    if (relPct < 38) {
-      newVertical = 'top';
-      newOffsetPct = clamp(Math.round(relPct), 2, 48);
-    } else if (relPct > 62) {
-      newVertical = 'bottom';
-      newOffsetPct = clamp(Math.round(100 - relPct), 2, 48);
-    } else {
-      newVertical = 'center';
-      newOffsetPct = captionPlacement.offsetPct;
-    }
-
-    captionPlacement.vertical = newVertical;
-    captionPlacement.offsetPct = newOffsetPct;
-
-    if (els.btnCaptionPosTop)    els.btnCaptionPosTop.classList.toggle('active', newVertical === 'top');
-    if (els.btnCaptionPosCenter) els.btnCaptionPosCenter.classList.toggle('active', newVertical === 'center');
-    if (els.btnCaptionPosBottom) els.btnCaptionPosBottom.classList.toggle('active', newVertical === 'bottom');
-    if (els.captionOffsetPct) els.captionOffsetPct.value = String(newOffsetPct);
-    if (els.captionOffsetPctValue) els.captionOffsetPctValue.textContent = String(newOffsetPct);
-
+    applyCaptionPlacementFromRelativePct(relPct);
     updateCaptionOverlayGeometry();
   });
 
@@ -1101,6 +1136,62 @@ function setupCaptionZoneDrag() {
   };
   indicator.addEventListener('pointerup', endDrag);
   indicator.addEventListener('pointercancel', endDrag);
+}
+
+function setupCaptionOverlayDrag() {
+  const overlay = els.liveTranscriptOverlay;
+  if (!overlay) {
+    return;
+  }
+
+  let dragging = false;
+  let startClientY = 0;
+  let startOverlayTopPx = 0;
+
+  overlay.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) {
+      return;
+    }
+    if (state.timeline.playing || !captionPlacement.zoneVisible || !overlay.classList.contains('active')) {
+      return;
+    }
+    dragging = true;
+    startClientY = e.clientY;
+    const wrap = els.canvasWrap.getBoundingClientRect();
+    const overlayRect = overlay.getBoundingClientRect();
+    startOverlayTopPx = overlayRect.top - wrap.top;
+    overlay.setPointerCapture(e.pointerId);
+    overlay.classList.add('dragging');
+    e.preventDefault();
+  });
+
+  overlay.addEventListener('pointermove', (e) => {
+    if (!dragging) {
+      return;
+    }
+    const frame = getSafeZoneRect();
+    if (!frame.height) {
+      return;
+    }
+    const overlayHeight = Math.max(24, Math.round(overlay.getBoundingClientRect().height || 0));
+    const deltaY = e.clientY - startClientY;
+    const centerInFrame = (startOverlayTopPx + deltaY + overlayHeight / 2) - frame.top;
+    const relPct = clamp((centerInFrame / frame.height) * 100, 3, 97);
+    applyCaptionPlacementFromRelativePct(relPct);
+    updateCaptionOverlayGeometry();
+    e.preventDefault();
+  });
+
+  const endDrag = () => {
+    if (!dragging) {
+      return;
+    }
+    dragging = false;
+    overlay.classList.remove('dragging');
+    saveToLocalStorage();
+  };
+  overlay.addEventListener('pointerup', endDrag);
+  overlay.addEventListener('pointercancel', endDrag);
 }
 
 function isFormControlTarget(target) {
@@ -3494,6 +3585,128 @@ function teardownTimelineAudio() {
   }
 }
 
+function stopTimelineMicCaptureTracks() {
+  if (!timelineRuntime.micStream) {
+    return;
+  }
+  for (const track of timelineRuntime.micStream.getTracks()) {
+    track.stop();
+  }
+  timelineRuntime.micStream = null;
+}
+
+function updateTimelineMicRecordButton() {
+  if (!els.btnTimelineMicRecord) {
+    return;
+  }
+  const recording = !!(timelineRuntime.micRecorder && timelineRuntime.micRecorder.state === 'recording');
+  if (recording) {
+    setButtonIconLabel(els.btnTimelineMicRecord, { icon: '●', label: 'Stop Mic' });
+    els.btnTimelineMicRecord.classList.add('warn');
+  } else {
+    setButtonIconLabel(els.btnTimelineMicRecord, { icon: '◉', label: 'Record Mic' });
+    els.btnTimelineMicRecord.classList.remove('warn');
+  }
+}
+
+function pickTimelineMicMimeType() {
+  if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') {
+    return '';
+  }
+  const candidates = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/ogg;codecs=opus',
+    'audio/ogg'
+  ];
+  for (const type of candidates) {
+    if (MediaRecorder.isTypeSupported(type)) {
+      return type;
+    }
+  }
+  return '';
+}
+
+async function startTimelineMicRecording() {
+  if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    setStatus('Mic recording is not supported in this browser. Use "Load Audio" instead.');
+    return;
+  }
+  if (timelineRuntime.micRecorder && timelineRuntime.micRecorder.state === 'recording') {
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    const mimeType = pickTimelineMicMimeType();
+    const options = mimeType ? { mimeType } : undefined;
+    const recorder = options ? new MediaRecorder(stream, options) : new MediaRecorder(stream);
+    timelineRuntime.micStream = stream;
+    timelineRuntime.micRecorder = recorder;
+    timelineRuntime.micChunks = [];
+    timelineRuntime.micFileExt = recorder.mimeType && recorder.mimeType.includes('ogg') ? 'ogg' : 'webm';
+
+    recorder.addEventListener('dataavailable', (event) => {
+      if (event.data && event.data.size > 0) {
+        timelineRuntime.micChunks.push(event.data);
+      }
+    });
+    recorder.addEventListener('error', (event) => {
+      const msg = event && event.error && event.error.message ? event.error.message : 'unknown recorder error';
+      setStatus(`Mic recording error: ${msg}`);
+    });
+    recorder.addEventListener('stop', () => {
+      const chunks = timelineRuntime.micChunks.slice();
+      const mime = recorder.mimeType || mimeType || 'audio/webm';
+      const ext = timelineRuntime.micFileExt || (mime.includes('ogg') ? 'ogg' : 'webm');
+      timelineRuntime.micChunks = [];
+      timelineRuntime.micRecorder = null;
+      stopTimelineMicCaptureTracks();
+      updateTimelineMicRecordButton();
+      if (!chunks.length) {
+        setStatus('Mic recording stopped (no audio captured).');
+        return;
+      }
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const file = new File([new Blob(chunks, { type: mime })], `mic-${stamp}.${ext}`, { type: mime });
+      loadTimelineAudio(file);
+      setStatus(`Mic recorded and loaded: ${file.name}`);
+    });
+
+    recorder.start(200);
+    updateTimelineMicRecordButton();
+    setStatus('Mic recording started. Click "Stop Mic" when done.');
+  } catch (err) {
+    stopTimelineMicCaptureTracks();
+    timelineRuntime.micRecorder = null;
+    timelineRuntime.micChunks = [];
+    updateTimelineMicRecordButton();
+    setStatus(`Mic permission/error: ${err && err.message ? err.message : 'failed to start mic recording'}`);
+  }
+}
+
+function stopTimelineMicRecording() {
+  const recorder = timelineRuntime.micRecorder;
+  if (!recorder) {
+    return;
+  }
+  if (recorder.state !== 'inactive') {
+    recorder.stop();
+  } else {
+    timelineRuntime.micRecorder = null;
+    timelineRuntime.micChunks = [];
+    stopTimelineMicCaptureTracks();
+    updateTimelineMicRecordButton();
+  }
+}
+
+function toggleTimelineMicRecording() {
+  if (timelineRuntime.micRecorder && timelineRuntime.micRecorder.state === 'recording') {
+    stopTimelineMicRecording();
+  } else {
+    startTimelineMicRecording();
+  }
+}
+
 function loadTimelineAudio(file) {
   if (!file) {
     return;
@@ -4669,6 +4882,16 @@ function roundRect(x, y, width, height, radius, fill, stroke) {
   }
 }
 
+function shouldRenderShapeSelectionHighlight() {
+  if (state.tool !== 'select') {
+    return false;
+  }
+  if (presentMode || state.timeline.playing) {
+    return false;
+  }
+  return true;
+}
+
 function drawShape(shape, highlight) {
   if (isShapeHidden(shape)) {
     return;
@@ -4790,13 +5013,14 @@ function drawShape(shape, highlight) {
     drawIconShape(shape);
   }
 
-  if (highlight) {
+  if (highlight && shouldRenderShapeSelectionHighlight()) {
     const box = getBounds(shape, { includeMotion: false });
     if (box) {
-      ctx.setLineDash([8 / state.camera.scale, 6 / state.camera.scale]);
-      ctx.lineWidth = 1.4 / state.camera.scale;
-      ctx.strokeStyle = 'rgba(176, 204, 255, 0.9)';
-      ctx.strokeRect(box.x - 8 / state.camera.scale, box.y - 8 / state.camera.scale, box.w + 16 / state.camera.scale, box.h + 16 / state.camera.scale);
+      const pad = 4 / state.camera.scale;
+      ctx.setLineDash([6 / state.camera.scale, 5 / state.camera.scale]);
+      ctx.lineWidth = 1.0 / state.camera.scale;
+      ctx.strokeStyle = 'rgba(176, 204, 255, 0.45)';
+      ctx.strokeRect(box.x - pad, box.y - pad, box.w + pad * 2, box.h + pad * 2);
     }
   }
 
@@ -6514,13 +6738,7 @@ function syncFormatWebcamControls() {
   if (els.btnFormat16x9) els.btnFormat16x9.classList.toggle('active', canvasFormat === '16:9');
   if (els.btnFormat9x16) els.btnFormat9x16.classList.toggle('active', canvasFormat === '9:16');
   if (els.btnFormat1x1)  els.btnFormat1x1.classList.toggle('active', canvasFormat === '1:1');
-  if (els.btnCaptionPosTop)    els.btnCaptionPosTop.classList.toggle('active', captionPlacement.vertical === 'top');
-  if (els.btnCaptionPosCenter) els.btnCaptionPosCenter.classList.toggle('active', captionPlacement.vertical === 'center');
-  if (els.btnCaptionPosBottom) els.btnCaptionPosBottom.classList.toggle('active', captionPlacement.vertical === 'bottom');
-  if (els.captionOffsetPct) {
-    els.captionOffsetPct.value = String(captionPlacement.offsetPct);
-    if (els.captionOffsetPctValue) els.captionOffsetPctValue.textContent = String(captionPlacement.offsetPct);
-  }
+  syncCaptionPlacementControls();
   if (els.captionZoneVisible) els.captionZoneVisible.checked = captionPlacement.zoneVisible;
   if (els.webcamPosition) els.webcamPosition.value = webcamState.position;
   if (els.webcamShape)    els.webcamShape.value = webcamState.shape;
@@ -6745,6 +6963,9 @@ function setupBindings() {
       }
       els.timelineAudioLoader.value = '';
     });
+  }
+  if (els.btnTimelineMicRecord) {
+    els.btnTimelineMicRecord.addEventListener('click', toggleTimelineMicRecording);
   }
   if (els.btnTimelineAddCaption) {
     els.btnTimelineAddCaption.addEventListener('click', addCaptionShapeAtTimeline);
@@ -7337,6 +7558,10 @@ function setupBindings() {
   });
   window.addEventListener('beforeunload', () => {
     releaseTimelineDrag();
+    if (timelineRuntime.micRecorder && timelineRuntime.micRecorder.state !== 'inactive') {
+      timelineRuntime.micRecorder.stop();
+    }
+    stopTimelineMicCaptureTracks();
     teardownTimelineAudio();
     flushAutosaveOnExit();
   });
@@ -7415,6 +7640,7 @@ function setupBindings() {
     });
   }
   setupCaptionZoneDrag();
+  setupCaptionOverlayDrag();
 
   // ── Webcam PiP ──
   if (els.btnWebcamToggle) {
@@ -8303,6 +8529,7 @@ function init() {
   initRecentColors();
   initTools();
   initButtonIconLabels();
+  updateTimelineMicRecordButton();
   const restored = loadFromLocalStorage();
   initPanelToggles();
   if (!restored) {

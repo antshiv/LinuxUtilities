@@ -181,10 +181,10 @@ launch_support_apps() {
   (
     cd "${ROOT_DIR}"
     if is_true "${PRESENT_LAUNCH_CONTROL_CENTER}"; then
-      if [[ -x ./build/bin/linux_control_center ]]; then
+      if [[ -x "${HOME}/Programs/bin/linux_control_center" ]]; then
+        "${HOME}/Programs/bin/linux_control_center" >/dev/null 2>&1 &
+      elif [[ -x ./build/bin/linux_control_center ]]; then
         ./build/bin/linux_control_center >/dev/null 2>&1 &
-      elif [[ -x ./linux_control_center ]]; then
-        ./linux_control_center >/dev/null 2>&1 &
       fi
     fi
 

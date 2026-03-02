@@ -1399,6 +1399,13 @@
       transition: opacity 0.12s;
       white-space: pre-wrap;
     }
+    .live-transcript-overlay.draggable {
+      pointer-events: auto;
+      cursor: grab;
+    }
+    .live-transcript-overlay.draggable.dragging {
+      cursor: grabbing;
+    }
 
     .live-transcript-overlay.active {
       opacity: 1;
@@ -1470,7 +1477,12 @@
       animation: captionSlideIn 0.32s cubic-bezier(0.22, 1.4, 0.36, 1) forwards;
     }
     .live-transcript-overlay[data-caption-mode="slide_up"] .word.active {
-      color: var(--caption-highlight-bg, #7bffd6);
+      background: var(--caption-highlight-bg, #7bffd6);
+      color: var(--caption-highlight-color, #081a14);
+      font-family: var(--caption-highlight-font-family, inherit);
+      font-weight: var(--caption-highlight-font-weight, inherit);
+      border-radius: var(--caption-highlight-radius, 3px);
+      padding: var(--caption-highlight-pad-y, 0px) var(--caption-highlight-pad-x, 3px);
       transform: translateY(-0.03em);
     }
 
@@ -1871,6 +1883,7 @@
           </div>
           <div class="row">
             <button id="btnTimelineLoadAudio">Load Audio</button>
+            <button id="btnTimelineMicRecord">Record Mic</button>
             <button id="btnTimelineAddCaption">Add Caption At Time</button>
           </div>
           <input id="timelineScrub" class="timeline-scrub" type="range" min="0" max="1000" value="0">
@@ -1986,7 +1999,7 @@
               <input id="captionTextColor" type="color" value="#f7fbff">
               <label for="captionStrokeColor">Stroke</label>
               <input id="captionStrokeColor" type="color" value="#05070d">
-              <label for="captionHighlightColor">Highlight</label>
+              <label for="captionHighlightColor">HL BG</label>
               <input id="captionHighlightColor" type="color" value="#ffe05d">
               <label for="captionHighlightTextColor">HL Text</label>
               <input id="captionHighlightTextColor" type="color" value="#121315">
@@ -2399,7 +2412,7 @@
       <div class="laser-dot" id="laserDot"></div>
       <div class="format-guide" id="formatGuide"></div>
       <div class="caption-zone-indicator" id="captionZoneIndicator">
-        <span class="cz-label">Caption Zone</span>
+        <span class="cz-label">Caption Zone (drag)</span>
       </div>
       <video id="webcamFeed" style="display:none;position:absolute;pointer-events:none" aria-hidden="true" muted playsinline autoplay></video>
       <div class="live-transcript-overlay" id="liveTranscriptOverlay"></div>

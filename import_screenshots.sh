@@ -10,6 +10,8 @@ FLAMESHOT_FALLBACK_DIR="${HOME}/Screenshots"
 DEFAULT_DEST_DIR="Screenshots"
 SCREENSHOT_PATTERN="Screenshot*.png"
 PHONE_PATTERN="PXL_*.jp*g"
+HISTORY_LIMIT=5
+RECENT_PROMPT_LIMIT=20
 
 have_cmd() {
     command -v "$1" >/dev/null 2>&1
@@ -282,10 +284,11 @@ import_matching_files() {
 prompt_from_recent_screenshots() {
     local dest_dir="$1"
     local abs_dest_dir idx file choice prompt_body
+    local invalid_count=0
     local -a recent_files
 
     abs_dest_dir="$(abs_path "$dest_dir")"
-    mapfile -t recent_files < <(list_recent_pngs "$dest_dir" 5)
+    mapfile -t recent_files < <(list_recent_pngs "$dest_dir" "$RECENT_PROMPT_LIMIT")
 
     if (( ${#recent_files[@]} == 0 )); then
         echo "No existing screenshots found in $dest_dir."
@@ -293,7 +296,7 @@ prompt_from_recent_screenshots() {
     fi
 
     echo
-    echo "Recent screenshots:"
+    echo "Recent screenshots (showing up to $RECENT_PROMPT_LIMIT):"
     for idx in "${!recent_files[@]}"; do
         file="${recent_files[$idx]}"
         printf '%d) %s\n' "$((idx + 1))" "$file"
@@ -303,15 +306,25 @@ prompt_from_recent_screenshots() {
         echo
     done
 
-    read -r -p "Enter screenshot numbers (e.g. 1 3 4), then Enter: " selection_line
+    read -r -p "Enter screenshot numbers (e.g. 1 3 4 10 12), then Enter: " selection_line
 
     prompt_body=""
     for choice in $selection_line; do
-        if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#recent_files[@]} )); then
-            file="${recent_files[$((choice - 1))]}"
-            prompt_body+=$'\n'" @$abs_dest_dir/$file"
+        if [[ "$choice" =~ ^[0-9]+$ ]]; then
+            if (( choice >= 1 && choice <= ${#recent_files[@]} )); then
+                file="${recent_files[$((choice - 1))]}"
+                prompt_body+=$'\n'" @$abs_dest_dir/$file"
+            else
+                invalid_count=$((invalid_count + 1))
+            fi
+        else
+            invalid_count=$((invalid_count + 1))
         fi
     done
+
+    if (( invalid_count > 0 )); then
+        echo "Ignored $invalid_count invalid selection(s). Valid range: 1-${#recent_files[@]}."
+    fi
 
     if [[ -z "$prompt_body" ]]; then
         echo "No valid files selected."
@@ -341,7 +354,7 @@ case "${1:-}" in
         ;;
     --history|-l)
         echo "--- Most Recent 5 Files in '$DEFAULT_DEST_DIR' ---"
-        mapfile -t history_files < <(list_recent_pngs "$DEFAULT_DEST_DIR" 5)
+        mapfile -t history_files < <(list_recent_pngs "$DEFAULT_DEST_DIR" "$HISTORY_LIMIT")
         if (( ${#history_files[@]} == 0 )); then
             echo "No screenshots found."
             exit 0

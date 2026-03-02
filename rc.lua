@@ -750,8 +750,8 @@ local function open_linux_control_center(target_dir)
     awful.spawn.easy_async_with_shell(string.format([[
         app=""
         for candidate in \
-            "$HOME/Programs/bin/linux_control_center" \
-            "$HOME/Workspace/LinuxUtilities/build/bin/linux_control_center"; do
+            "$HOME/Workspace/LinuxUtilities/build/bin/linux_control_center" \
+            "$HOME/Programs/bin/linux_control_center"; do
             if [ -x "$candidate" ]; then
                 app="$candidate"
                 break

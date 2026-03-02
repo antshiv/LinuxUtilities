@@ -22,6 +22,19 @@ run_repo_bg() {
   disown || true
 }
 
+control_center_cmd() {
+  local candidate
+  for candidate in \
+    "${HOME}/Programs/bin/linux_control_center" \
+    "${BASE_DIR}/build/bin/linux_control_center"; do
+    if [[ -x "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  done
+  return 1
+}
+
 run_cmd_bg() {
   local cmd="$1"
   bash -lc "${cmd}" >/tmp/lcu_launcher.log 2>&1 &
@@ -164,7 +177,11 @@ print_entries() {
 run_action() {
   local action_id="$1"
   case "${action_id}" in
-    linux_control_center) run_repo_bg "./build/bin/linux_control_center || ./linux_control_center" ;;
+    linux_control_center)
+      if cc_bin="$(control_center_cmd)"; then
+        run_cmd_bg "${cc_bin}"
+      fi
+      ;;
     presenter_canvas) run_repo_bg "./launch_presenter_canvas.sh" ;;
     storyboard_dsl) run_repo_bg "./launch_presenter_storyboard.sh" ;;
     teleprompter) run_repo_bg "./launch_teleprompter.sh" ;;

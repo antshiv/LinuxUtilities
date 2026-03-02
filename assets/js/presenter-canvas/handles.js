@@ -24,7 +24,7 @@ export function createHandleController(deps) {
     if (shape.hidden || shape.locked) {
       return null;
     }
-    if (shape.type === 'line' || shape.type === 'arrow' || shape.type === 'rect') {
+    if (shape.type === 'line' || shape.type === 'arrow' || shape.type === 'rect' || shape.type === 'ellipse') {
       return shape;
     }
     return null;
@@ -54,6 +54,14 @@ export function createHandleController(deps) {
     shape.radius = clamp(Number(shape.radius) || 0, 0, maxRadius);
   }
 
+  function rotatePoint(px, py, cx, cy, angle) {
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const dx = px - cx;
+    const dy = py - cy;
+    return { x: cx + dx * cos - dy * sin, y: cy + dx * sin + dy * cos };
+  }
+
   function editHandlesForShape(shape) {
     if (!shape) {
       return [];
@@ -69,14 +77,48 @@ export function createHandleController(deps) {
       if (!box) {
         return [];
       }
-      const maxRadius = Math.max(0, Math.min((box.x2 - box.x1) / 2, (box.y2 - box.y1) / 2));
-      const radius = clamp(Number(shape.radius) || 0, 0, maxRadius);
+      const rotation = Number(shape.rotation) || 0;
+      const cx = (box.x1 + box.x2) / 2;
+      const cy = (box.y1 + box.y2) / 2;
+      const rotHandlePt = rotatePoint(cx, box.y1 - 28 / state.camera.scale, cx, cy, rotation);
+      const rotHandle = { id: 'rotation', kind: 'rotation', x: rotHandlePt.x, y: rotHandlePt.y };
+
+      if (Math.abs(rotation) < 0.01) {
+        const maxRadius = Math.max(0, Math.min((box.x2 - box.x1) / 2, (box.y2 - box.y1) / 2));
+        const radius = clamp(Number(shape.radius) || 0, 0, maxRadius);
+        return [
+          { id: 'nw', kind: 'vertex', x: box.x1, y: box.y1 },
+          { id: 'ne', kind: 'vertex', x: box.x2, y: box.y1 },
+          { id: 'se', kind: 'vertex', x: box.x2, y: box.y2 },
+          { id: 'sw', kind: 'vertex', x: box.x1, y: box.y2 },
+          { id: 'radius', kind: 'radius', x: box.x1 + radius, y: box.y1 - 16 / state.camera.scale },
+          rotHandle
+        ];
+      }
+      const nw = rotatePoint(box.x1, box.y1, cx, cy, rotation);
+      const ne = rotatePoint(box.x2, box.y1, cx, cy, rotation);
+      const se = rotatePoint(box.x2, box.y2, cx, cy, rotation);
+      const sw = rotatePoint(box.x1, box.y2, cx, cy, rotation);
       return [
-        { id: 'nw', kind: 'vertex', x: box.x1, y: box.y1 },
-        { id: 'ne', kind: 'vertex', x: box.x2, y: box.y1 },
-        { id: 'se', kind: 'vertex', x: box.x2, y: box.y2 },
-        { id: 'sw', kind: 'vertex', x: box.x1, y: box.y2 },
-        { id: 'radius', kind: 'radius', x: box.x1 + radius, y: box.y1 - 16 / state.camera.scale }
+        { id: 'nw', kind: 'vertex', x: nw.x, y: nw.y },
+        { id: 'ne', kind: 'vertex', x: ne.x, y: ne.y },
+        { id: 'se', kind: 'vertex', x: se.x, y: se.y },
+        { id: 'sw', kind: 'vertex', x: sw.x, y: sw.y },
+        rotHandle
+      ];
+    }
+    if (shape.type === 'ellipse') {
+      const box = normalizedRectBounds(shape);
+      if (!box) {
+        return [];
+      }
+      const rotation = Number(shape.rotation) || 0;
+      const cx = (box.x1 + box.x2) / 2;
+      const cy = (box.y1 + box.y2) / 2;
+      const hh = (box.y2 - box.y1) / 2;
+      const rotHandlePt = rotatePoint(cx, cy - hh - 28 / state.camera.scale, cx, cy, rotation);
+      return [
+        { id: 'rotation', kind: 'rotation', x: rotHandlePt.x, y: rotHandlePt.y }
       ];
     }
     return [];
@@ -108,8 +150,9 @@ export function createHandleController(deps) {
       return;
     }
 
-    const box = shape.type === 'rect' ? normalizedRectBounds(shape) : null;
+    const box = (shape.type === 'rect' || shape.type === 'ellipse') ? normalizedRectBounds(shape) : null;
     const radiusHandle = handles.find((handle) => handle.id === 'radius');
+    const rotHandle = handles.find((handle) => handle.id === 'rotation');
     ctx.save();
     ctx.setLineDash([]);
     ctx.lineWidth = 1.2 / state.camera.scale;
@@ -123,15 +166,48 @@ export function createHandleController(deps) {
       ctx.stroke();
     }
 
+    if (box && rotHandle) {
+      const cx = (box.x1 + box.x2) / 2;
+      const cy = (box.y1 + box.y2) / 2;
+      const rotation = Number(shape.rotation) || 0;
+      const topPt = rotatePoint(cx, box.y1, cx, cy, rotation);
+      ctx.strokeStyle = 'rgba(255, 200, 80, 0.65)';
+      ctx.setLineDash([3 / state.camera.scale, 3 / state.camera.scale]);
+      ctx.beginPath();
+      ctx.moveTo(topPt.x, topPt.y);
+      ctx.lineTo(rotHandle.x, rotHandle.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
     for (const handle of handles) {
       const isRadius = handle.kind === 'radius';
-      const size = (isRadius ? 6.6 : 5.2) / state.camera.scale;
-      ctx.fillStyle = isRadius ? 'rgba(90, 255, 191, 0.95)' : 'rgba(174, 211, 255, 0.95)';
+      const isRotation = handle.kind === 'rotation';
+      const size = (isRadius || isRotation ? 6.6 : 5.2) / state.camera.scale;
+      if (isRotation) {
+        ctx.fillStyle = 'rgba(255, 200, 80, 0.95)';
+      } else if (isRadius) {
+        ctx.fillStyle = 'rgba(90, 255, 191, 0.95)';
+      } else {
+        ctx.fillStyle = 'rgba(174, 211, 255, 0.95)';
+      }
       ctx.strokeStyle = 'rgba(13, 22, 42, 0.95)';
       ctx.beginPath();
-      ctx.arc(handle.x, handle.y, size, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
+      if (isRotation) {
+        ctx.arc(handle.x, handle.y, size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // inner arrow indicator
+        ctx.strokeStyle = 'rgba(13, 22, 42, 0.7)';
+        ctx.lineWidth = 1 / state.camera.scale;
+        ctx.beginPath();
+        ctx.arc(handle.x, handle.y, size * 0.5, -Math.PI * 0.75, Math.PI * 0.5);
+        ctx.stroke();
+      } else {
+        ctx.arc(handle.x, handle.y, size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
     }
     ctx.restore();
   }
@@ -184,6 +260,27 @@ export function createHandleController(deps) {
         return true;
       }
       return false;
+    }
+
+    if (drag.shapeType === 'rect' || drag.shapeType === 'ellipse') {
+      if (drag.handleId === 'rotation') {
+        const box = normalizedRectBounds(shape);
+        if (!box) {
+          return false;
+        }
+        const cx = (box.x1 + box.x2) / 2;
+        const cy = (box.y1 + box.y2) / 2;
+        // angle from center to pointer; handle starts at top => subtract -PI/2
+        let angle = Math.atan2(world.y - cy, world.x - cx) + Math.PI / 2;
+        if (shiftKey) {
+          // snap to 15-degree increments
+          const step = Math.PI / 12;
+          angle = Math.round(angle / step) * step;
+        }
+        shape.rotation = angle;
+        drag.didMove = true;
+        return true;
+      }
     }
 
     if (drag.shapeType === 'rect') {
