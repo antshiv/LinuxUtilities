@@ -185,6 +185,7 @@ typedef struct {
     GtkWidget *editor_props_stack;
     GtkWidget *editor_props_title;
     GtkWidget *editor_styles_scroller;
+    GtkWidget *editor_style_row;
     GtkWidget *editor_browser_box;
     GtkWidget *editor_split;
     GtkWidget *editor_studio_shell;
@@ -560,6 +561,119 @@ static gint gtk4_clamp_studio_dock_width(Gtk4State *state, gint dock_width) {
     gint max_dock = 0;
     max_dock = MAX(min_dock, width - min_main);
     return CLAMP(dock_width, min_dock, max_dock);
+}
+
+static gboolean gtk4_dir_has_editor_assets(const gchar *dir) {
+    gchar *icons_dir = NULL;
+    gchar *svg_dir = NULL;
+    gboolean ok = FALSE;
+    if (!dir || !*dir) {
+        return FALSE;
+    }
+    icons_dir = g_build_filename(dir, "assets", "icons", NULL);
+    svg_dir = g_build_filename(dir, "assets", "svg", NULL);
+    ok = g_file_test(icons_dir, G_FILE_TEST_IS_DIR) &&
+         g_file_test(svg_dir, G_FILE_TEST_IS_DIR);
+    g_free(icons_dir);
+    g_free(svg_dir);
+    return ok;
+}
+
+static gchar *gtk4_find_launch_dir_from_binary(const gchar *binary_path) {
+    gchar *bin_dir = NULL;
+    gchar *parent = NULL;
+    gchar *grandparent = NULL;
+    if (!binary_path || !*binary_path) {
+        return NULL;
+    }
+    bin_dir = g_path_get_dirname(binary_path);
+    if (gtk4_dir_has_editor_assets(bin_dir)) {
+        return bin_dir;
+    }
+    parent = g_path_get_dirname(bin_dir);
+    if (gtk4_dir_has_editor_assets(parent)) {
+        g_free(bin_dir);
+        return parent;
+    }
+    grandparent = g_path_get_dirname(parent);
+    if (gtk4_dir_has_editor_assets(grandparent)) {
+        g_free(bin_dir);
+        g_free(parent);
+        return grandparent;
+    }
+    g_free(bin_dir);
+    g_free(parent);
+    g_free(grandparent);
+    return NULL;
+}
+
+static gchar *gtk4_resolve_launch_dir(const gchar *argv0, const gchar *requested_dir) {
+    const gchar *env_root = g_getenv("LINUXUTILITIES_ROOT");
+    gchar *cwd = NULL;
+    gchar *binary_path = NULL;
+    gchar *resolved = NULL;
+    gchar *fallback = NULL;
+
+    if (env_root && gtk4_dir_has_editor_assets(env_root)) {
+        return g_canonicalize_filename(env_root, NULL);
+    }
+    if (requested_dir && gtk4_dir_has_editor_assets(requested_dir)) {
+        return g_canonicalize_filename(requested_dir, NULL);
+    }
+
+    cwd = g_get_current_dir();
+    if (cwd && gtk4_dir_has_editor_assets(cwd)) {
+        resolved = g_canonicalize_filename(cwd, NULL);
+        g_free(cwd);
+        return resolved;
+    }
+
+    binary_path = g_file_read_link("/proc/self/exe", NULL);
+    if (binary_path) {
+        resolved = gtk4_find_launch_dir_from_binary(binary_path);
+        g_free(binary_path);
+        if (resolved) {
+            g_free(cwd);
+            return resolved;
+        }
+    }
+
+    if (argv0 && *argv0) {
+        if (g_path_is_absolute(argv0) || strchr(argv0, '/')) {
+            binary_path = g_canonicalize_filename(argv0, cwd ? cwd : NULL);
+        } else {
+            binary_path = g_find_program_in_path(argv0);
+        }
+        if (binary_path) {
+            resolved = gtk4_find_launch_dir_from_binary(binary_path);
+            g_free(binary_path);
+            if (resolved) {
+                g_free(cwd);
+                return resolved;
+            }
+        }
+    }
+
+    {
+        gchar *home_repo = g_build_filename(g_get_home_dir(), "Workspace", "LinuxUtilities", NULL);
+        if (gtk4_dir_has_editor_assets(home_repo)) {
+            resolved = g_canonicalize_filename(home_repo, NULL);
+            g_free(home_repo);
+            g_free(cwd);
+            return resolved;
+        }
+        g_free(home_repo);
+    }
+
+    if (requested_dir) {
+        fallback = g_canonicalize_filename(requested_dir, NULL);
+    } else if (cwd) {
+        fallback = g_canonicalize_filename(cwd, NULL);
+    } else {
+        fallback = g_strdup(".");
+    }
+    g_free(cwd);
+    return fallback;
 }
 
 static void gtk4_ui_state_load(Gtk4State *state) {
@@ -2461,6 +2575,9 @@ static void gtk4_apply_editor_panel_visibility(Gtk4State *state) {
     if (state->editor_styles_scroller) {
         gtk_widget_set_visible(state->editor_styles_scroller, state->editor_styles_visible);
     }
+    if (state->editor_style_row) {
+        gtk_widget_set_visible(state->editor_style_row, state->editor_styles_visible);
+    }
     if (state->editor_toggle_styles_btn) {
         gtk_button_set_label(GTK_BUTTON(state->editor_toggle_styles_btn),
                              state->editor_styles_visible ? "Hide Styles" : "Show Styles");
@@ -3714,9 +3831,12 @@ static GtkWidget *gtk4_make_tool_button(const gchar *tool_id, const gchar *label
         gtk_widget_set_size_request(icon, 16, 16);
     }
     gtk_label_set_xalign(GTK_LABEL(text), 0.0f);
+    gtk_widget_set_hexpand(text, TRUE);
+    gtk_widget_set_halign(text, GTK_ALIGN_START);
     gtk_box_append(GTK_BOX(box), icon);
     gtk_box_append(GTK_BOX(box), text);
     gtk_check_button_set_child(GTK_CHECK_BUTTON(button), box);
+    gtk_widget_set_size_request(button, 104, -1);
     g_object_set_data_full(G_OBJECT(button), "tool-id", g_strdup(tool_id), g_free);
     return button;
 }
@@ -4540,6 +4660,7 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     GtkWidget *btn_thumbs_smaller = gtk_button_new_with_label("Thumbs -");
     GtkWidget *btn_zoom_reset = gtk_button_new_with_label("Fit 100%");
     GtkWidget *tool_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    GtkWidget *tool_row_scroller = gtk_scrolled_window_new();
     GtkWidget *quick_styles_scroller = gtk_scrolled_window_new();
     GtkWidget *quick_styles_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
     GtkWidget *style_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
@@ -4712,6 +4833,10 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     gtk_box_append(GTK_BOX(toolbar), btn_refresh);
     gtk_box_append(GTK_BOX(toolbar), search);
 
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(tool_row_scroller), GTK_POLICY_AUTOMATIC, GTK_POLICY_NEVER);
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(tool_row_scroller), tool_row);
+    gtk_widget_set_hexpand(tool_row_scroller, TRUE);
+    gtk_widget_set_size_request(tool_row_scroller, -1, 46);
     gtk_box_append(GTK_BOX(editor_top_actions), btn_dock_toggle);
     gtk_box_append(GTK_BOX(editor_top_actions), dock_width_label);
     gtk_box_append(GTK_BOX(editor_top_actions), dock_width_scale);
@@ -4721,7 +4846,7 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     gtk_box_append(GTK_BOX(editor_top_actions), btn_thumbs_bigger);
     gtk_box_append(GTK_BOX(editor_top_actions), btn_thumbs_smaller);
     gtk_box_append(GTK_BOX(editor_top_actions), btn_zoom_reset);
-    gtk_box_append(GTK_BOX(editor_top_row), tool_row);
+    gtk_box_append(GTK_BOX(editor_top_row), tool_row_scroller);
     gtk_box_append(GTK_BOX(editor_top_row), editor_top_actions);
 
     gtk_flow_box_set_selection_mode(GTK_FLOW_BOX(thumb_flow), GTK_SELECTION_MULTIPLE);
@@ -5145,6 +5270,7 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     state->editor_props_stack = props_stack;
     state->editor_props_title = props_title;
     state->editor_styles_scroller = quick_styles_scroller;
+    state->editor_style_row = style_row;
     state->editor_browser_box = browser_box;
     state->editor_split = split;
     state->editor_studio_shell = studio_shell;
@@ -5480,7 +5606,7 @@ int main(int argc, char **argv) {
     } else {
         target_dir = g_get_current_dir();
     }
-    state->launch_dir = g_strdup(target_dir);
+    state->launch_dir = gtk4_resolve_launch_dir(argv[0], target_dir);
     target_basename = g_path_get_basename(target_dir);
     candidate_shots = g_build_filename(target_dir, "Screenshots", NULL);
     if (g_file_test(candidate_shots, G_FILE_TEST_IS_DIR)) {

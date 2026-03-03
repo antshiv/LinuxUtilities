@@ -14,6 +14,14 @@
 ./build_linux_control_center.sh --install
 ~/Programs/bin/linux_control_center</code></pre>
 
+<p>Recommended launch paths:</p>
+
+<pre><code># From repo (always uses newest local build)
+./build/bin/linux_control_center ~/Workspace/LinuxUtilities
+
+# Installed binary (global launch)
+~/Programs/bin/linux_control_center ~/Workspace/LinuxUtilities</code></pre>
+
 <p>Or compile manually:</p>
 
 <pre><code>mkdir -p build/bin
@@ -35,14 +43,33 @@ gcc -o build/bin/linux_control_center linux_control_center.c \
 
     <div class="card">
         <h3><span class="wrn">✏️</span> Annotation Canvas</h3>
-        <p>Select an image to annotate with <strong>Select</strong>, <strong>Arrow</strong>, and <strong>Rect</strong> tools. Uses GTK4 event controllers for click/drag/move/scroll handling.</p>
+        <p>Select an image to annotate with <strong>Select</strong>, <strong>Arrow</strong>, <strong>Line</strong>, <strong>Rect</strong>, <strong>Callout</strong>, <strong>Text</strong>, and <strong>Step</strong> tools. Uses GTK4 event controllers for click/drag/move/scroll handling.</p>
     </div>
 
     <div class="card">
         <h3><span class="wrn">🔍</span> Zoom + File Ops</h3>
         <p><code>Ctrl+Scroll</code> zooms the canvas. Toolbar actions include refresh, open folder, and delete selected.</p>
     </div>
+
+    <div class="card">
+        <h3><span class="wrn">🎛️</span> Style Ribbons</h3>
+        <p>Top tool row and quick-style row are horizontally scrollable, with per-tool property controls in the right dock.</p>
+    </div>
 </div>
+
+<h2>UI Troubleshooting</h2>
+
+<details open>
+    <summary><strong>Toolbar icons missing or style ribbon not visible</strong></summary>
+    <p>Most often this is a stale binary launch issue. Rebuild and run a known binary path:</p>
+    <pre><code>cd ~/Workspace/LinuxUtilities
+./build_linux_control_center.sh --install
+pkill -f linux_control_center || true
+~/Programs/bin/linux_control_center ~/Workspace/LinuxUtilities</code></pre>
+    <p>If rows are still hidden, reset saved UI layout state:</p>
+    <pre><code>mv ~/.config/linuxutilities/control_center_gtk4.ini \
+   ~/.config/linuxutilities/control_center_gtk4.ini.bak.$(date +%s)</code></pre>
+</details>
 
 <h2>Architecture (GTK4)</h2>
 

@@ -485,7 +485,9 @@ For the full list of shortcuts (AwesomeWM keys, gromit/presenter controls, mouse
 
 - `linux_control_center.c`: GTK4 desktop app with:
   - Screenshot browser (multi-select thumbnails, search, open folder, delete selected)
-  - Event-controller annotation canvas (Select/Arrow/Rect tools)
+  - Event-controller annotation canvas (Select/Arrow/Line/Rect/Callout/Text/Step tools)
+  - Top tool row + quick-style ribbon with horizontal scrolling
+  - Right dock per-tool properties and save/export actions
   - Keyboard shortcuts: `Ctrl+A` select all, `Delete`, `Esc`, `Ctrl+Scroll` zoom
 - `build_linux_control_center.sh`: Build helper for the GTK4 app.
 - GTK4 migration notes: `docs/GTK4_MIGRATION_NOTES.md`
@@ -499,6 +501,17 @@ sudo apt install libgtk-4-dev pkg-config
 # optional install target for AwesomeWM/global launchers
 ./build_linux_control_center.sh --install
 ~/Programs/bin/linux_control_center
+# recommended explicit root argument
+~/Programs/bin/linux_control_center ~/Workspace/LinuxUtilities
+```
+
+If screenshot icons/styles look missing after an update, restart using one explicit binary and reset UI state once:
+
+```bash
+pkill -f linux_control_center || true
+~/Programs/bin/linux_control_center ~/Workspace/LinuxUtilities
+mv ~/.config/linuxutilities/control_center_gtk4.ini \
+   ~/.config/linuxutilities/control_center_gtk4.ini.bak.$(date +%s)
 ```
 
 ## GTK DSL Starter (Box/Grid Mapping)

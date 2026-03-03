@@ -127,6 +127,29 @@ redshift -x         # reset</code></pre>
     <pre><code>sudo apt install adwaita-icon-theme-full gnome-themes-extra</code></pre>
 </details>
 
+<details open>
+    <summary><strong>Screenshot tools/icons missing or top style rows look clipped</strong></summary>
+    <p>Usually an old binary is being launched. Rebuild + install the GTK4 binary, then restart it:</p>
+    <pre><code>cd ~/Workspace/LinuxUtilities
+./build_linux_control_center.sh --install
+pkill -f linux_control_center || true
+~/Programs/bin/linux_control_center ~/Workspace/LinuxUtilities</code></pre>
+    <p>Check what command resolves first:</p>
+    <pre><code>which linux_control_center
+ls -l ~/Programs/bin/linux_control_center \
+      ~/Workspace/LinuxUtilities/build/bin/linux_control_center</code></pre>
+    <p>If visibility state is stuck from old layout settings, reset the UI state file:</p>
+    <pre><code>mv ~/.config/linuxutilities/control_center_gtk4.ini \
+   ~/.config/linuxutilities/control_center_gtk4.ini.bak.$(date +%s)</code></pre>
+</details>
+
+<details>
+    <summary><strong>Styles panel is hidden</strong></summary>
+    <p>In the Screenshots tab, click <code>Show Styles</code>. If the button state is incorrect, reset config:</p>
+    <pre><code>sed -i 's/^styles_visible=.*/styles_visible=true/' \
+~/.config/linuxutilities/control_center_gtk4.ini</code></pre>
+</details>
+
 <h2>AwesomeWM</h2>
 
 <details>

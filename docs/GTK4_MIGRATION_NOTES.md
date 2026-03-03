@@ -1,6 +1,6 @@
 # GTK4 Migration Notes
 
-## Current State (2026-02-24)
+## Current State (2026-03-03)
 
 - `linux_control_center.c` is now GTK4-only.
 - `build_linux_control_center.sh` builds with `pkg-config gtk4`.
@@ -30,6 +30,8 @@ Current GTK4 app focuses on screenshot workflow:
 - Annotation canvas tools: Select, Arrow, Line, Rect, Callout, Text, Stamp
 - Right dock properties for arrow/callout/rect/text/stamp style controls
 - Quick style ribbon backed by SVG assets (`assets/svg/...`) including legacy pointer/link presets
+- Asset-root resolution no longer depends on current working directory (icons/styles load reliably from installed or repo launches)
+- Tool strip and quick-style strip use horizontal scrollers to prevent clipping on narrower windows
 - Editor toggles: `Dock Left/Right`, `Hide Styles`, `Hide Thumbs`, `Fit 100%`
 - Save/export: annotated PNG + SVG copy
 - Event-controller input system (click, motion, scroll, key)
