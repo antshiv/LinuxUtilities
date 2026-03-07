@@ -120,7 +120,18 @@ make present-profile-live REVEAL_URL=http://127.0.0.1:8000
 
 # list available profile names (from config/presentation_profiles.json)
 make present-profile-list
+
+# bluetooth headset profile helpers (mic mode vs music mode)
+make audio-help
+make audio-status
+make audio-bt-mic
+make audio-bt-music
 ```
+
+Optional overrides for Bluetooth profile helpers:
+
+- `AUDIO_OUTPUT_SINK=<sink_name>` to force output (useful to keep HDMI output in mic mode)
+- `BT_CARD=<bluez_card...>` to target a specific headset card
 
 `PRESENT_WACOM_MODE` options:
 - `none` (default): do not change mapping
@@ -178,6 +189,8 @@ make manim-shell
 - `cursor_spotlight.c`: Lightweight X11 cursor spotlight overlay utility.
 - `build_cursor_spotlight.sh`: Build helper for `cursor_spotlight`.
 - `launch_present_live.sh`: Opens reveal.js + Presenter Canvas (+ optional code URL) for live presentation flow.
+- `scripts/audio_bt_profile.sh`: Switch Bluetooth headset between mic mode (`HFP/HSP`) and music mode (`A2DP`), plus status/help.
+- `MICROPHONE_HELP.md`: Quick operational guide for Bluetooth mic profile behavior and sink/source routing.
 - `scripts/presentation_mode.sh`: One-click presentation profile (`prep` / `live`).
 - `scripts/awesome_program_launcher.sh`: Custom rofi launcher mode (favorites + recents + grouped actions).
 - `scripts/install_desktop_entries.sh`: Installs LinuxUtilities `.desktop` entries for launcher integration.

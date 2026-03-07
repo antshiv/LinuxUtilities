@@ -38,8 +38,10 @@ SMB_530_HOST ?= 10.0.0.119
 SMB_530_SHARE ?= shared
 SMB_530_MOUNT ?= /mnt/w530
 SMB_530_CREDENTIALS ?= $(HOME)/.smbcredentials-530
+AUDIO_OUTPUT_SINK ?=
+BT_CARD ?=
 
-.PHONY: help rc-backup awesome-backup awesome-update apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve present-live present-profile present-profile-live present-profile-list shorts-help shorts-record shorts-transcribe shorts-render manim-help manim-version manim-smoke manim-scene manim-shell wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external samba-530-probe mount-530 umount-530 desktop-install
+.PHONY: help rc-backup awesome-backup awesome-update apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve present-live present-profile present-profile-live present-profile-list audio-help audio-status audio-bt-mic audio-bt-music shorts-help shorts-record shorts-transcribe shorts-render manim-help manim-version manim-smoke manim-scene manim-shell wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external samba-530-probe mount-530 umount-530 desktop-install
 
 help:
 >@echo "Targets:"
@@ -61,6 +63,10 @@ help:
 >@echo "  make present-profile     One-click prep profile (audio + bluetooth + wacom + support apps)"
 >@echo "  make present-profile-live Prep profile + launch present-live workflow"
 >@echo "  make present-profile-list List profile names from config/presentation_profiles.json"
+>@echo "  make audio-help          Show Bluetooth microphone profile usage"
+>@echo "  make audio-status        Show Bluetooth card/profile + sink/source defaults"
+>@echo "  make audio-bt-mic        Switch BT headset to mic mode (HFP/HSP)"
+>@echo "  make audio-bt-music      Switch BT headset back to music mode (A2DP)"
 >@echo "  make shorts-help         Show transcript-driven shorts pipeline commands"
 >@echo "  make manim-help          Show Manim helper commands (uses $(MANIM_DIR))"
 >@echo "  make wacom-help          Show quick Wacom mapping cheatsheet"
@@ -233,6 +239,18 @@ present-profile-live:
 
 present-profile-list:
 >@PRESENT_PROFILE_FILE="$(PWD)/config/presentation_profiles.json" ./scripts/presentation_mode.sh list
+
+audio-help:
+>@./scripts/audio_bt_profile.sh help
+
+audio-status:
+>@./scripts/audio_bt_profile.sh status
+
+audio-bt-mic:
+>@AUDIO_OUTPUT_SINK="$(AUDIO_OUTPUT_SINK)" BT_CARD="$(BT_CARD)" ./scripts/audio_bt_profile.sh mic-mode
+
+audio-bt-music:
+>@BT_CARD="$(BT_CARD)" ./scripts/audio_bt_profile.sh music-mode
 
 shorts-help:
 >@echo "Shorts pipeline:"

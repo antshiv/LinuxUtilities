@@ -150,6 +150,23 @@ ls -l ~/Programs/bin/linux_control_center \
 ~/.config/linuxutilities/control_center_gtk4.ini</code></pre>
 </details>
 
+<details open>
+    <summary><strong>Bluetooth mic mode sounds like phone quality / \"dial-up\" audio</strong></summary>
+    <p>This is expected Bluetooth profile behavior:</p>
+    <ul>
+        <li><code>A2DP</code>: high-quality playback, no headset mic</li>
+        <li><code>HFP/HSP</code>: headset mic enabled, lower playback quality</li>
+    </ul>
+    <p>Use LinuxUtilities helpers to switch quickly:</p>
+    <pre><code>cd ~/Workspace/LinuxUtilities
+make audio-status
+make audio-bt-mic
+make audio-bt-music</code></pre>
+    <p>If you want HDMI output while using BT mic mode:</p>
+    <pre><code>pactl list short sinks
+AUDIO_OUTPUT_SINK=&lt;hdmi_sink_name&gt; make audio-bt-mic</code></pre>
+</details>
+
 <h2>AwesomeWM</h2>
 
 <details>

@@ -3460,6 +3460,30 @@ static void gtk4_on_audio_open_mixer(GtkButton *button, gpointer user_data) {
     gtk4_spawn_with_feedback(state, "pavucontrol", "Opening Pavucontrol...");
 }
 
+static void gtk4_on_audio_bt_profile_action(GtkButton *button, gpointer user_data) {
+    Gtk4State *state = user_data;
+    const gchar *mode = g_object_get_data(G_OBJECT(button), "bt-audio-mode");
+    const gchar *ok = g_object_get_data(G_OBJECT(button), "bt-audio-status");
+    gchar *snippet = NULL;
+    gchar *cmd = NULL;
+    (void)button;
+    if (!state || !mode || !*mode) {
+        return;
+    }
+    if (g_strcmp0(mode, "help") == 0) {
+        snippet = g_strdup("xdg-open MICROPHONE_HELP.md");
+    } else if (g_strcmp0(mode, "status") == 0) {
+        snippet = g_strdup("./scripts/audio_bt_profile.sh status > /tmp/linuxutilities_audio_bt_status.txt 2>&1 && xdg-open /tmp/linuxutilities_audio_bt_status.txt");
+    } else {
+        snippet = g_strdup_printf("./scripts/audio_bt_profile.sh %s", mode);
+    }
+    cmd = gtk4_repo_shell(state, snippet);
+    gtk4_spawn_with_feedback(state, cmd, ok ? ok : "Audio profile action launched.");
+    g_free(cmd);
+    g_free(snippet);
+    gtk4_audio_refresh(state);
+}
+
 static void gtk4_on_audio_refresh(GtkButton *button, gpointer user_data) {
     (void)button;
     gtk4_audio_refresh(user_data);
@@ -4214,12 +4238,18 @@ static GtkWidget *gtk4_build_audio_tab(Gtk4State *state) {
     GtkWidget *status = gtk_label_new("Audio ready.");
     GtkWidget *scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 150, 1);
     GtkWidget *buttons = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    GtkWidget *bt_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
     GtkWidget *apply = gtk_button_new_with_label("Apply Volume");
     GtkWidget *minus = gtk_button_new_with_label("-5%");
     GtkWidget *plus = gtk_button_new_with_label("+5%");
     GtkWidget *mute = gtk_button_new_with_label("Mute / Unmute");
     GtkWidget *refresh = gtk_button_new_with_label("Refresh");
     GtkWidget *mixer = gtk_button_new_with_label("Open Pavucontrol");
+    GtkWidget *bt_mic_mode = gtk_button_new_with_label("BT Mic Mode");
+    GtkWidget *bt_music_mode = gtk_button_new_with_label("BT Music Mode");
+    GtkWidget *bt_status = gtk_button_new_with_label("BT Status");
+    GtkWidget *bt_help = gtk_button_new_with_label("Mic Help");
+    GtkWidget *bt_note = gtk_label_new("A2DP = music quality/no mic. HFP/HSP = mic enabled/lower speaker quality.");
 
     gtk_widget_set_margin_top(root, 12);
     gtk_widget_set_margin_bottom(root, 12);
@@ -4229,6 +4259,9 @@ static GtkWidget *gtk4_build_audio_tab(Gtk4State *state) {
     gtk_widget_add_css_class(title, "title-2");
     gtk_label_set_xalign(GTK_LABEL(title), 0.0f);
     gtk_label_set_xalign(GTK_LABEL(status), 0.0f);
+    gtk_label_set_xalign(GTK_LABEL(bt_note), 0.0f);
+    gtk_label_set_wrap(GTK_LABEL(bt_note), TRUE);
+    gtk_widget_add_css_class(bt_note, "dim-label");
     gtk_scale_set_draw_value(GTK_SCALE(scale), TRUE);
     gtk_range_set_value(GTK_RANGE(scale), 20);
 
@@ -4238,10 +4271,16 @@ static GtkWidget *gtk4_build_audio_tab(Gtk4State *state) {
     gtk_box_append(GTK_BOX(buttons), mute);
     gtk_box_append(GTK_BOX(buttons), refresh);
     gtk_box_append(GTK_BOX(buttons), mixer);
+    gtk_box_append(GTK_BOX(bt_row), bt_mic_mode);
+    gtk_box_append(GTK_BOX(bt_row), bt_music_mode);
+    gtk_box_append(GTK_BOX(bt_row), bt_status);
+    gtk_box_append(GTK_BOX(bt_row), bt_help);
 
     gtk_box_append(GTK_BOX(panel), status);
     gtk_box_append(GTK_BOX(panel), scale);
     gtk_box_append(GTK_BOX(panel), buttons);
+    gtk_box_append(GTK_BOX(panel), bt_row);
+    gtk_box_append(GTK_BOX(panel), bt_note);
     gtk_box_append(GTK_BOX(root), title);
     gtk_box_append(GTK_BOX(root), panel);
 
@@ -4255,6 +4294,18 @@ static GtkWidget *gtk4_build_audio_tab(Gtk4State *state) {
     g_signal_connect(mute, "clicked", G_CALLBACK(gtk4_on_audio_toggle_mute), state);
     g_signal_connect(refresh, "clicked", G_CALLBACK(gtk4_on_audio_refresh), state);
     g_signal_connect(mixer, "clicked", G_CALLBACK(gtk4_on_audio_open_mixer), state);
+    g_object_set_data(G_OBJECT(bt_mic_mode), "bt-audio-mode", "mic-mode");
+    g_object_set_data(G_OBJECT(bt_mic_mode), "bt-audio-status", "Requested Bluetooth mic mode (HFP/HSP).");
+    g_object_set_data(G_OBJECT(bt_music_mode), "bt-audio-mode", "music-mode");
+    g_object_set_data(G_OBJECT(bt_music_mode), "bt-audio-status", "Requested Bluetooth music mode (A2DP).");
+    g_object_set_data(G_OBJECT(bt_status), "bt-audio-mode", "status");
+    g_object_set_data(G_OBJECT(bt_status), "bt-audio-status", "Opening Bluetooth audio status...");
+    g_object_set_data(G_OBJECT(bt_help), "bt-audio-mode", "help");
+    g_object_set_data(G_OBJECT(bt_help), "bt-audio-status", "Opening microphone help...");
+    g_signal_connect(bt_mic_mode, "clicked", G_CALLBACK(gtk4_on_audio_bt_profile_action), state);
+    g_signal_connect(bt_music_mode, "clicked", G_CALLBACK(gtk4_on_audio_bt_profile_action), state);
+    g_signal_connect(bt_status, "clicked", G_CALLBACK(gtk4_on_audio_bt_profile_action), state);
+    g_signal_connect(bt_help, "clicked", G_CALLBACK(gtk4_on_audio_bt_profile_action), state);
     return root;
 }
 
