@@ -17,20 +17,28 @@ My current setup is simple and focused on efficiency:
 
 ## AwesomeWM rc.lua Make Targets
 
-Use these shortcuts to back up and deploy the AwesomeWM config at `/etc/xdg/awesome/rc.lua`:
+Use these shortcuts to back up and deploy the AwesomeWM config:
 
 ```bash
-# Copy system rc.lua into local rc.dupe.lua
+# Copy the active Awesome rc.lua into local rc.dupe.lua
 make rc-backup
 
-# Backup current system rc.lua (timestamped) + install local rc.lua
+# Backup current system rc.lua (timestamped) + install local rc.lua into /etc/xdg/awesome/rc.lua
 make awesome-update
+
+# Optional: install into ~/.config/awesome/rc.lua instead of the system path
+make awesome-user-update
 ```
 
 `make awesome-update` performs:
-- local backup: `/etc/xdg/awesome/rc.lua` -> `./rc.dupe.lua`
+- local backup: active Awesome rc.lua -> `./rc.dupe.lua`
 - system backup: `/etc/xdg/awesome/rc.lua` -> `/etc/xdg/awesome/rc.lua.bak.<timestamp>`
 - install: `./rc.lua` -> `/etc/xdg/awesome/rc.lua`
+
+`make awesome-user-update` performs:
+- local backup: active Awesome rc.lua -> `./rc.dupe.lua`
+- user backup: `~/.config/awesome/rc.lua` (or `/etc/xdg/awesome/rc.lua` on first run) -> `~/.config/awesome/rc.lua.bak.<timestamp>`
+- install: `./rc.lua` -> `~/.config/awesome/rc.lua`
 
 ## LinuxUtilities Make Targets
 

@@ -79,6 +79,7 @@ end
 local identity_label = (os.getenv("USER") or "user") .. "@" .. get_short_hostname()
 
 local volume_step = "5%"
+local brightness_step_percent = 5
 -- MX Master 3S side buttons are commonly 8/9 on X11.
 -- Confirm on your machine with: xev -event button
 local flameshot_mouse_button = 8
@@ -90,6 +91,7 @@ local spotlight_dim = 0.68
 local spotlight_fps = 50
 local gromit_action_lock = false
 local audio_notification_id = nil
+local brightness_notification_id = nil
 local audio_state = { volume = "?", mute = "unknown", sink = "unknown" }
 local battery_state = { status = "unknown", percent = "?", time = "" }
 local network_state = { state = "unknown", ntype = "unknown", label = "offline" }
@@ -380,6 +382,154 @@ local function shell_quote(value)
         return "''"
     end
     return "'" .. tostring(value):gsub("'", "'\\''") .. "'"
+end
+
+local brightness_warned = false
+
+local function show_brightness_notification(percent, backend)
+    local text = "Brightness changed"
+    if percent and percent ~= "" and percent ~= "?" then
+        text = "Brightness " .. percent .. "%"
+    end
+    if backend and backend ~= "" then
+        text = text .. "\nBackend: " .. backend
+    end
+
+    local n = naughty.notify({
+        title = "Brightness",
+        text = text,
+        timeout = 1.4,
+        replaces_id = brightness_notification_id,
+    })
+    if n and n.id then
+        brightness_notification_id = n.id
+    end
+end
+
+local function adjust_brightness(direction)
+    awful.spawn.easy_async_with_shell(string.format([=[
+        step=%d
+        action=%s
+
+        run_brightnessctl() {
+            command -v brightnessctl >/dev/null 2>&1 || return 1
+            if [ "$action" = "up" ]; then
+                brightnessctl set "${step}%%+" >/dev/null 2>&1 || return 1
+            else
+                brightnessctl set "${step}%%-" >/dev/null 2>&1 || return 1
+            fi
+            percent=$(brightnessctl -m 2>/dev/null | awk -F, 'NR==1 {gsub("%%","",$4); print $4}')
+            [ -z "$percent" ] && percent=$(brightnessctl info 2>/dev/null | awk '/Current brightness/ {for (i = 1; i <= NF; i++) if ($i ~ /\\([0-9]+%%\\)/) {gsub(/[()%%]/, "", $i); print $i; exit}}')
+            printf 'BACKEND=brightnessctl\nPERCENT=%%s\n' "${percent:-?}"
+            return 0
+        }
+
+        run_light() {
+            command -v light >/dev/null 2>&1 || return 1
+            if [ "$action" = "up" ]; then
+                light -A "$step" >/dev/null 2>&1 || return 1
+            else
+                light -U "$step" >/dev/null 2>&1 || return 1
+            fi
+            percent=$(light -G 2>/dev/null | awk '{printf "%%d", $1 + 0.5}')
+            printf 'BACKEND=light\nPERCENT=%%s\n' "${percent:-?}"
+            return 0
+        }
+
+        run_xbacklight() {
+            command -v xbacklight >/dev/null 2>&1 || return 1
+            if [ "$action" = "up" ]; then
+                xbacklight -inc "$step" >/dev/null 2>&1 || return 1
+            else
+                xbacklight -dec "$step" >/dev/null 2>&1 || return 1
+            fi
+            percent=$(xbacklight -get 2>/dev/null | awk '{printf "%%d", $1 + 0.5}')
+            printf 'BACKEND=xbacklight\nPERCENT=%%s\n' "${percent:-?}"
+            return 0
+        }
+
+        run_sysfs() {
+            for dev in /sys/class/backlight/*; do
+                [ -e "$dev" ] || continue
+                cur=$(cat "$dev/brightness" 2>/dev/null) || continue
+                max=$(cat "$dev/max_brightness" 2>/dev/null) || continue
+                [ -n "$cur" ] || continue
+                [ -n "$max" ] || continue
+                [ "$max" -gt 0 ] || continue
+                [ -w "$dev/brightness" ] || continue
+                step_raw=$(( (max * step + 50) / 100 ))
+                [ "$step_raw" -lt 1 ] && step_raw=1
+                if [ "$action" = "up" ]; then
+                    new=$((cur + step_raw))
+                else
+                    new=$((cur - step_raw))
+                fi
+                [ "$new" -lt 1 ] && new=1
+                [ "$new" -gt "$max" ] && new="$max"
+                printf '%%s' "$new" > "$dev/brightness" 2>/dev/null || continue
+                percent=$(( (new * 100 + max / 2) / max ))
+                printf 'BACKEND=sysfs:%%s\nPERCENT=%%s\n' "$(basename "$dev")" "$percent"
+                return 0
+            done
+            return 1
+        }
+
+        run_xrandr() {
+            command -v xrandr >/dev/null 2>&1 || return 1
+            output=$(xrandr --query 2>/dev/null | awk '
+                $2 == "connected" && $0 ~ / primary / { print $1; exit }
+                $2 == "connected" && ($1 ~ /^eDP/ || $1 ~ /^LVDS/) { print $1; exit }
+                $2 == "connected" { print $1; exit }
+            ')
+            [ -n "$output" ] || return 1
+            current=$(xrandr --verbose 2>/dev/null | awk -v out="$output" '
+                $1 == out && $2 == "connected" { in_output = 1; next }
+                in_output && $1 == "Brightness:" { print $2; exit }
+                in_output && /^[^[:space:]]/ { in_output = 0 }
+            ')
+            [ -n "$current" ] || return 1
+            new=$(awk -v cur="$current" -v step="$step" -v action="$action" '
+                BEGIN {
+                    delta = step / 100.0
+                    value = cur + (action == "up" ? delta : -delta)
+                    if (value < 0.10) value = 0.10
+                    if (value > 1.00) value = 1.00
+                    printf "%%.2f", value
+                }
+            ')
+            xrandr --output "$output" --brightness "$new" >/dev/null 2>&1 || return 1
+            percent=$(awk -v value="$new" 'BEGIN { printf "%%d", value * 100 + 0.5 }')
+            printf 'BACKEND=xrandr:%%s\nPERCENT=%%s\n' "$output" "$percent"
+            return 0
+        }
+
+        run_brightnessctl || run_light || run_xbacklight || run_sysfs || run_xrandr || exit 1
+    ]=], brightness_step_percent, shell_quote(direction)), function(stdout, _, _, exit_code)
+        if exit_code == 0 then
+            local percent = stdout:match("PERCENT=([^\n]+)") or "?"
+            local backend = stdout:match("BACKEND=([^\n]+)") or "unknown"
+            brightness_warned = false
+            show_brightness_notification(percent, backend)
+            return
+        end
+
+        if not brightness_warned then
+            naughty.notify({
+                title = "Brightness keys",
+                text = "No usable brightness backend found. Install brightnessctl, or use an output that exposes xrandr brightness/backlight control.",
+                timeout = 2.8
+            })
+            brightness_warned = true
+        end
+    end)
+end
+
+local function brightness_up()
+    adjust_brightness("up")
+end
+
+local function brightness_down()
+    adjust_brightness("down")
 end
 
 local function launch_program_palette()
@@ -1484,6 +1634,14 @@ globalkeys = gears.table.join(
               {description = "decrease volume", group = "media"}),
     awful.key({                   }, "XF86AudioMute", volume_toggle_mute,
               {description = "toggle mute", group = "media"}),
+    awful.key({                   }, "XF86MonBrightnessUp", brightness_up,
+              {description = "increase brightness", group = "media"}),
+    awful.key({                   }, "XF86MonBrightnessDown", brightness_down,
+              {description = "decrease brightness", group = "media"}),
+    awful.key({                   }, "F12", brightness_up,
+              {description = "increase brightness (fallback)", group = "media"}),
+    awful.key({ "Shift"           }, "F12", brightness_down,
+              {description = "decrease brightness (fallback)", group = "media"}),
     awful.key({                   }, "XF86AudioPlay", media_play_pause,
               {description = "play/pause active media", group = "media"}),
     awful.key({                   }, "XF86AudioPause", media_play_pause,

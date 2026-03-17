@@ -1,12 +1,16 @@
 SHELL := /bin/bash
 .RECIPEPREFIX := >
 
-AWESOME_DIR ?= /etc/xdg/awesome
-AWESOME_RC ?= $(AWESOME_DIR)/rc.lua
+AWESOME_SYSTEM_DIR ?= /etc/xdg/awesome
+AWESOME_SYSTEM_RC ?= $(AWESOME_SYSTEM_DIR)/rc.lua
+AWESOME_USER_DIR ?= $(HOME)/.config/awesome
+AWESOME_USER_RC ?= $(AWESOME_USER_DIR)/rc.lua
+AWESOME_ACTIVE_RC ?= $(if $(wildcard $(AWESOME_USER_RC)),$(AWESOME_USER_RC),$(AWESOME_SYSTEM_RC))
 LOCAL_RC ?= rc.lua
 LOCAL_RC_BACKUP ?= rc.dupe.lua
 BACKUP_TAG := $(shell date +%Y%m%d-%H%M%S)
-SYSTEM_RC_BACKUP ?= $(AWESOME_RC).bak.$(BACKUP_TAG)
+USER_RC_BACKUP ?= $(AWESOME_USER_RC).bak.$(BACKUP_TAG)
+SYSTEM_RC_BACKUP ?= $(AWESOME_SYSTEM_RC).bak.$(BACKUP_TAG)
 
 BUILD_BIN_DIR ?= build/bin
 PROGRAMS_BIN ?= $(HOME)/Programs/bin
@@ -41,13 +45,17 @@ SMB_530_CREDENTIALS ?= $(HOME)/.smbcredentials-530
 AUDIO_OUTPUT_SINK ?=
 BT_CARD ?=
 
-.PHONY: help rc-backup awesome-backup awesome-update apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve present-live present-profile present-profile-live present-profile-list audio-help audio-status audio-bt-mic audio-bt-music shorts-help shorts-record shorts-transcribe shorts-render manim-help manim-version manim-smoke manim-scene manim-shell wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external samba-530-probe mount-530 umount-530 desktop-install
+.PHONY: help rc-backup awesome-backup awesome-update awesome-user-backup awesome-user-update awesome-system-backup awesome-system-update apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve present-live present-profile present-profile-live present-profile-list audio-help audio-status audio-bt-mic audio-bt-music shorts-help shorts-record shorts-transcribe shorts-render manim-help manim-version manim-smoke manim-scene manim-shell wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external samba-530-probe mount-530 umount-530 desktop-install
 
 help:
 >@echo "Targets:"
->@echo "  make rc-backup         Copy $(AWESOME_RC) -> $(LOCAL_RC_BACKUP)"
->@echo "  make awesome-backup    Copy $(AWESOME_RC) -> $(SYSTEM_RC_BACKUP) (uses sudo)"
->@echo "  make awesome-update    Backup + install $(LOCAL_RC) -> $(AWESOME_RC) (uses sudo)"
+>@echo "  make rc-backup           Copy active Awesome rc.lua -> $(LOCAL_RC_BACKUP)"
+>@echo "  make awesome-backup      Copy $(AWESOME_SYSTEM_RC) -> $(SYSTEM_RC_BACKUP) (uses sudo)"
+>@echo "  make awesome-update      Backup + install $(LOCAL_RC) -> $(AWESOME_SYSTEM_RC) (uses sudo)"
+>@echo "  make awesome-user-backup Copy user rc.lua -> $(USER_RC_BACKUP)"
+>@echo "  make awesome-user-update Backup + install $(LOCAL_RC) -> $(AWESOME_USER_RC)"
+>@echo "  make awesome-system-backup Alias for awesome-backup"
+>@echo "  make awesome-system-update Alias for awesome-update"
 >@echo "  make apt-check         Warn if apt metadata looks stale"
 >@echo "  make apt-update        Run sudo apt update"
 >@echo "  make deps-check-build  Check compile-time deps (fails if missing)"
@@ -84,19 +92,45 @@ help:
 >@echo "  make desktop-install     Install LinuxUtilities .desktop launchers"
 
 rc-backup:
->@test -f "$(AWESOME_RC)" || { echo "Missing system rc.lua: $(AWESOME_RC)"; exit 1; }
->@cp "$(AWESOME_RC)" "$(LOCAL_RC_BACKUP)"
->@echo "Saved local backup: $(LOCAL_RC_BACKUP)"
+>@src="$(AWESOME_ACTIVE_RC)"; \
+>test -f "$$src" || { echo "Missing Awesome rc.lua: $$src"; exit 1; }; \
+>cp "$$src" "$(LOCAL_RC_BACKUP)"; \
+>echo "Saved local backup from $$src: $(LOCAL_RC_BACKUP)"
 
 awesome-backup:
->@test -f "$(AWESOME_RC)" || { echo "Missing system rc.lua: $(AWESOME_RC)"; exit 1; }
->@sudo cp "$(AWESOME_RC)" "$(SYSTEM_RC_BACKUP)"
+>@test -f "$(AWESOME_SYSTEM_RC)" || { echo "Missing system rc.lua: $(AWESOME_SYSTEM_RC)"; exit 1; }
+>@sudo cp "$(AWESOME_SYSTEM_RC)" "$(SYSTEM_RC_BACKUP)"
 >@echo "Saved system backup: $(SYSTEM_RC_BACKUP)"
 
 awesome-update: rc-backup awesome-backup
 >@test -f "$(LOCAL_RC)" || { echo "Missing local rc.lua: $(LOCAL_RC)"; exit 1; }
->@sudo install -m 0644 "$(LOCAL_RC)" "$(AWESOME_RC)"
->@echo "Installed $(LOCAL_RC) -> $(AWESOME_RC)"
+>@sudo install -m 0644 "$(LOCAL_RC)" "$(AWESOME_SYSTEM_RC)"
+>@echo "Installed $(LOCAL_RC) -> $(AWESOME_SYSTEM_RC)"
+
+awesome-user-backup:
+>@mkdir -p "$(AWESOME_USER_DIR)"
+>@if [ -f "$(AWESOME_USER_RC)" ]; then \
+>  cp "$(AWESOME_USER_RC)" "$(USER_RC_BACKUP)"; \
+>  echo "Saved user backup: $(USER_RC_BACKUP)"; \
+>elif [ -f "$(AWESOME_SYSTEM_RC)" ]; then \
+>  cp "$(AWESOME_SYSTEM_RC)" "$(USER_RC_BACKUP)"; \
+>  echo "Saved initial backup from system rc: $(USER_RC_BACKUP)"; \
+>else \
+>  echo "Missing Awesome rc.lua: $(AWESOME_SYSTEM_RC)"; \
+>  exit 1; \
+>fi
+
+awesome-user-update: rc-backup awesome-user-backup
+>@test -f "$(LOCAL_RC)" || { echo "Missing local rc.lua: $(LOCAL_RC)"; exit 1; }
+>@mkdir -p "$(AWESOME_USER_DIR)"
+>@install -m 0644 "$(LOCAL_RC)" "$(AWESOME_USER_RC)"
+>@echo "Installed $(LOCAL_RC) -> $(AWESOME_USER_RC)"
+
+awesome-system-backup: awesome-backup
+>@:
+
+awesome-system-update: awesome-update
+>@:
 
 apt-check:
 >@set -euo pipefail; \

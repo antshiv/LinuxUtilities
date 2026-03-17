@@ -340,9 +340,18 @@ Common DSL actions:
 | `XF86AudioRaiseVolume` | Volume up |
 | `XF86AudioLowerVolume` | Volume down |
 | `XF86AudioMute` | Toggle mute |
+| `XF86MonBrightnessUp` | Brightness up |
+| `XF86MonBrightnessDown` | Brightness down |
+| `F12` | Fallback brightness up |
+| `Shift+F12` | Fallback brightness down |
 | `XF86AudioPlay` / `XF86AudioPause` | Play/pause active media |
 | `XF86AudioNext` | Next track |
 | `XF86AudioPrev` | Previous track |
+
+Brightness key behavior:
+- AwesomeWM brightness actions try `brightnessctl`, then `light`, then `xbacklight`, then writable `/sys/class/backlight/*`, then `xrandr` brightness on the current primary/internal display.
+- On many laptops, `xrandr` is only a software-dimming fallback. Install `brightnessctl` for proper hardware backlight control when available.
+- HDMI and other external monitors usually do not use the laptop backlight interface. They may ignore these keys unless they expose an `xrandr` brightness property; true external-monitor brightness control usually needs DDC/CI tools such as `ddcutil`.
 
 ## Workspace Shell Shortcuts
 
