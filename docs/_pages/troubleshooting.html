@@ -173,8 +173,9 @@ AUDIO_OUTPUT_SINK=&lt;hdmi_sink_name&gt; make audio-bt-mic</code></pre>
     <summary><strong>Config fails to load / black screen after restart</strong></summary>
     <ol>
         <li>Switch to TTY: <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F2</kbd></li>
-        <li>Check the error: <code>awesome --check ~/.config/awesome/rc.lua</code></li>
-        <li>Restore backup: <code>cp ~/.config/awesome/rc.lua.bak ~/.config/awesome/rc.lua</code></li>
+        <li>Check the error: <code>awesome -k -c ~/.config/awesome/rc.lua</code></li>
+        <li>If you deploy from this repo, reinstall the full config tree: <code>cd ~/Workspace/LinuxUtilities &amp;&amp; make awesome-user-update</code></li>
+        <li>If you need to roll back manually, restore both <code>rc.lua</code> and the matching <code>linuxutils/</code> backup directory.</li>
         <li>Return to GUI: <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F7</kbd></li>
         <li>Reload: <code>awesome-client 'awesome.restart()'</code></li>
     </ol>

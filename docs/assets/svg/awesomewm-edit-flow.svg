@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">AwesomeWM edit and deploy workflow</title>
+  <desc id="desc">Diagram showing edit, test, deploy, reload, and recover workflow for the AwesomeWM config in this repository.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#232323"/>
+      <stop offset="100%" stop-color="#2c2f38"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#07adf8"/>
+    </marker>
+    <style>
+      .title { font: 700 28px 'Inter', 'Segoe UI', sans-serif; fill: #f5f5f5; }
+      .body { font: 400 18px 'Inter', 'Segoe UI', sans-serif; fill: #d0d0d0; }
+      .mono { font: 600 18px 'JetBrains Mono', monospace; fill: #ddcdff; }
+      .step { rx: 18; stroke-width: 2; }
+      .purple { fill: rgba(196,167,255,0.14); stroke: #c4a7ff; }
+      .blue { fill: rgba(7,173,248,0.12); stroke: #07adf8; }
+      .green { fill: rgba(71,180,117,0.12); stroke: #47b475; }
+      .orange { fill: rgba(196,167,255,0.14); stroke: #ddcdff; }
+      .warn { fill: rgba(248,81,73,0.12); stroke: #f85149; }
+      .arrow { stroke: #07adf8; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1200" height="520" fill="url(#bg)"/>
+  <text x="60" y="62" class="title">Edit / Test / Deploy Loop</text>
+  <text x="60" y="96" class="body">The safe workflow for changing the AwesomeWM config in this repository.</text>
+
+  <rect x="58" y="150" width="220" height="150" class="step purple"/>
+  <text x="82" y="184" class="mono">1. Edit repo files</text>
+  <text x="82" y="220" class="body">rc.lua</text>
+  <text x="82" y="248" class="body">linuxutils/*.lua</text>
+  <text x="82" y="276" class="body">docs + tests</text>
+
+  <rect x="338" y="150" width="250" height="150" class="step blue"/>
+  <text x="362" y="184" class="mono">2. Validate locally</text>
+  <text x="362" y="220" class="body">make awesome-test</text>
+  <text x="362" y="248" class="body">awesome -k -c rc.lua</text>
+  <text x="362" y="276" class="body">make test-fast</text>
+
+  <rect x="648" y="150" width="250" height="150" class="step green"/>
+  <text x="672" y="184" class="mono">3. Deploy config tree</text>
+  <text x="672" y="220" class="body">make awesome-user-update</text>
+  <text x="672" y="248" class="body">or make awesome-update</text>
+  <text x="672" y="276" class="body">installs rc.lua + linuxutils/</text>
+
+  <rect x="958" y="150" width="182" height="150" class="step orange"/>
+  <text x="982" y="184" class="mono">4. Reload</text>
+  <text x="982" y="220" class="body">Mod4 + Ctrl + r</text>
+  <text x="982" y="248" class="body">or awesome.restart()</text>
+  <text x="982" y="276" class="body">test real keys/widgets</text>
+
+  <path d="M278 225 L338 225" class="arrow"/>
+  <path d="M588 225 L648 225" class="arrow"/>
+  <path d="M898 225 L958 225" class="arrow"/>
+
+  <rect x="355" y="356" width="490" height="108" class="step warn"/>
+  <text x="380" y="388" class="mono">Recovery path if reload fails</text>
+  <text x="380" y="420" class="body">1. Switch to a TTY</text>
+  <text x="380" y="446" class="body">2. Run awesome -k -c ~/.config/awesome/rc.lua</text>
+  <text x="380" y="472" class="body">3. Restore rc.lua and matching linuxutils/ backup if needed</text>
+
+  <path d="M1049 300 L1049 330 L845 330 L845 356" class="arrow"/>
+</svg>

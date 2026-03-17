@@ -2,7 +2,12 @@
 
 ![Linux Terminal](assets/linuxterminal.png)
 
-This directory contains a collection of utility scripts designed to enhance my workflow on Linux, particularly with AwesomeWM and various AI CLI tools. The primary objective is to streamline daily tasks, automate repetitive actions, and facilitate a more efficient and seamless integration of these technologies.
+This repository is best understood as three connected pieces rather than a generic utilities dump:
+- AwesomeWM configuration and desktop automation
+- Presentation tooling (canvas, spotlight, launch flows, Wacom/audio helpers)
+- Linux control-center and workflow helpers
+
+The primary objective is to streamline daily tasks, automate repetitive actions, and keep those workflows documented and reproducible.
 
 ## My Setup
 
@@ -39,6 +44,41 @@ make awesome-user-update
 - local backup: active Awesome rc.lua -> `./rc.dupe.lua`
 - user backup: `~/.config/awesome/rc.lua` (or `/etc/xdg/awesome/rc.lua` on first run) -> `~/.config/awesome/rc.lua.bak.<timestamp>`
 - install: `./rc.lua` -> `~/.config/awesome/rc.lua`
+
+AwesomeWM config tree notes:
+- `rc.lua` is now the entry point, with reusable Lua modules under `linuxutils/`.
+- The AwesomeWM update targets install both `rc.lua` and `linuxutils/*.lua`.
+- Local backup targets copy `rc.lua` into `rc.dupe.lua` and mirror any installed `linuxutils/` modules into `linuxutils.dupe/` when present.
+
+## Local Overrides
+
+Machine-specific defaults no longer need to live in the shared `Makefile`.
+
+Optional override files:
+- `config/local.mk`
+- `config/host/<hostname>.mk`
+
+Starter template:
+
+```bash
+cp config/local.mk.example config/local.mk
+```
+
+Good candidates for overrides:
+- `WACOM_OUTPUT`
+- `REVEAL_URL`
+- `PRESENT_WACOM_MODE`
+- `MANIM_DIR`
+- `SMB_530_HOST`, `SMB_530_SHARE`, `SMB_530_MOUNT`
+- `AUDIO_OUTPUT_SINK`
+- `BT_CARD`
+
+AwesomeWM validation:
+
+```bash
+make awesome-test   # rc.lua syntax, module-tree staging, binding/deploy checks
+make test-fast      # pre-commit fast checks including AwesomeWM + docs build
+```
 
 ## LinuxUtilities Make Targets
 

@@ -3,24 +3,155 @@
 
 <h1>AwesomeWM Config</h1>
 
-<p>A custom AwesomeWM configuration (<code>rc.lua</code>) that integrates all LinuxUtilities tools into a cohesive desktop environment — unified hotkeys, a system-tray widget, and Antsand-branded theming.</p>
+<p>This AwesomeWM setup is the orchestration layer for LinuxUtilities. It binds keys, builds the status widgets, launches helper tools, and connects desktop events to the rest of the toolkit.</p>
+
+<div class="alert alert-info">
+    <span class="alert-icon">⌨</span>
+    <div>
+        <strong>Current layout:</strong> <code>rc.lua</code> is the entry point and reusable logic now lives under <code>linuxutils/*.lua</code>. When you install the config, copy both the entrypoint and the module tree.
+    </div>
+</div>
 
 <h2>Installation</h2>
 
-<pre><code># Back up existing config
-cp ~/.config/awesome/rc.lua ~/.config/awesome/rc.lua.bak
+<pre><code># Recommended: install the full user config tree from the repo
+cd ~/Workspace/LinuxUtilities
+make awesome-user-update
 
-# Install from LinuxUtilities
-cd LinuxUtilities
-cp rc.lua ~/.config/awesome/rc.lua
+# Or update the system-wide config tree (uses sudo)
+make awesome-update
 
 # Reload AwesomeWM (no restart needed)
 # Press Mod4+Ctrl+r  or:
 awesome-client 'awesome.restart()'</code></pre>
 
-<div class="alert alert-warning">
-    <strong>Note:</strong> The config expects all LinuxUtilities binaries to be in <code>$PATH</code> or in <code>~/Workspace/LinuxUtilities/</code>. Adjust paths in the <code>-- tool paths</code> section near the top of <code>rc.lua</code>.
+<p>The update targets install:</p>
+<ul>
+    <li><code>rc.lua</code> as the entrypoint</li>
+    <li><code>linuxutils/common.lua</code> for shared helpers</li>
+    <li><code>linuxutils/brightness.lua</code> for brightness control</li>
+</ul>
+
+<h2>Config Tree</h2>
+
+<table>
+    <thead><tr><th>Path</th><th>Role</th></tr></thead>
+    <tbody>
+        <tr><td><code>rc.lua</code></td><td>AwesomeWM entrypoint. Loads Awesome libraries, updates <code>package.path</code>, imports local modules, defines widgets, key bindings, rules, and signals.</td></tr>
+        <tr><td><code>linuxutils/common.lua</code></td><td>Shared helper functions used by the config: shell quoting, hostname lookup, command existence checks, compact label helpers, numeric clamping.</td></tr>
+        <tr><td><code>linuxutils/brightness.lua</code></td><td>Brightness controller with backend fallbacks: <code>brightnessctl</code>, <code>light</code>, <code>xbacklight</code>, writable <code>/sys/class/backlight/*</code>, then <code>xrandr</code>.</td></tr>
+    </tbody>
+</table>
+
+<h2>System Stack</h2>
+
+<p>AwesomeWM is a user-space window manager. It does not talk directly to the Linux kernel to arrange windows. Instead, it receives events from the X server and calls out to user-space tools and daemons when it needs information or device changes.</p>
+
+<div class="img-container">
+    <img src="assets/svg/awesomewm-stack.svg" alt="Diagram of the AwesomeWM stack from Linux kernel and hardware up through X11, AwesomeWM, rc.lua modules, widgets, and helper commands">
 </div>
+
+<div class="grid grid-2">
+    <div class="card card-accent">
+        <h3>What talks to what</h3>
+        <ul>
+            <li>Keyboard and device interrupts start in the kernel and input stack.</li>
+            <li>Xorg/X11 exposes those events to AwesomeWM.</li>
+            <li><code>awful.key</code> callbacks in <code>rc.lua</code> turn those events into Lua actions.</li>
+            <li>Those actions may call helper commands like <code>pactl</code>, <code>xrandr</code>, <code>nmcli</code>, <code>brightnessctl</code>, or <code>flameshot</code>.</li>
+        </ul>
+    </div>
+    <div class="card card-blue">
+        <h3>What this config adds</h3>
+        <ul>
+            <li>Media keys and brightness handling</li>
+            <li>Presenter controls for Gromit, spotlight, and dash drawing</li>
+            <li>Status widgets for audio, battery, network, Bluetooth, mail, and clock</li>
+            <li>Workflow launchers for the Linux control center and presentation tools</li>
+        </ul>
+    </div>
+</div>
+
+<h2>Example Event Flow</h2>
+
+<div class="card card-green">
+    <h3>Brightness key example</h3>
+    <ol>
+        <li>You press a laptop brightness key.</li>
+        <li>X11 delivers an <code>XF86MonBrightness*</code> key event to AwesomeWM.</li>
+        <li><code>rc.lua</code> dispatches to <code>linuxutils/brightness.lua</code>.</li>
+        <li>The brightness module tries hardware-friendly tools first, then falls back to <code>xrandr</code> software dimming if needed.</li>
+        <li>A notification shows which backend actually handled the change.</li>
+    </ol>
+</div>
+
+<h2>How Module Loading Works</h2>
+
+<p><code>rc.lua</code> first resolves the directory it was loaded from, then prepends that path to Lua's <code>package.path</code>. That matters because the same config must work both from the repository checkout and after installation into <code>~/.config/awesome</code> or <code>/etc/xdg/awesome</code>.</p>
+
+<pre><code>local config_dir = resolve_config_dir()
+package.path = table.concat({
+    config_dir .. "?.lua",
+    config_dir .. "?/init.lua",
+    package.path,
+}, ";")
+
+local common = require("linuxutils.common")
+local brightness = require("linuxutils.brightness")</code></pre>
+
+<p>This keeps the entrypoint small enough to reason about while still letting the config ship as a self-contained tree.</p>
+
+<h2>How To Edit This Config Safely</h2>
+
+<div class="img-container">
+    <img src="assets/svg/awesomewm-edit-flow.svg" alt="Edit, test, deploy, reload, and recover workflow for the AwesomeWM config">
+</div>
+
+<pre><code># 1. Edit the repo copy
+$EDITOR rc.lua
+$EDITOR linuxutils/common.lua
+$EDITOR linuxutils/brightness.lua
+
+# 2. Validate before install
+make awesome-test
+awesome -k -c rc.lua
+
+# 3. Install into your user config tree
+make awesome-user-update
+
+# 4. Reload AwesomeWM
+# Mod4 + Ctrl + r</code></pre>
+
+<h2>Writing AwesomeWM Lua</h2>
+
+<div class="grid grid-2">
+    <div class="card">
+        <h3>Common Awesome building blocks</h3>
+        <ul>
+            <li><code>awful.key</code> for key bindings</li>
+            <li><code>awful.spawn</code> and <code>awful.spawn.easy_async_with_shell</code> for external commands</li>
+            <li><code>naughty.notify</code> for notifications</li>
+            <li><code>gears.timer</code> for delayed refresh/retry behavior</li>
+            <li><code>wibox.widget</code> for bar widgets and controls</li>
+        </ul>
+    </div>
+    <div class="card">
+        <h3>Style of Lua used here</h3>
+        <ul>
+            <li>Keep shared logic in small modules that <code>return</code> tables.</li>
+            <li>Keep desktop actions as explicit local functions instead of anonymous shell blobs sprinkled everywhere.</li>
+            <li>Prefer one config entrypoint and small reusable modules over multiple competing <code>rc.lua</code> copies.</li>
+            <li>Validate with <code>awesome -k</code> before reloading.</li>
+        </ul>
+    </div>
+</div>
+
+<pre><code>local function volume_up()
+    awful.spawn({ "pactl", "set-sink-volume", "@DEFAULT_SINK@", "+5%" }, false)
+end
+
+awful.key({}, "XF86AudioRaiseVolume", volume_up,
+    { description = "increase volume", group = "media" })</code></pre>
 
 <h2>Hotkey Groups</h2>
 
@@ -75,9 +206,9 @@ awesome-client 'awesome.restart()'</code></pre>
     </tbody>
 </table>
 
-<h2>Utilities Widget</h2>
+<h2>Widgets + Status Bar</h2>
 
-<p>A custom wibox widget in the top bar provides quick status indicators:</p>
+<p>The wibar is assembled in <code>rc.lua</code> and combines standard Awesome widgets with LinuxUtilities-specific status blocks. The right side hosts audio, battery, network, Bluetooth, keyboard layout, systray, host label, Thunderbird, clock, and layout indicators.</p>
 
 <div class="card card-accent">
     <div class="diagram">┌──────────────────────────────── Wibar ────────────────────────────────────────┐
@@ -112,13 +243,33 @@ awesome-client 'awesome.restart()'</code></pre>
 
 <p>Theme file location: <code>~/.config/awesome/themes/antsand/theme.lua</code></p>
 
+<h2>Testing</h2>
+
+<pre><code># AwesomeWM-only checks
+make awesome-test
+
+# Full fast test path used by the git pre-commit hook
+make test-fast
+
+# Build docs after changing this page
+bash docs/build.sh</code></pre>
+
+<p><code>make awesome-test</code> currently validates:</p>
+<ul>
+    <li>repo-copy syntax via <code>awesome -k -c rc.lua</code></li>
+    <li>a staged <code>$XDG_CONFIG_HOME/awesome</code> tree with the modular config layout</li>
+    <li>presence of critical bindings such as brightness, spotlight, gromit, and presenter dash</li>
+    <li>Makefile dry-run coverage for installing <code>linuxutils/*.lua</code></li>
+</ul>
+
 <h2>Crash Recovery</h2>
 
 <p>If AwesomeWM crashes or fails to load the config:</p>
 
 <ol>
     <li>Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F2</kbd> to switch to a TTY</li>
-    <li>Log in and restore the backup: <code>cp ~/.config/awesome/rc.lua.bak ~/.config/awesome/rc.lua</code></li>
+    <li>Log in and check syntax: <code>awesome -k -c ~/.config/awesome/rc.lua</code></li>
+    <li>Restore the matching backup of <code>rc.lua</code> and, if needed, the matching <code>linuxutils/</code> backup directory created by the Make targets.</li>
     <li>Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F7</kbd> to return to the graphical session</li>
     <li>Reload: <code>awesome-client 'awesome.restart()'</code></li>
 </ol>

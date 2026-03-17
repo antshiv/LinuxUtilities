@@ -6,11 +6,17 @@ AWESOME_SYSTEM_RC ?= $(AWESOME_SYSTEM_DIR)/rc.lua
 AWESOME_USER_DIR ?= $(HOME)/.config/awesome
 AWESOME_USER_RC ?= $(AWESOME_USER_DIR)/rc.lua
 AWESOME_ACTIVE_RC ?= $(if $(wildcard $(AWESOME_USER_RC)),$(AWESOME_USER_RC),$(AWESOME_SYSTEM_RC))
+AWESOME_MODULE_DIR ?= linuxutils
+AWESOME_MODULE_FILES ?= $(wildcard $(AWESOME_MODULE_DIR)/*.lua)
 LOCAL_RC ?= rc.lua
 LOCAL_RC_BACKUP ?= rc.dupe.lua
+LOCAL_AWESOME_MODULE_BACKUP ?= $(AWESOME_MODULE_DIR).dupe
 BACKUP_TAG := $(shell date +%Y%m%d-%H%M%S)
 USER_RC_BACKUP ?= $(AWESOME_USER_RC).bak.$(BACKUP_TAG)
+USER_MODULE_BACKUP ?= $(AWESOME_USER_DIR)/$(AWESOME_MODULE_DIR).bak.$(BACKUP_TAG)
 SYSTEM_RC_BACKUP ?= $(AWESOME_SYSTEM_RC).bak.$(BACKUP_TAG)
+SYSTEM_MODULE_BACKUP ?= $(AWESOME_SYSTEM_DIR)/$(AWESOME_MODULE_DIR).bak.$(BACKUP_TAG)
+HOST_SHORT ?= $(shell hostname -s 2>/dev/null)
 
 BUILD_BIN_DIR ?= build/bin
 PROGRAMS_BIN ?= $(HOME)/Programs/bin
@@ -45,7 +51,12 @@ SMB_530_CREDENTIALS ?= $(HOME)/.smbcredentials-530
 AUDIO_OUTPUT_SINK ?=
 BT_CARD ?=
 
-.PHONY: help rc-backup awesome-backup awesome-update awesome-user-backup awesome-user-update awesome-system-backup awesome-system-update apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve present-live present-profile present-profile-live present-profile-list audio-help audio-status audio-bt-mic audio-bt-music shorts-help shorts-record shorts-transcribe shorts-render manim-help manim-version manim-smoke manim-scene manim-shell wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external samba-530-probe mount-530 umount-530 desktop-install
+-include config/local.mk
+ifneq ($(HOST_SHORT),)
+-include config/host/$(HOST_SHORT).mk
+endif
+
+.PHONY: help rc-backup awesome-backup awesome-update awesome-user-backup awesome-user-update awesome-system-backup awesome-system-update awesome-test test-fast apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve present-live present-profile present-profile-live present-profile-list audio-help audio-status audio-bt-mic audio-bt-music shorts-help shorts-record shorts-transcribe shorts-render manim-help manim-version manim-smoke manim-scene manim-shell wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external samba-530-probe mount-530 umount-530 desktop-install
 
 help:
 >@echo "Targets:"
@@ -56,6 +67,9 @@ help:
 >@echo "  make awesome-user-update Backup + install $(LOCAL_RC) -> $(AWESOME_USER_RC)"
 >@echo "  make awesome-system-backup Alias for awesome-backup"
 >@echo "  make awesome-system-update Alias for awesome-update"
+>@echo "  make awesome-test        Run AwesomeWM config validation tests"
+>@echo "  make test-fast           Run fast repo checks used by pre-commit"
+>@echo "  local overrides: config/local.mk and config/host/$(HOST_SHORT).mk"
 >@echo "  make apt-check         Warn if apt metadata looks stale"
 >@echo "  make apt-update        Run sudo apt update"
 >@echo "  make deps-check-build  Check compile-time deps (fails if missing)"
@@ -95,17 +109,32 @@ rc-backup:
 >@src="$(AWESOME_ACTIVE_RC)"; \
 >test -f "$$src" || { echo "Missing Awesome rc.lua: $$src"; exit 1; }; \
 >cp "$$src" "$(LOCAL_RC_BACKUP)"; \
->echo "Saved local backup from $$src: $(LOCAL_RC_BACKUP)"
+>echo "Saved local backup from $$src: $(LOCAL_RC_BACKUP)"; \
+>module_src="$$(dirname "$$src")/$(AWESOME_MODULE_DIR)"; \
+>if [ -d "$$module_src" ]; then \
+>  mkdir -p "$(LOCAL_AWESOME_MODULE_BACKUP)"; \
+>  cp -R "$$module_src"/. "$(LOCAL_AWESOME_MODULE_BACKUP)/"; \
+>  echo "Saved local module backup from $$module_src: $(LOCAL_AWESOME_MODULE_BACKUP)"; \
+>fi
 
 awesome-backup:
 >@test -f "$(AWESOME_SYSTEM_RC)" || { echo "Missing system rc.lua: $(AWESOME_SYSTEM_RC)"; exit 1; }
 >@sudo cp "$(AWESOME_SYSTEM_RC)" "$(SYSTEM_RC_BACKUP)"
 >@echo "Saved system backup: $(SYSTEM_RC_BACKUP)"
+>@if [ -d "$(AWESOME_SYSTEM_DIR)/$(AWESOME_MODULE_DIR)" ]; then \
+>  sudo cp -R "$(AWESOME_SYSTEM_DIR)/$(AWESOME_MODULE_DIR)" "$(SYSTEM_MODULE_BACKUP)"; \
+>  echo "Saved system module backup: $(SYSTEM_MODULE_BACKUP)"; \
+>fi
 
 awesome-update: rc-backup awesome-backup
 >@test -f "$(LOCAL_RC)" || { echo "Missing local rc.lua: $(LOCAL_RC)"; exit 1; }
 >@sudo install -m 0644 "$(LOCAL_RC)" "$(AWESOME_SYSTEM_RC)"
 >@echo "Installed $(LOCAL_RC) -> $(AWESOME_SYSTEM_RC)"
+>@if [ -n "$(strip $(AWESOME_MODULE_FILES))" ]; then \
+>  sudo install -d "$(AWESOME_SYSTEM_DIR)/$(AWESOME_MODULE_DIR)"; \
+>  sudo install -m 0644 $(AWESOME_MODULE_FILES) "$(AWESOME_SYSTEM_DIR)/$(AWESOME_MODULE_DIR)"; \
+>  echo "Installed $(AWESOME_MODULE_DIR)/*.lua -> $(AWESOME_SYSTEM_DIR)/$(AWESOME_MODULE_DIR)"; \
+>fi
 
 awesome-user-backup:
 >@mkdir -p "$(AWESOME_USER_DIR)"
@@ -119,18 +148,36 @@ awesome-user-backup:
 >  echo "Missing Awesome rc.lua: $(AWESOME_SYSTEM_RC)"; \
 >  exit 1; \
 >fi
+>@if [ -d "$(AWESOME_USER_DIR)/$(AWESOME_MODULE_DIR)" ]; then \
+>  cp -R "$(AWESOME_USER_DIR)/$(AWESOME_MODULE_DIR)" "$(USER_MODULE_BACKUP)"; \
+>  echo "Saved user module backup: $(USER_MODULE_BACKUP)"; \
+>elif [ -d "$(AWESOME_SYSTEM_DIR)/$(AWESOME_MODULE_DIR)" ]; then \
+>  cp -R "$(AWESOME_SYSTEM_DIR)/$(AWESOME_MODULE_DIR)" "$(USER_MODULE_BACKUP)"; \
+>  echo "Saved initial module backup from system tree: $(USER_MODULE_BACKUP)"; \
+>fi
 
 awesome-user-update: rc-backup awesome-user-backup
 >@test -f "$(LOCAL_RC)" || { echo "Missing local rc.lua: $(LOCAL_RC)"; exit 1; }
 >@mkdir -p "$(AWESOME_USER_DIR)"
 >@install -m 0644 "$(LOCAL_RC)" "$(AWESOME_USER_RC)"
 >@echo "Installed $(LOCAL_RC) -> $(AWESOME_USER_RC)"
+>@if [ -n "$(strip $(AWESOME_MODULE_FILES))" ]; then \
+>  install -d "$(AWESOME_USER_DIR)/$(AWESOME_MODULE_DIR)"; \
+>  install -m 0644 $(AWESOME_MODULE_FILES) "$(AWESOME_USER_DIR)/$(AWESOME_MODULE_DIR)"; \
+>  echo "Installed $(AWESOME_MODULE_DIR)/*.lua -> $(AWESOME_USER_DIR)/$(AWESOME_MODULE_DIR)"; \
+>fi
 
 awesome-system-backup: awesome-backup
 >@:
 
 awesome-system-update: awesome-update
 >@:
+
+awesome-test:
+>@bash tests/awesomewm_config_test.sh
+
+test-fast:
+>@bash tests/run_fast.sh
 
 apt-check:
 >@set -euo pipefail; \

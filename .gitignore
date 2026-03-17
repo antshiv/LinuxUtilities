@@ -3,6 +3,8 @@ docs/build/
 Screenshots/
 /build/
 rc.dupe.lua
+linuxutils.dupe/
+config/local.mk
 
 # Legacy root-level binary names (build outputs now go under build/bin/)
 /cursor_spotlight

@@ -1,0 +1,17 @@
+# Copy this file to config/local.mk for machine-specific overrides that should
+# not live in the shared Makefile.
+
+WACOM_OUTPUT ?= HDMI-1
+REVEAL_URL ?= http://127.0.0.1:8000
+PRESENT_WACOM_MODE ?= none
+
+MANIM_DIR ?= $(HOME)/Workspace/manim
+MANIM_VENV ?= $(MANIM_DIR)/.venv/bin/activate
+
+SMB_530_HOST ?= 10.0.0.119
+SMB_530_SHARE ?= shared
+SMB_530_MOUNT ?= /mnt/w530
+SMB_530_CREDENTIALS ?= $(HOME)/.smbcredentials-530
+
+AUDIO_OUTPUT_SINK ?=
+BT_CARD ?=

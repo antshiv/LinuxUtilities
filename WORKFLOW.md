@@ -306,7 +306,8 @@ source ~/.bashrc
 sudo apt install awesome terminator
 
 # 4. Copy AwesomeWM config
-cp ~/Workspace/LinuxUtilities/rc.lua ~/.config/awesome/rc.lua
+cd ~/Workspace/LinuxUtilities
+make awesome-user-update
 
 # 5. Start building the stack
 cd ~/Software

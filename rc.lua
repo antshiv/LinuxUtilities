@@ -4,6 +4,24 @@ pcall(require, "luarocks.loader")
 
 -- Standard awesome library
 local gears = require("gears")
+local function resolve_config_dir()
+    local source = debug.getinfo(1, "S").source
+    if type(source) == "string" and source:sub(1, 1) == "@" then
+        local source_dir = source:sub(2):match("^(.*[/\\])")
+        if source_dir and source_dir ~= "" then
+            return source_dir
+        end
+    end
+    return gears.filesystem.get_configuration_dir()
+end
+
+local config_dir = resolve_config_dir()
+package.path = table.concat({
+    config_dir .. "?.lua",
+    config_dir .. "?/init.lua",
+    package.path,
+}, ";")
+
 local awful = require("awful")
 require("awful.autofocus")
 -- Widget and layout library
@@ -21,6 +39,8 @@ require("awful.hotkeys_popup.keys")
 -- Load Debian menu entries
 local debian = require("debian.menu")
 local has_fdo, freedesktop = pcall(require, "freedesktop")
+local common = require("linuxutils.common")
+local brightness = require("linuxutils.brightness")
 
 -- {{{ Error handling
 -- Check if awesome encountered an error during startup and fell back to
@@ -63,18 +83,12 @@ editor_cmd = terminal .. " -e " .. editor
 -- However, you can use another modifier like Mod1, but it may interact with others.
 modkey = "Mod4"
 
-local function get_short_hostname()
-    local hostname_pipe = io.popen("hostname -s 2>/dev/null")
-    local host = nil
-    if hostname_pipe then
-        host = hostname_pipe:read("*l")
-        hostname_pipe:close()
-    end
-    if not host or host == "" then
-        host = os.getenv("HOSTNAME") or "linux"
-    end
-    return host
-end
+local get_short_hostname = common.get_short_hostname
+local compact_sink_name = common.compact_sink_name
+local shorten_label = common.shorten_label
+local shell_quote = common.shell_quote
+local clamp_number = common.clamp_number
+local command_exists = common.command_exists
 
 local identity_label = (os.getenv("USER") or "user") .. "@" .. get_short_hostname()
 
@@ -91,7 +105,6 @@ local spotlight_dim = 0.68
 local spotlight_fps = 50
 local gromit_action_lock = false
 local audio_notification_id = nil
-local brightness_notification_id = nil
 local audio_state = { volume = "?", mute = "unknown", sink = "unknown" }
 local battery_state = { status = "unknown", percent = "?", time = "" }
 local network_state = { state = "unknown", ntype = "unknown", label = "offline" }
@@ -100,30 +113,6 @@ local audio_status_widgets = {}
 local battery_status_widgets = {}
 local network_status_widgets = {}
 local bluetooth_status_widgets = {}
-
-local function compact_sink_name(sink)
-    if not sink or sink == "" then
-        return "unknown"
-    end
-
-    local compact = sink
-    compact = compact:gsub("^alsa_output%.", "")
-    compact = compact:gsub("^bluez_output%.", "bt:")
-    if #compact > 18 then
-        compact = compact:sub(1, 18) .. "..."
-    end
-    return compact
-end
-
-local function shorten_label(label, max_len)
-    if not label or label == "" then
-        return "unknown"
-    end
-    if #label <= max_len then
-        return label
-    end
-    return label:sub(1, max_len) .. "..."
-end
 
 local function set_widget_text(widget_list, text)
     for _, widget in ipairs(widget_list) do
@@ -316,11 +305,6 @@ local function volume_toggle_mute()
     refresh_audio_state_later(true)
 end
 
-local function command_exists(cmd)
-    local ok, _, code = os.execute("command -v " .. cmd .. " >/dev/null 2>&1")
-    return ok == true or code == 0
-end
-
 local playerctl_available = command_exists("playerctl")
 local playerctl_warned = false
 
@@ -377,159 +361,19 @@ local function open_pavucontrol()
     awful.spawn({ "pavucontrol" }, false)
 end
 
-local function shell_quote(value)
-    if not value or value == "" then
-        return "''"
-    end
-    return "'" .. tostring(value):gsub("'", "'\\''") .. "'"
-end
-
-local brightness_warned = false
-
-local function show_brightness_notification(percent, backend)
-    local text = "Brightness changed"
-    if percent and percent ~= "" and percent ~= "?" then
-        text = "Brightness " .. percent .. "%"
-    end
-    if backend and backend ~= "" then
-        text = text .. "\nBackend: " .. backend
-    end
-
-    local n = naughty.notify({
-        title = "Brightness",
-        text = text,
-        timeout = 1.4,
-        replaces_id = brightness_notification_id,
-    })
-    if n and n.id then
-        brightness_notification_id = n.id
-    end
-end
-
-local function adjust_brightness(direction)
-    awful.spawn.easy_async_with_shell(string.format([=[
-        step=%d
-        action=%s
-
-        run_brightnessctl() {
-            command -v brightnessctl >/dev/null 2>&1 || return 1
-            if [ "$action" = "up" ]; then
-                brightnessctl set "${step}%%+" >/dev/null 2>&1 || return 1
-            else
-                brightnessctl set "${step}%%-" >/dev/null 2>&1 || return 1
-            fi
-            percent=$(brightnessctl -m 2>/dev/null | awk -F, 'NR==1 {gsub("%%","",$4); print $4}')
-            [ -z "$percent" ] && percent=$(brightnessctl info 2>/dev/null | awk '/Current brightness/ {for (i = 1; i <= NF; i++) if ($i ~ /\\([0-9]+%%\\)/) {gsub(/[()%%]/, "", $i); print $i; exit}}')
-            printf 'BACKEND=brightnessctl\nPERCENT=%%s\n' "${percent:-?}"
-            return 0
-        }
-
-        run_light() {
-            command -v light >/dev/null 2>&1 || return 1
-            if [ "$action" = "up" ]; then
-                light -A "$step" >/dev/null 2>&1 || return 1
-            else
-                light -U "$step" >/dev/null 2>&1 || return 1
-            fi
-            percent=$(light -G 2>/dev/null | awk '{printf "%%d", $1 + 0.5}')
-            printf 'BACKEND=light\nPERCENT=%%s\n' "${percent:-?}"
-            return 0
-        }
-
-        run_xbacklight() {
-            command -v xbacklight >/dev/null 2>&1 || return 1
-            if [ "$action" = "up" ]; then
-                xbacklight -inc "$step" >/dev/null 2>&1 || return 1
-            else
-                xbacklight -dec "$step" >/dev/null 2>&1 || return 1
-            fi
-            percent=$(xbacklight -get 2>/dev/null | awk '{printf "%%d", $1 + 0.5}')
-            printf 'BACKEND=xbacklight\nPERCENT=%%s\n' "${percent:-?}"
-            return 0
-        }
-
-        run_sysfs() {
-            for dev in /sys/class/backlight/*; do
-                [ -e "$dev" ] || continue
-                cur=$(cat "$dev/brightness" 2>/dev/null) || continue
-                max=$(cat "$dev/max_brightness" 2>/dev/null) || continue
-                [ -n "$cur" ] || continue
-                [ -n "$max" ] || continue
-                [ "$max" -gt 0 ] || continue
-                [ -w "$dev/brightness" ] || continue
-                step_raw=$(( (max * step + 50) / 100 ))
-                [ "$step_raw" -lt 1 ] && step_raw=1
-                if [ "$action" = "up" ]; then
-                    new=$((cur + step_raw))
-                else
-                    new=$((cur - step_raw))
-                fi
-                [ "$new" -lt 1 ] && new=1
-                [ "$new" -gt "$max" ] && new="$max"
-                printf '%%s' "$new" > "$dev/brightness" 2>/dev/null || continue
-                percent=$(( (new * 100 + max / 2) / max ))
-                printf 'BACKEND=sysfs:%%s\nPERCENT=%%s\n' "$(basename "$dev")" "$percent"
-                return 0
-            done
-            return 1
-        }
-
-        run_xrandr() {
-            command -v xrandr >/dev/null 2>&1 || return 1
-            output=$(xrandr --query 2>/dev/null | awk '
-                $2 == "connected" && $0 ~ / primary / { print $1; exit }
-                $2 == "connected" && ($1 ~ /^eDP/ || $1 ~ /^LVDS/) { print $1; exit }
-                $2 == "connected" { print $1; exit }
-            ')
-            [ -n "$output" ] || return 1
-            current=$(xrandr --verbose 2>/dev/null | awk -v out="$output" '
-                $1 == out && $2 == "connected" { in_output = 1; next }
-                in_output && $1 == "Brightness:" { print $2; exit }
-                in_output && /^[^[:space:]]/ { in_output = 0 }
-            ')
-            [ -n "$current" ] || return 1
-            new=$(awk -v cur="$current" -v step="$step" -v action="$action" '
-                BEGIN {
-                    delta = step / 100.0
-                    value = cur + (action == "up" ? delta : -delta)
-                    if (value < 0.10) value = 0.10
-                    if (value > 1.00) value = 1.00
-                    printf "%%.2f", value
-                }
-            ')
-            xrandr --output "$output" --brightness "$new" >/dev/null 2>&1 || return 1
-            percent=$(awk -v value="$new" 'BEGIN { printf "%%d", value * 100 + 0.5 }')
-            printf 'BACKEND=xrandr:%%s\nPERCENT=%%s\n' "$output" "$percent"
-            return 0
-        }
-
-        run_brightnessctl || run_light || run_xbacklight || run_sysfs || run_xrandr || exit 1
-    ]=], brightness_step_percent, shell_quote(direction)), function(stdout, _, _, exit_code)
-        if exit_code == 0 then
-            local percent = stdout:match("PERCENT=([^\n]+)") or "?"
-            local backend = stdout:match("BACKEND=([^\n]+)") or "unknown"
-            brightness_warned = false
-            show_brightness_notification(percent, backend)
-            return
-        end
-
-        if not brightness_warned then
-            naughty.notify({
-                title = "Brightness keys",
-                text = "No usable brightness backend found. Install brightnessctl, or use an output that exposes xrandr brightness/backlight control.",
-                timeout = 2.8
-            })
-            brightness_warned = true
-        end
-    end)
-end
+local brightness_controller = brightness.new({
+    awful = awful,
+    naughty = naughty,
+    shell_quote = shell_quote,
+    step_percent = brightness_step_percent,
+})
 
 local function brightness_up()
-    adjust_brightness("up")
+    brightness_controller.up()
 end
 
 local function brightness_down()
-    adjust_brightness("down")
+    brightness_controller.down()
 end
 
 local function launch_program_palette()
@@ -564,16 +408,6 @@ local function launch_program_palette()
     end
 
     awful.screen.focused().mypromptbox:run()
-end
-
-local function clamp_number(value, lo, hi)
-    if value < lo then
-        return lo
-    end
-    if value > hi then
-        return hi
-    end
-    return value
 end
 
 local function release_spotlight_toggle_lock()
