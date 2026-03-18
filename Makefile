@@ -8,14 +8,18 @@ AWESOME_USER_RC ?= $(AWESOME_USER_DIR)/rc.lua
 AWESOME_ACTIVE_RC ?= $(if $(wildcard $(AWESOME_USER_RC)),$(AWESOME_USER_RC),$(AWESOME_SYSTEM_RC))
 AWESOME_MODULE_DIR ?= linuxutils
 AWESOME_MODULE_FILES ?= $(sort $(wildcard $(AWESOME_MODULE_DIR)/*.lua))
+AWESOME_ICON_DIR ?= icons
 LOCAL_RC ?= rc.lua
 LOCAL_RC_BACKUP ?= rc.dupe.lua
 LOCAL_AWESOME_MODULE_BACKUP ?= $(AWESOME_MODULE_DIR).dupe
+LOCAL_AWESOME_ICON_BACKUP ?= $(AWESOME_ICON_DIR).dupe
 BACKUP_TAG := $(shell date +%Y%m%d-%H%M%S)
 USER_RC_BACKUP ?= $(AWESOME_USER_RC).bak.$(BACKUP_TAG)
 USER_MODULE_BACKUP ?= $(AWESOME_USER_DIR)/$(AWESOME_MODULE_DIR).bak.$(BACKUP_TAG)
+USER_ICON_BACKUP ?= $(AWESOME_USER_DIR)/$(AWESOME_ICON_DIR).bak.$(BACKUP_TAG)
 SYSTEM_RC_BACKUP ?= $(AWESOME_SYSTEM_RC).bak.$(BACKUP_TAG)
 SYSTEM_MODULE_BACKUP ?= $(AWESOME_SYSTEM_DIR)/$(AWESOME_MODULE_DIR).bak.$(BACKUP_TAG)
+SYSTEM_ICON_BACKUP ?= $(AWESOME_SYSTEM_DIR)/$(AWESOME_ICON_DIR).bak.$(BACKUP_TAG)
 HOST_SHORT ?= $(shell hostname -s 2>/dev/null)
 
 BUILD_BIN_DIR ?= build/bin
@@ -62,9 +66,9 @@ help:
 >@echo "Targets:"
 >@echo "  make rc-backup           Copy active Awesome rc.lua -> $(LOCAL_RC_BACKUP)"
 >@echo "  make awesome-backup      Copy $(AWESOME_SYSTEM_RC) -> $(SYSTEM_RC_BACKUP) (uses sudo)"
->@echo "  make awesome-update      Backup + install $(LOCAL_RC) + $(AWESOME_MODULE_DIR)/*.lua -> $(AWESOME_SYSTEM_RC) (uses sudo)"
+>@echo "  make awesome-update      Backup + install $(LOCAL_RC) + $(AWESOME_MODULE_DIR)/*.lua + $(AWESOME_ICON_DIR)/ -> $(AWESOME_SYSTEM_RC) (uses sudo)"
 >@echo "  make awesome-user-backup Copy user rc.lua -> $(USER_RC_BACKUP)"
->@echo "  make awesome-user-update Backup + install $(LOCAL_RC) + $(AWESOME_MODULE_DIR)/*.lua -> $(AWESOME_USER_RC)"
+>@echo "  make awesome-user-update Backup + install $(LOCAL_RC) + $(AWESOME_MODULE_DIR)/*.lua + $(AWESOME_ICON_DIR)/ -> $(AWESOME_USER_RC)"
 >@echo "  make awesome-system-backup Alias for awesome-backup"
 >@echo "  make awesome-system-update Alias for awesome-update"
 >@echo "  make awesome-test        Run AwesomeWM config validation tests"
@@ -115,6 +119,12 @@ rc-backup:
 >  mkdir -p "$(LOCAL_AWESOME_MODULE_BACKUP)"; \
 >  cp -R "$$module_src"/. "$(LOCAL_AWESOME_MODULE_BACKUP)/"; \
 >  echo "Saved local module backup from $$module_src: $(LOCAL_AWESOME_MODULE_BACKUP)"; \
+>fi; \
+>icon_src="$$(dirname "$$src")/$(AWESOME_ICON_DIR)"; \
+>if [ -d "$$icon_src" ]; then \
+>  mkdir -p "$(LOCAL_AWESOME_ICON_BACKUP)"; \
+>  cp -R "$$icon_src"/. "$(LOCAL_AWESOME_ICON_BACKUP)/"; \
+>  echo "Saved local icon backup from $$icon_src: $(LOCAL_AWESOME_ICON_BACKUP)"; \
 >fi
 
 awesome-backup:
@@ -125,6 +135,10 @@ awesome-backup:
 >  sudo cp -R "$(AWESOME_SYSTEM_DIR)/$(AWESOME_MODULE_DIR)" "$(SYSTEM_MODULE_BACKUP)"; \
 >  echo "Saved system module backup: $(SYSTEM_MODULE_BACKUP)"; \
 >fi
+>@if [ -d "$(AWESOME_SYSTEM_DIR)/$(AWESOME_ICON_DIR)" ]; then \
+>  sudo cp -R "$(AWESOME_SYSTEM_DIR)/$(AWESOME_ICON_DIR)" "$(SYSTEM_ICON_BACKUP)"; \
+>  echo "Saved system icon backup: $(SYSTEM_ICON_BACKUP)"; \
+>fi
 
 awesome-update: rc-backup awesome-backup
 >@test -f "$(LOCAL_RC)" || { echo "Missing local rc.lua: $(LOCAL_RC)"; exit 1; }
@@ -134,6 +148,14 @@ awesome-update: rc-backup awesome-backup
 >  sudo install -d "$(AWESOME_SYSTEM_DIR)/$(AWESOME_MODULE_DIR)"; \
 >  sudo install -m 0644 $(AWESOME_MODULE_FILES) "$(AWESOME_SYSTEM_DIR)/$(AWESOME_MODULE_DIR)"; \
 >  echo "Installed $(AWESOME_MODULE_DIR)/*.lua -> $(AWESOME_SYSTEM_DIR)/$(AWESOME_MODULE_DIR)"; \
+>fi
+>@if [ -d "$(AWESOME_ICON_DIR)" ]; then \
+>  sudo install -d "$(AWESOME_SYSTEM_DIR)/$(AWESOME_ICON_DIR)"; \
+>  sudo cp -R "$(AWESOME_ICON_DIR)"/. "$(AWESOME_SYSTEM_DIR)/$(AWESOME_ICON_DIR)/"; \
+>  if command -v gtk-update-icon-cache >/dev/null 2>&1 && [ -d "$(AWESOME_SYSTEM_DIR)/$(AWESOME_ICON_DIR)/LinuxUtilitiesStatus" ]; then \
+>    sudo gtk-update-icon-cache -f -t "$(AWESOME_SYSTEM_DIR)/$(AWESOME_ICON_DIR)/LinuxUtilitiesStatus" >/dev/null 2>&1 || true; \
+>  fi; \
+>  echo "Installed $(AWESOME_ICON_DIR)/ -> $(AWESOME_SYSTEM_DIR)/$(AWESOME_ICON_DIR)"; \
 >fi
 
 awesome-user-backup:
@@ -155,6 +177,13 @@ awesome-user-backup:
 >  cp -R "$(AWESOME_SYSTEM_DIR)/$(AWESOME_MODULE_DIR)" "$(USER_MODULE_BACKUP)"; \
 >  echo "Saved initial module backup from system tree: $(USER_MODULE_BACKUP)"; \
 >fi
+>@if [ -d "$(AWESOME_USER_DIR)/$(AWESOME_ICON_DIR)" ]; then \
+>  cp -R "$(AWESOME_USER_DIR)/$(AWESOME_ICON_DIR)" "$(USER_ICON_BACKUP)"; \
+>  echo "Saved user icon backup: $(USER_ICON_BACKUP)"; \
+>elif [ -d "$(AWESOME_SYSTEM_DIR)/$(AWESOME_ICON_DIR)" ]; then \
+>  cp -R "$(AWESOME_SYSTEM_DIR)/$(AWESOME_ICON_DIR)" "$(USER_ICON_BACKUP)"; \
+>  echo "Saved initial icon backup from system tree: $(USER_ICON_BACKUP)"; \
+>fi
 
 awesome-user-update: rc-backup awesome-user-backup
 >@test -f "$(LOCAL_RC)" || { echo "Missing local rc.lua: $(LOCAL_RC)"; exit 1; }
@@ -165,6 +194,14 @@ awesome-user-update: rc-backup awesome-user-backup
 >  install -d "$(AWESOME_USER_DIR)/$(AWESOME_MODULE_DIR)"; \
 >  install -m 0644 $(AWESOME_MODULE_FILES) "$(AWESOME_USER_DIR)/$(AWESOME_MODULE_DIR)"; \
 >  echo "Installed $(AWESOME_MODULE_DIR)/*.lua -> $(AWESOME_USER_DIR)/$(AWESOME_MODULE_DIR)"; \
+>fi
+>@if [ -d "$(AWESOME_ICON_DIR)" ]; then \
+>  install -d "$(AWESOME_USER_DIR)/$(AWESOME_ICON_DIR)"; \
+>  cp -R "$(AWESOME_ICON_DIR)"/. "$(AWESOME_USER_DIR)/$(AWESOME_ICON_DIR)/"; \
+>  if command -v gtk-update-icon-cache >/dev/null 2>&1 && [ -d "$(AWESOME_USER_DIR)/$(AWESOME_ICON_DIR)/LinuxUtilitiesStatus" ]; then \
+>    gtk-update-icon-cache -f -t "$(AWESOME_USER_DIR)/$(AWESOME_ICON_DIR)/LinuxUtilitiesStatus" >/dev/null 2>&1 || true; \
+>  fi; \
+>  echo "Installed $(AWESOME_ICON_DIR)/ -> $(AWESOME_USER_DIR)/$(AWESOME_ICON_DIR)"; \
 >fi
 
 awesome-system-backup: awesome-backup

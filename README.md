@@ -51,11 +51,18 @@ AwesomeWM config tree notes:
 - Current module split:
   - `linuxutils/common.lua` shared helpers
   - `linuxutils/brightness.lua` brightness backends and notifications
+  - `linuxutils/icons.lua` palette-aware icon markup helpers for the wibar
   - `linuxutils/audio.lua` volume/media control and audio widget state
   - `linuxutils/presenter.lua` spotlight, Gromit, and presenter dash actions
-  - `linuxutils/launchers.lua` flameshot, rofi/program launcher, control-center, and app launch helpers
-  - `linuxutils/widgets.lua` audio/battery/network/Bluetooth/mail/clock widget builders
+- `linuxutils/launchers.lua` flameshot, rofi/program launcher, control-center, and app launch helpers, including notes launchers
+- `linuxutils/calendar.lua` large calendar/agenda popup with note preview and font controls
+- `linuxutils/widgets.lua` audio/battery/network/Bluetooth/mail/clock widget builders
+- `linuxutils/bindings.lua` root mouse bindings, global hotkeys, client keys, and client mouse bindings
+- `icons/LinuxUtilitiesStatus/` custom tray icon theme for `nm-applet` and `blueman-applet`
 - Local backup targets copy `rc.lua` into `rc.dupe.lua` and mirror any installed `linuxutils/` modules into `linuxutils.dupe/` when present.
+- The custom AwesomeWM Bluetooth/network widgets are the default status indicators. `nm-applet` and `blueman-applet` are now opt-in; set `LINUXUTILS_AUTOSTART_STATUS_APPLETS=1` before starting AwesomeWM if you explicitly want those tray duplicates as well.
+- Notes integration defaults to `~/Workspace/ShivasNotes`. Override with `LINUXUTILS_NOTES_DIR=/path/to/notes`. By default the launcher now prefers Obsidian when available, and otherwise opens the daily markdown note in `vi` via `x-terminal-emulator`. If you want to force a specific app, set `LINUXUTILS_NOTES_APP=obsidian` or `LINUXUTILS_NOTES_APP=joplin`.
+- The calendar popup now includes a `Close` action and an explicit highlight for today's date.
 
 ## Local Overrides
 
@@ -89,9 +96,12 @@ make test-fast      # pre-commit fast checks including AwesomeWM + docs build
 
 The AwesomeWM test path now covers:
 - `rc.lua` syntax in-repo
-- a module API smoke config under `tests/awesomewm_module_smoke_rc.lua`
+- runtime smoke wrappers for `tests/awesomewm_module_smoke_rc.lua` and `tests/awesomewm_bindings_smoke_rc.lua` via `tests/awesomewm_runtime_smoke.sh`
 - a staged `$XDG_CONFIG_HOME/awesome` tree using the installed module layout
 - Make deploy dry-runs so `linuxutils/*.lua` stays part of the install contract
+- the calendar/notes popup controller and clock wiring smoke path
+
+The runtime smoke wrapper will explicitly skip when this environment cannot provide a usable virtual X11 display.
 
 ## LinuxUtilities Make Targets
 

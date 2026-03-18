@@ -30,10 +30,14 @@ awesome-client 'awesome.restart()'</code></pre>
     <li><code>rc.lua</code> as the entrypoint</li>
     <li><code>linuxutils/common.lua</code> for shared helpers</li>
     <li><code>linuxutils/brightness.lua</code> for brightness control</li>
+    <li><code>linuxutils/icons.lua</code> for palette-aware Bluetooth/network icon markup</li>
     <li><code>linuxutils/audio.lua</code> for volume/media control</li>
     <li><code>linuxutils/presenter.lua</code> for spotlight, Gromit, and presenter dash logic</li>
     <li><code>linuxutils/launchers.lua</code> for flameshot, control-center, and app launchers</li>
+    <li><code>linuxutils/calendar.lua</code> for the large calendar/agenda popup and note preview</li>
     <li><code>linuxutils/widgets.lua</code> for wibar widget builders and status refresh</li>
+    <li><code>linuxutils/bindings.lua</code> for root mouse bindings, global hotkeys, client keys, and client mouse bindings</li>
+    <li><code>icons/LinuxUtilitiesStatus/</code> for custom tray icon assets used by NetworkManager and Blueman</li>
 </ul>
 
 <h2>Config Tree</h2>
@@ -44,10 +48,14 @@ awesome-client 'awesome.restart()'</code></pre>
         <tr><td><code>rc.lua</code></td><td>AwesomeWM entrypoint. Loads Awesome libraries, updates <code>package.path</code>, imports local modules, defines widgets, key bindings, rules, and signals.</td></tr>
         <tr><td><code>linuxutils/common.lua</code></td><td>Shared helper functions used by the config: shell quoting, hostname lookup, command existence checks, compact label helpers, numeric clamping.</td></tr>
         <tr><td><code>linuxutils/brightness.lua</code></td><td>Brightness controller with backend fallbacks: <code>brightnessctl</code>, <code>light</code>, <code>xbacklight</code>, writable <code>/sys/class/backlight/*</code>, then <code>xrandr</code>.</td></tr>
+        <tr><td><code>linuxutils/icons.lua</code></td><td>Semantic icon/palette helpers for status widgets. Produces Pango markup so Bluetooth and network indicators stay visible on the dark bar.</td></tr>
         <tr><td><code>linuxutils/audio.lua</code></td><td>Audio controller for volume changes, mute, media keys, notifications, PipeWire/PulseAudio refresh, and audio widget tooltip text.</td></tr>
         <tr><td><code>linuxutils/presenter.lua</code></td><td>Presenter controller for cursor spotlight, Gromit overlay commands, and the animated presenter dash helper script.</td></tr>
-        <tr><td><code>linuxutils/launchers.lua</code></td><td>Launcher/controller actions for flameshot, the rofi program palette, Linux Control Center, and system utility entrypoints.</td></tr>
-        <tr><td><code>linuxutils/widgets.lua</code></td><td>Widget factory/controller for audio, battery, network, Bluetooth, Thunderbird, and clock widgets plus periodic status refresh.</td></tr>
+        <tr><td><code>linuxutils/launchers.lua</code></td><td>Launcher/controller actions for flameshot, the rofi program palette, Linux Control Center, system utilities, and notes entrypoints.</td></tr>
+        <tr><td><code>linuxutils/calendar.lua</code></td><td>Calendar popup controller. Builds the larger center-screen agenda panel, month navigation, font-size controls, and daily-note preview/actions.</td></tr>
+        <tr><td><code>linuxutils/widgets.lua</code></td><td>Widget factory/controller for audio, battery, network, Bluetooth, Thunderbird, and clock widgets plus periodic status refresh. The clock now delegates popup behavior to <code>calendar.lua</code>.</td></tr>
+        <tr><td><code>linuxutils/bindings.lua</code></td><td>Binding factory for root mouse buttons, global media/presenter/launcher hotkeys, client keys, and client-side utility mouse actions.</td></tr>
+        <tr><td><code>icons/LinuxUtilitiesStatus/</code></td><td>Bundled GTK icon theme overrides for tray applets so Bluetooth and Wi-Fi indicators can use explicit colors instead of inheriting Mint's dark symbolic glyphs.</td></tr>
     </tbody>
 </table>
 
@@ -61,13 +69,31 @@ awesome-client 'awesome.restart()'</code></pre>
   -> require("linuxutils.audio")
   -> require("linuxutils.presenter")
   -> require("linuxutils.launchers")
+  -> require("linuxutils.calendar")
   -> require("linuxutils.widgets")
+     -> require("linuxutils.icons")
+  -> require("linuxutils.bindings")
   -> construct controllers
+  -> construct binding tables
   -> alias public actions for keybindings/mouse bindings
   -> build the wibar using widgets.lua
+  -> install root/global/client bindings from bindings.lua
 </code></pre>
 
 <p><code>rc.lua</code> now behaves like a composition root. The modules own the logic; the entrypoint owns wiring, layouts, bindings, and AwesomeWM lifecycle hooks.</p>
+
+<div class="card card-blue">
+    <h3>Clock / calendar behavior</h3>
+    <ul>
+        <li>Left click the clock to toggle the large centered calendar popup.</li>
+        <li>Middle click opens an external calendar application.</li>
+        <li>Right click opens time/date preferences.</li>
+        <li>Mouse wheel on the clock browses previous/next months.</li>
+        <li>The popup includes font resize controls, a <code>Close</code> action, and a preview of today's markdown note.</li>
+        <li>Today's date is highlighted with a stronger accent so it stands out from the month grid.</li>
+        <li>Notes actions prefer Obsidian when installed; otherwise they fall back to opening the markdown note in <code>vi</code> inside a terminal.</li>
+    </ul>
+</div>
 
 <h2>System Stack</h2>
 
@@ -127,7 +153,8 @@ local brightness = require("linuxutils.brightness")
 local audio = require("linuxutils.audio")
 local presenter = require("linuxutils.presenter")
 local launchers = require("linuxutils.launchers")
-local widgets = require("linuxutils.widgets")</code></pre>
+local widgets = require("linuxutils.widgets")
+local bindings = require("linuxutils.bindings")</code></pre>
 
 <p>After the local module requires, <code>rc.lua</code> constructs controllers and aliases their public methods into the names used later by keybindings and widget setup.</p>
 
@@ -135,10 +162,12 @@ local widgets = require("linuxutils.widgets")</code></pre>
 local presenter_controller = presenter.new({ ... })
 local launchers_controller = launchers.new({ ... })
 local widgets_controller = widgets.new({ ... })
+local binding_tables = bindings.build({ ... })
 
 local volume_up = audio_controller.volume_up
 local open_flameshot = launchers_controller.open_flameshot
-local create_audio_widget = widgets_controller.create_audio_widget</code></pre>
+local create_audio_widget = widgets_controller.create_audio_widget
+root.buttons(binding_tables.root_buttons)</code></pre>
 
 <p>This keeps the entrypoint small enough to reason about while still letting the config ship as a self-contained tree.</p>
 
@@ -152,10 +181,12 @@ local create_audio_widget = widgets_controller.create_audio_widget</code></pre>
 $EDITOR rc.lua
 $EDITOR linuxutils/common.lua
 $EDITOR linuxutils/brightness.lua
+$EDITOR linuxutils/icons.lua
 $EDITOR linuxutils/audio.lua
 $EDITOR linuxutils/presenter.lua
 $EDITOR linuxutils/launchers.lua
 $EDITOR linuxutils/widgets.lua
+$EDITOR linuxutils/bindings.lua
 
 # 2. Validate before install
 make awesome-test
@@ -255,6 +286,8 @@ awful.key({}, "XF86AudioRaiseVolume", volume_up,
 
 <p>The wibar is assembled in <code>rc.lua</code> and combines standard Awesome widgets with LinuxUtilities-specific status blocks. The right side hosts audio, battery, network, Bluetooth, keyboard layout, systray, host label, Thunderbird, clock, and layout indicators.</p>
 
+<p>The network and Bluetooth widgets now render through <code>linuxutils/icons.lua</code> using light-colored Pango markup and are the primary status indicators by default. The tray applets are optional: if you set <code>LINUXUTILS_AUTOSTART_STATUS_APPLETS=1</code> before starting AwesomeWM, <code>nm-applet</code> and <code>blueman-applet</code> are relaunched with <code>GTK_ICON_THEME=LinuxUtilitiesStatus</code>, Blueman is pushed to full-color mode by setting <code>org.blueman.general symbolic-status-icons</code> to <code>false</code>, and the bundled tray icon theme under <code>icons/LinuxUtilitiesStatus/</code> overrides the icon names those applets request.</p>
+
 <div class="card card-accent">
     <div class="diagram">┌──────────────────────────────── Wibar ────────────────────────────────────────┐
 │  [taglist]  [tasklist]                            [utilities] [systray] [clock]│
@@ -302,11 +335,13 @@ bash docs/build.sh</code></pre>
 <p><code>make awesome-test</code> currently validates:</p>
 <ul>
     <li>repo-copy syntax via <code>awesome -k -c rc.lua</code></li>
-    <li>a controller smoke config via <code>awesome -k -c tests/awesomewm_module_smoke_rc.lua</code></li>
+    <li>a runtime smoke wrapper via <code>bash tests/awesomewm_runtime_smoke.sh</code> for the controller and bindings smoke configs</li>
     <li>a staged <code>$XDG_CONFIG_HOME/awesome</code> tree with the modular config layout</li>
     <li>presence of critical bindings such as brightness, spotlight, gromit, and presenter dash</li>
     <li>Makefile dry-run coverage for installing <code>linuxutils/*.lua</code></li>
 </ul>
+
+<p>The runtime smoke wrapper skips cleanly when a usable virtual X11 display is not available in the current shell.</p>
 
 <h2>Crash Recovery</h2>
 

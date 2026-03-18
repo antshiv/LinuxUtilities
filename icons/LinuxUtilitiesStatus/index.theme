@@ -1,0 +1,26 @@
+[Icon Theme]
+Name=LinuxUtilitiesStatus
+Comment=Custom tray icon theme for AwesomeWM status applets
+Inherits=hicolor
+Directories=status/scalable,apps/scalable,actions/scalable
+
+[status/scalable]
+Size=24
+MinSize=16
+MaxSize=256
+Type=Scalable
+Context=Status
+
+[apps/scalable]
+Size=24
+MinSize=16
+MaxSize=256
+Type=Scalable
+Context=Applications
+
+[actions/scalable]
+Size=24
+MinSize=16
+MaxSize=256
+Type=Scalable
+Context=Actions

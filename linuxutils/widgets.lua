@@ -1,8 +1,20 @@
+local icons = require("linuxutils.icons")
+
 local M = {}
 
 local function set_widget_text(widget_list, text)
     for _, widget in ipairs(widget_list) do
         widget:set_text(text)
+    end
+end
+
+local function set_widget_markup(widget_list, markup)
+    for _, widget in ipairs(widget_list) do
+        if widget.set_markup then
+            widget:set_markup(markup)
+        else
+            widget:set_text(markup)
+        end
     end
 end
 
@@ -13,6 +25,7 @@ function M.new(opts)
     local shorten_label = assert(opts and opts.shorten_label, "widgets.new requires shorten_label")
     local audio = assert(opts and opts.audio, "widgets.new requires audio controller")
     local launchers = assert(opts and opts.launchers, "widgets.new requires launchers controller")
+    local calendar = assert(opts and opts.calendar, "widgets.new requires calendar controller")
 
     local battery_state = { status = "unknown", percent = "?", time = "" }
     local network_state = { state = "unknown", ntype = "unknown", label = "offline" }
@@ -26,12 +39,12 @@ function M.new(opts)
         set_widget_text(battery_status_widgets, text)
     end
 
-    local function set_network_widget_text(text)
-        set_widget_text(network_status_widgets, text)
+    local function set_network_widget_markup(markup)
+        set_widget_markup(network_status_widgets, markup)
     end
 
-    local function set_bluetooth_widget_text(text)
-        set_widget_text(bluetooth_status_widgets, text)
+    local function set_bluetooth_widget_markup(markup)
+        set_widget_markup(bluetooth_status_widgets, markup)
     end
 
     local function refresh_battery_state()
@@ -93,16 +106,8 @@ function M.new(opts)
             network_state.ntype = stdout:match("TYPE=([^\n]+)") or "unknown"
             network_state.label = stdout:match("LABEL=([^\n]+)") or "offline"
 
-            local icon = "⛔"
-            if network_state.ntype == "wifi" then
-                icon = "📶"
-            elseif network_state.ntype == "ethernet" then
-                icon = "🖧"
-            elseif network_state.ntype == "connected" then
-                icon = "🌐"
-            end
             local label_short = shorten_label(network_state.label, 12)
-            set_network_widget_text(" " .. icon .. " " .. label_short .. " ")
+            set_network_widget_markup(icons.network(network_state.ntype, label_short))
         end)
     end
 
@@ -117,16 +122,7 @@ function M.new(opts)
             bluetooth_state.powered = stdout:match("POWERED=([^\n]+)") or "unknown"
             bluetooth_state.connected = stdout:match("CONNECTED=([^\n]+)") or "0"
 
-            local connected = tonumber(bluetooth_state.connected) or 0
-            if bluetooth_state.powered == "yes" then
-                if connected > 0 then
-                    set_bluetooth_widget_text(" 🔵 BT " .. tostring(connected) .. " ")
-                else
-                    set_bluetooth_widget_text(" 🔵 BT ")
-                end
-            else
-                set_bluetooth_widget_text(" ⚪ BT ")
-            end
+            set_bluetooth_widget_markup(icons.bluetooth(bluetooth_state.powered, bluetooth_state.connected))
         end)
     end
 
@@ -228,7 +224,7 @@ function M.new(opts)
 
     function controller.create_network_widget()
         local widget = wibox.widget.textbox()
-        widget:set_text(" 🌐 -- ")
+        widget:set_markup(icons.network("unknown", "--"))
         widget:buttons(gears.table.join(
             awful.button({ }, 1, launchers.open_network_manager),
             awful.button({ }, 3, refresh_network_state)
@@ -246,7 +242,7 @@ function M.new(opts)
 
     function controller.create_bluetooth_widget()
         local widget = wibox.widget.textbox()
-        widget:set_text(" ⚪ BT ")
+        widget:set_markup(icons.bluetooth("unknown", "0"))
         widget:buttons(gears.table.join(
             awful.button({ }, 1, launchers.open_bluetooth_manager),
             awful.button({ }, 3, refresh_bluetooth_state)
@@ -265,17 +261,26 @@ function M.new(opts)
     function controller.create_clock_widget()
         local widget = wibox.widget.textclock(" 🕒 %a %d %b %H:%M ")
         widget:buttons(gears.table.join(
-            awful.button({ }, 1, launchers.open_calendar_app),
-            awful.button({ }, 3, launchers.open_time_preferences)
+            awful.button({ }, 1, function()
+                calendar.toggle_popup()
+            end),
+            awful.button({ }, 2, function()
+                launchers.open_calendar_app()
+            end),
+            awful.button({ }, 3, function()
+                launchers.open_time_preferences()
+            end),
+            awful.button({ }, 4, function()
+                calendar.previous_month()
+            end),
+            awful.button({ }, 5, function()
+                calendar.next_month()
+            end)
         ))
-        local calendar = awful.widget.calendar_popup.month()
-        calendar:attach(widget, "tr", { on_hover = true })
-        widget._calendar = calendar
+        widget._calendar_controller = calendar
         awful.tooltip({
             objects = { widget },
-            timer_function = function()
-                return os.date("%A, %d %B %Y\n%H:%M:%S") .. "\nLeft click: calendar app\nRight click: date/time settings"
-            end,
+            timer_function = calendar.clock_tooltip_text,
         })
         return widget
     end

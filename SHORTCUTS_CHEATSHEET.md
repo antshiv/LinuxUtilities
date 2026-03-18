@@ -268,8 +268,11 @@ Common DSL actions:
 | `Bluetooth right click` | Refresh bluetooth status |
 | `Mail left click` | Open Thunderbird |
 | `Mail right click` | Open Thunderbird calendar |
-| `Clock left click` | Open calendar app |
+| `Clock left click` | Toggle large calendar popup |
+| `Clock middle click` | Open calendar app |
 | `Clock right click` | Open time preferences |
+| `Clock wheel up/down` | Previous/next month in popup |
+| `Calendar popup Close` | Hide the popup without returning to the clock |
 
 ## Core AwesomeWM Keyboard Shortcuts
 

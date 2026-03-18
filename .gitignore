@@ -4,6 +4,7 @@ Screenshots/
 /build/
 rc.dupe.lua
 linuxutils.dupe/
+icons.dupe/
 config/local.mk
 
 # Legacy root-level binary names (build outputs now go under build/bin/)

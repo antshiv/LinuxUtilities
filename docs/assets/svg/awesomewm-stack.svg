@@ -64,7 +64,8 @@
   <rect x="340" y="525" width="250" height="92" class="box accent"/>
   <text x="360" y="554" class="mono">common.lua</text>
   <text x="360" y="579" class="mono">brightness.lua</text>
-  <text x="360" y="607" class="small">helpers + brightness backends</text>
+  <text x="360" y="603" class="mono">icons.lua</text>
+  <text x="360" y="621" class="small">helpers + brightness + icon palette</text>
 
   <rect x="618" y="525" width="250" height="92" class="box accent"/>
   <text x="638" y="554" class="mono">audio.lua</text>
@@ -72,9 +73,10 @@
   <text x="638" y="607" class="small">media control + status widgets</text>
 
   <rect x="896" y="525" width="234" height="92" class="box accent"/>
-  <text x="916" y="554" class="mono">presenter.lua</text>
-  <text x="916" y="579" class="mono">launchers.lua</text>
-  <text x="916" y="607" class="small">workflow actions + app launchers</text>
+  <text x="916" y="548" class="mono">presenter.lua</text>
+  <text x="916" y="572" class="mono">launchers.lua</text>
+  <text x="916" y="596" class="mono">bindings.lua</text>
+  <text x="916" y="614" class="small">workflow actions + hotkeys + tray icon theme</text>
 
   <path d="M182 386 L182 522" class="arrow"/>
   <path d="M450 386 L450 522" class="arrow"/>

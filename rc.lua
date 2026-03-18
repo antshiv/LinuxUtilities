@@ -44,7 +44,9 @@ local brightness = require("linuxutils.brightness")
 local audio = require("linuxutils.audio")
 local presenter = require("linuxutils.presenter")
 local launchers = require("linuxutils.launchers")
+local calendar = require("linuxutils.calendar")
 local widgets = require("linuxutils.widgets")
+local bindings = require("linuxutils.bindings")
 
 -- {{{ Error handling
 -- Check if awesome encountered an error during startup and fell back to
@@ -105,6 +107,9 @@ local spotlight_fps = 50
 -- Confirm on your machine with: xev -event button
 local flameshot_mouse_button = 8
 local utility_mouse_button = 9
+-- Keep the custom AwesomeWM Bluetooth/network widgets as the primary status surface.
+-- Set LINUXUTILS_AUTOSTART_STATUS_APPLETS=1 if you explicitly want nm-applet/blueman-applet duplicates in the tray.
+local autostart_status_tray_applets = os.getenv("LINUXUTILS_AUTOSTART_STATUS_APPLETS") == "1"
 
 local brightness_controller = brightness.new({
     awful = awful,
@@ -141,6 +146,13 @@ local launchers_controller = launchers.new({
     shell_quote = shell_quote,
 })
 
+local calendar_controller = calendar.new({
+    awful = awful,
+    gears = gears,
+    wibox = wibox,
+    launchers = launchers_controller,
+})
+
 local widgets_controller = widgets.new({
     awful = awful,
     gears = gears,
@@ -148,6 +160,7 @@ local widgets_controller = widgets.new({
     shorten_label = shorten_label,
     audio = audio_controller,
     launchers = launchers_controller,
+    calendar = calendar_controller,
 })
 
 local refresh_system_statuses = widgets_controller.refresh_system_statuses
@@ -189,10 +202,28 @@ local launch_program_palette = launchers_controller.launch_program_palette
 local open_linux_control_center_for_client = launchers_controller.open_linux_control_center_for_client
 
 local function autostart_desktop_applets()
-    awful.spawn.with_shell([[
-        pgrep -u "$USER" -x nm-applet >/dev/null 2>&1 || nm-applet --indicator >/dev/null 2>&1 &
-        pgrep -u "$USER" -x blueman-applet >/dev/null 2>&1 || blueman-applet >/dev/null 2>&1 &
-    ]])
+    if not autostart_status_tray_applets then
+        awful.spawn.with_shell([[
+            pkill -u "$USER" -x nm-applet >/dev/null 2>&1 || true
+            pkill -u "$USER" -x blueman-applet >/dev/null 2>&1 || true
+        ]])
+        return
+    end
+    awful.spawn.with_shell(string.format([=[
+        theme_data_dir=%s
+        export XDG_DATA_DIRS="$theme_data_dir:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+        export GTK_ICON_THEME=LinuxUtilitiesStatus
+
+        if command -v gsettings >/dev/null 2>&1; then
+            gsettings set org.blueman.general symbolic-status-icons false >/dev/null 2>&1 || true
+        fi
+
+        pkill -u "$USER" -x nm-applet >/dev/null 2>&1 || true
+        pkill -u "$USER" -x blueman-applet >/dev/null 2>&1 || true
+
+        (sleep 0.2; nm-applet >/dev/null 2>&1 &) 
+        (sleep 0.4; blueman-applet >/dev/null 2>&1 &)
+    ]=], shell_quote(config_dir:gsub("/+$", ""))))
 end
 
 local function autostart_compositor()
@@ -405,320 +436,52 @@ awful.screen.connect_for_each_screen(function(s)
 end)
 -- }}}
 
--- {{{ Mouse bindings
-root.buttons(gears.table.join(
-    awful.button({ }, 3, function () mymainmenu:toggle() end),
-    awful.button({ }, 4, awful.tag.viewnext),
-    awful.button({ }, 5, awful.tag.viewprev),
-    awful.button({ }, flameshot_mouse_button, open_flameshot),
-    awful.button({ }, utility_mouse_button, function ()
-        open_linux_control_center_for_client(client.focus)
-    end),
-    awful.button({ modkey }, 2, volume_toggle_mute),
-    awful.button({ modkey }, 4, volume_up),
-    awful.button({ modkey }, 5, volume_down)
-))
--- }}}
+local binding_tables = bindings.build({
+    awful = awful,
+    gears = gears,
+    hotkeys_popup = hotkeys_popup,
+    menubar = menubar,
+    awesome = awesome,
+    client_global = client,
+    mymainmenu = mymainmenu,
+    modkey = modkey,
+    terminal = terminal,
+    flameshot_mouse_button = flameshot_mouse_button,
+    utility_mouse_button = utility_mouse_button,
+    actions = {
+        open_flameshot = open_flameshot,
+        open_linux_control_center_for_client = open_linux_control_center_for_client,
+        volume_up = volume_up,
+        volume_down = volume_down,
+        volume_toggle_mute = volume_toggle_mute,
+        brightness_up = brightness_up,
+        brightness_down = brightness_down,
+        media_play_pause = media_play_pause,
+        media_next_track = media_next_track,
+        media_prev_track = media_prev_track,
+        launch_program_palette = launch_program_palette,
+        toggle_gromit_draw = toggle_gromit_draw,
+        clear_gromit_draw = clear_gromit_draw,
+        undo_gromit_draw = undo_gromit_draw,
+        redo_gromit_draw = redo_gromit_draw,
+        toggle_gromit_visibility = toggle_gromit_visibility,
+        quit_gromit = quit_gromit,
+        presenter_dash_anchor = presenter_dash_anchor,
+        presenter_dash_dash = presenter_dash_dash,
+        presenter_dash_dot = presenter_dash_dot,
+        presenter_dash_solid = presenter_dash_solid,
+        presenter_dash_arrow = presenter_dash_arrow,
+        presenter_dash_reset = presenter_dash_reset,
+        toggle_cursor_spotlight = toggle_cursor_spotlight,
+        adjust_cursor_spotlight = adjust_cursor_spotlight,
+    },
+})
 
--- {{{ Key bindings
-globalkeys = gears.table.join(
-    awful.key({ modkey,           }, "s",      hotkeys_popup.show_help,
-              {description="show help", group="awesome"}),
-    awful.key({ modkey,           }, "Left",   awful.tag.viewprev,
-              {description = "view previous", group = "tag"}),
-    awful.key({ modkey,           }, "Right",  awful.tag.viewnext,
-              {description = "view next", group = "tag"}),
-    awful.key({ modkey,           }, "Escape", awful.tag.history.restore,
-              {description = "go back", group = "tag"}),
+root.buttons(binding_tables.root_buttons)
 
-    awful.key({ modkey,           }, "j",
-        function ()
-            awful.client.focus.byidx( 1)
-        end,
-        {description = "focus next by index", group = "client"}
-    ),
-    awful.key({ modkey,           }, "k",
-        function ()
-            awful.client.focus.byidx(-1)
-        end,
-        {description = "focus previous by index", group = "client"}
-    ),
-    awful.key({ modkey,           }, "w", function () mymainmenu:show() end,
-              {description = "show main menu", group = "awesome"}),
-
-    -- Layout manipulation
-    awful.key({ modkey, "Shift"   }, "j", function () awful.client.swap.byidx(  1)    end,
-              {description = "swap with next client by index", group = "client"}),
-    awful.key({ modkey, "Shift"   }, "k", function () awful.client.swap.byidx( -1)    end,
-              {description = "swap with previous client by index", group = "client"}),
-    awful.key({ modkey, "Control" }, "j", function () awful.screen.focus_relative( 1) end,
-              {description = "focus the next screen", group = "screen"}),
-    awful.key({ modkey, "Control" }, "k", function () awful.screen.focus_relative(-1) end,
-              {description = "focus the previous screen", group = "screen"}),
-    awful.key({ modkey,           }, "u", awful.client.urgent.jumpto,
-              {description = "jump to urgent client", group = "client"}),
-    awful.key({ modkey,           }, "Tab",
-        function ()
-            awful.client.focus.history.previous()
-            if client.focus then
-                client.focus:raise()
-            end
-        end,
-        {description = "go back", group = "client"}),
-
-    -- Standard program
-    awful.key({ modkey,           }, "Return", function () awful.spawn(terminal) end,
-              {description = "open a terminal", group = "launcher"}),
-    awful.key({                   }, "F6", toggle_gromit_draw,
-              {description = "toggle presenter drawing (gromit)", group = "launcher"}),
-    awful.key({ "Shift"           }, "F6", clear_gromit_draw,
-              {description = "clear presenter drawing (gromit)", group = "launcher"}),
-    awful.key({ "Control"         }, "F6", undo_gromit_draw,
-              {description = "undo presenter stroke (gromit)", group = "launcher"}),
-    awful.key({ "Control", "Shift"}, "F6", redo_gromit_draw,
-              {description = "redo presenter stroke (gromit)", group = "launcher"}),
-    awful.key({ "Mod1"            }, "F6", toggle_gromit_visibility,
-              {description = "toggle presenter overlay visibility (gromit)", group = "launcher"}),
-    awful.key({ "Control", "Mod1" }, "F6", quit_gromit,
-              {description = "quit presenter overlay (gromit)", group = "launcher"}),
-    awful.key({ "Mod1"            }, "F11", presenter_dash_anchor,
-              {description = "set presenter dash anchor", group = "launcher"}),
-    awful.key({                   }, "F11", presenter_dash_dash,
-              {description = "draw animated dashed segment", group = "launcher"}),
-    awful.key({ "Shift"           }, "F11", presenter_dash_dot,
-              {description = "draw animated dotted segment", group = "launcher"}),
-    awful.key({ "Control"         }, "F11", presenter_dash_solid,
-              {description = "draw animated solid segment", group = "launcher"}),
-    awful.key({ modkey            }, "F11", presenter_dash_arrow,
-              {description = "draw animated arrow segment", group = "launcher"}),
-    awful.key({ "Control", "Mod1" }, "F11", presenter_dash_reset,
-              {description = "reset presenter dash anchor", group = "launcher"}),
-    awful.key({                   }, "F7", toggle_cursor_spotlight,
-              {description = "toggle cursor spotlight", group = "launcher"}),
-    awful.key({                   }, "F9", function () adjust_cursor_spotlight(0, -0.05) end,
-              {description = "spotlight less dim", group = "launcher"}),
-    awful.key({                   }, "F10", function () adjust_cursor_spotlight(0, 0.05) end,
-              {description = "spotlight more dim", group = "launcher"}),
-    awful.key({ "Shift"           }, "F9", function () adjust_cursor_spotlight(-20, 0) end,
-              {description = "spotlight smaller radius", group = "launcher"}),
-    awful.key({ "Shift"           }, "F10", function () adjust_cursor_spotlight(20, 0) end,
-              {description = "spotlight larger radius", group = "launcher"}),
-    awful.key({ modkey            }, "g", toggle_cursor_spotlight,
-              {description = "toggle cursor spotlight (fallback)", group = "launcher"}),
-    awful.key({ modkey            }, "bracketleft", function () adjust_cursor_spotlight(0, -0.05) end,
-              {description = "spotlight less dim (fallback)", group = "launcher"}),
-    awful.key({ modkey            }, "bracketright", function () adjust_cursor_spotlight(0, 0.05) end,
-              {description = "spotlight more dim (fallback)", group = "launcher"}),
-    awful.key({ modkey            }, "minus", function () adjust_cursor_spotlight(-20, 0) end,
-              {description = "spotlight smaller radius (fallback)", group = "launcher"}),
-    awful.key({ modkey            }, "equal", function () adjust_cursor_spotlight(20, 0) end,
-              {description = "spotlight larger radius (fallback)", group = "launcher"}),
-    awful.key({ "Control", "Mod1" }, "g", toggle_cursor_spotlight,
-              {description = "toggle cursor spotlight (Ctrl+Alt fallback)", group = "launcher"}),
-    awful.key({ "Control", "Mod1" }, "bracketleft", function () adjust_cursor_spotlight(0, -0.05) end,
-              {description = "spotlight less dim (Ctrl+Alt fallback)", group = "launcher"}),
-    awful.key({ "Control", "Mod1" }, "bracketright", function () adjust_cursor_spotlight(0, 0.05) end,
-              {description = "spotlight more dim (Ctrl+Alt fallback)", group = "launcher"}),
-    awful.key({ "Control", "Mod1" }, "minus", function () adjust_cursor_spotlight(-20, 0) end,
-              {description = "spotlight smaller radius (Ctrl+Alt fallback)", group = "launcher"}),
-    awful.key({ "Control", "Mod1" }, "equal", function () adjust_cursor_spotlight(20, 0) end,
-              {description = "spotlight larger radius (Ctrl+Alt fallback)", group = "launcher"}),
-    awful.key({                   }, "F8", open_flameshot,
-              {description = "open flameshot", group = "launcher"}),
-    awful.key({                   }, "Print", open_flameshot,
-              {description = "open flameshot", group = "launcher"}),
-    awful.key({                   }, "XF86AudioRaiseVolume", volume_up,
-              {description = "increase volume", group = "media"}),
-    awful.key({                   }, "XF86AudioLowerVolume", volume_down,
-              {description = "decrease volume", group = "media"}),
-    awful.key({                   }, "XF86AudioMute", volume_toggle_mute,
-              {description = "toggle mute", group = "media"}),
-    awful.key({                   }, "XF86MonBrightnessUp", brightness_up,
-              {description = "increase brightness", group = "media"}),
-    awful.key({                   }, "XF86MonBrightnessDown", brightness_down,
-              {description = "decrease brightness", group = "media"}),
-    awful.key({                   }, "F12", brightness_up,
-              {description = "increase brightness (fallback)", group = "media"}),
-    awful.key({ "Shift"           }, "F12", brightness_down,
-              {description = "decrease brightness (fallback)", group = "media"}),
-    awful.key({                   }, "XF86AudioPlay", media_play_pause,
-              {description = "play/pause active media", group = "media"}),
-    awful.key({                   }, "XF86AudioPause", media_play_pause,
-              {description = "play/pause active media", group = "media"}),
-    awful.key({                   }, "XF86AudioNext", media_next_track,
-              {description = "next track", group = "media"}),
-    awful.key({                   }, "XF86AudioPrev", media_prev_track,
-              {description = "previous track", group = "media"}),
-    awful.key({ modkey, "Control" }, "r", awesome.restart,
-              {description = "reload awesome", group = "awesome"}),
-    awful.key({ modkey, "Shift"   }, "q", awesome.quit,
-              {description = "quit awesome", group = "awesome"}),
-
-    awful.key({ modkey,           }, "l",     function () awful.tag.incmwfact( 0.05)          end,
-              {description = "increase master width factor", group = "layout"}),
-    awful.key({ modkey,           }, "h",     function () awful.tag.incmwfact(-0.05)          end,
-              {description = "decrease master width factor", group = "layout"}),
-    awful.key({ modkey, "Shift"   }, "h",     function () awful.tag.incnmaster( 1, nil, true) end,
-              {description = "increase the number of master clients", group = "layout"}),
-    awful.key({ modkey, "Shift"   }, "l",     function () awful.tag.incnmaster(-1, nil, true) end,
-              {description = "decrease the number of master clients", group = "layout"}),
-    awful.key({ modkey, "Control" }, "h",     function () awful.tag.incncol( 1, nil, true)    end,
-              {description = "increase the number of columns", group = "layout"}),
-    awful.key({ modkey, "Control" }, "l",     function () awful.tag.incncol(-1, nil, true)    end,
-              {description = "decrease the number of columns", group = "layout"}),
-    awful.key({ modkey,           }, "space", function () awful.layout.inc( 1)                end,
-              {description = "select next", group = "layout"}),
-    awful.key({ modkey, "Shift"   }, "space", function () awful.layout.inc(-1)                end,
-              {description = "select previous", group = "layout"}),
-
-    awful.key({ modkey, "Control" }, "n",
-              function ()
-                  local c = awful.client.restore()
-                  -- Focus restored client
-                  if c then
-                    c:emit_signal(
-                        "request::activate", "key.unminimize", {raise = true}
-                    )
-                  end
-              end,
-              {description = "restore minimized", group = "client"}),
-
-    -- Prompt
-    awful.key({ modkey },            "r", launch_program_palette,
-              {description = "program launcher (rofi + custom commands)", group = "launcher"}),
-    awful.key({ modkey, "Shift" },   "r",     function () awful.screen.focused().mypromptbox:run() end,
-              {description = "run prompt (classic)", group = "launcher"}),
-
-    awful.key({ modkey }, "x",
-              function ()
-                  awful.prompt.run {
-                    prompt       = "Run Lua code: ",
-                    textbox      = awful.screen.focused().mypromptbox.widget,
-                    exe_callback = awful.util.eval,
-                    history_path = awful.util.get_cache_dir() .. "/history_eval"
-                  }
-              end,
-              {description = "lua execute prompt", group = "awesome"}),
-    -- Menubar
-    awful.key({ modkey }, "p", function() menubar.show() end,
-              {description = "show the menubar", group = "launcher"})
-)
-
-clientkeys = gears.table.join(
-    awful.key({ modkey,           }, "f",
-        function (c)
-            c.fullscreen = not c.fullscreen
-            c:raise()
-        end,
-        {description = "toggle fullscreen", group = "client"}),
-    awful.key({ modkey, "Shift"   }, "c",      function (c) c:kill()                         end,
-              {description = "close", group = "client"}),
-    awful.key({ modkey, "Control" }, "space",  awful.client.floating.toggle                     ,
-              {description = "toggle floating", group = "client"}),
-    awful.key({ modkey, "Control" }, "Return", function (c) c:swap(awful.client.getmaster()) end,
-              {description = "move to master", group = "client"}),
-    awful.key({ modkey,           }, "o",      function (c) c:move_to_screen()               end,
-              {description = "move to screen", group = "client"}),
-    awful.key({ modkey,           }, "t",      function (c) c.ontop = not c.ontop            end,
-              {description = "toggle keep on top", group = "client"}),
-    awful.key({ modkey,           }, "n",
-        function (c)
-            -- The client currently has the input focus, so it cannot be
-            -- minimized, since minimized clients can't have the focus.
-            c.minimized = true
-        end ,
-        {description = "minimize", group = "client"}),
-    awful.key({ modkey,           }, "m",
-        function (c)
-            c.maximized = not c.maximized
-            c:raise()
-        end ,
-        {description = "(un)maximize", group = "client"}),
-    awful.key({ modkey, "Control" }, "m",
-        function (c)
-            c.maximized_vertical = not c.maximized_vertical
-            c:raise()
-        end ,
-        {description = "(un)maximize vertically", group = "client"}),
-    awful.key({ modkey, "Shift"   }, "m",
-        function (c)
-            c.maximized_horizontal = not c.maximized_horizontal
-            c:raise()
-        end ,
-        {description = "(un)maximize horizontally", group = "client"})
-)
-
--- Bind all key numbers to tags.
--- Be careful: we use keycodes to make it work on any keyboard layout.
--- This should map on the top row of your keyboard, usually 1 to 9.
-for i = 1, 9 do
-    globalkeys = gears.table.join(globalkeys,
-        -- View tag only.
-        awful.key({ modkey }, "#" .. i + 9,
-                  function ()
-                        local screen = awful.screen.focused()
-                        local tag = screen.tags[i]
-                        if tag then
-                           tag:view_only()
-                        end
-                  end,
-                  {description = "view tag #"..i, group = "tag"}),
-        -- Toggle tag display.
-        awful.key({ modkey, "Control" }, "#" .. i + 9,
-                  function ()
-                      local screen = awful.screen.focused()
-                      local tag = screen.tags[i]
-                      if tag then
-                         awful.tag.viewtoggle(tag)
-                      end
-                  end,
-                  {description = "toggle tag #" .. i, group = "tag"}),
-        -- Move client to tag.
-        awful.key({ modkey, "Shift" }, "#" .. i + 9,
-                  function ()
-                      if client.focus then
-                          local tag = client.focus.screen.tags[i]
-                          if tag then
-                              client.focus:move_to_tag(tag)
-                          end
-                     end
-                  end,
-                  {description = "move focused client to tag #"..i, group = "tag"}),
-        -- Toggle tag on focused client.
-        awful.key({ modkey, "Control", "Shift" }, "#" .. i + 9,
-                  function ()
-                      if client.focus then
-                          local tag = client.focus.screen.tags[i]
-                          if tag then
-                              client.focus:toggle_tag(tag)
-                          end
-                      end
-                  end,
-                  {description = "toggle focused client on tag #" .. i, group = "tag"})
-    )
-end
-
-clientbuttons = gears.table.join(
-    awful.button({ }, 1, function (c)
-        c:emit_signal("request::activate", "mouse_click", {raise = true})
-    end),
-    awful.button({ }, flameshot_mouse_button, function (c)
-        c:emit_signal("request::activate", "mouse_click", {raise = false})
-        open_flameshot()
-    end),
-    awful.button({ }, utility_mouse_button, function (c)
-        c:emit_signal("request::activate", "mouse_click", {raise = false})
-        open_linux_control_center_for_client(c)
-    end),
-    awful.button({ modkey }, 1, function (c)
-        c:emit_signal("request::activate", "mouse_click", {raise = true})
-        awful.mouse.client.move(c)
-    end),
-    awful.button({ modkey }, 3, function (c)
-        c:emit_signal("request::activate", "mouse_click", {raise = true})
-        awful.mouse.client.resize(c)
-    end)
-)
+globalkeys = binding_tables.globalkeys
+clientkeys = binding_tables.clientkeys
+clientbuttons = binding_tables.clientbuttons
 
 -- Set keys
 root.keys(globalkeys)

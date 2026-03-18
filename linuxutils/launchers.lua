@@ -10,6 +10,36 @@ function M.new(opts)
     local flameshot_lock = false
     local controller = {}
 
+    local function expand_tilde_path(path)
+        if not path or path == "" then
+            return nil
+        end
+        if path == "~" then
+            return os.getenv("HOME")
+        end
+        if path:sub(1, 2) == "~/" then
+            return (os.getenv("HOME") or "") .. path:sub(2)
+        end
+        return path
+    end
+
+    local function notes_root()
+        local explicit = expand_tilde_path(os.getenv("LINUXUTILS_NOTES_DIR"))
+        if explicit and explicit ~= "" then
+            return explicit
+        end
+        local home = os.getenv("HOME") or ""
+        if home ~= "" then
+            return home .. "/Workspace/ShivasNotes"
+        end
+        return "ShivasNotes"
+    end
+
+    local function daily_note_path(date_table)
+        local ts = os.time(date_table or os.date("*t"))
+        return notes_root() .. "/daily/" .. os.date("%Y-%m-%d", ts) .. ".md"
+    end
+
     local function build_flameshot_target_file()
         local home = os.getenv("HOME") or ""
         local shots_dir = home ~= "" and (home .. "/Screenshots") or "Screenshots"
@@ -64,19 +94,6 @@ function M.new(opts)
         end
 
         awful.screen.focused().mypromptbox:run()
-    end
-
-    local function expand_tilde_path(path)
-        if not path or path == "" then
-            return nil
-        end
-        if path == "~" then
-            return os.getenv("HOME")
-        end
-        if path:sub(1, 2) == "~/" then
-            return (os.getenv("HOME") or "") .. path:sub(2)
-        end
-        return path
     end
 
     local function extract_dir_from_client_title(c)
@@ -306,6 +323,100 @@ function M.new(opts)
                 x-terminal-emulator -e sh -lc 'cal -3; echo; date; echo; read -n1 -rsp "Press any key to close..."' >/dev/null 2>&1 &
             fi
         ]])
+    end
+
+    function controller.notes_root()
+        return notes_root()
+    end
+
+    function controller.daily_note_path(date_table)
+        return daily_note_path(date_table)
+    end
+
+    function controller.open_notes_app()
+        awful.spawn.easy_async_with_shell(string.format([=[
+            notes_dir=%s
+            mkdir -p "$notes_dir"
+            today_note="$notes_dir/daily/$(date +%%F).md"
+            mkdir -p "$(dirname "$today_note")"
+
+            preferred_app="${LINUXUTILS_NOTES_APP:-}"
+            if [ "$preferred_app" = "obsidian" ] && command -v obsidian >/dev/null 2>&1; then
+                obsidian "$notes_dir" >/dev/null 2>&1 &
+            elif [ "$preferred_app" = "joplin" ] && command -v joplin-desktop >/dev/null 2>&1; then
+                joplin-desktop >/dev/null 2>&1 &
+            elif command -v obsidian >/dev/null 2>&1; then
+                obsidian "$notes_dir" >/dev/null 2>&1 &
+            elif command -v joplin-desktop >/dev/null 2>&1; then
+                joplin-desktop >/dev/null 2>&1 &
+            elif command -v x-terminal-emulator >/dev/null 2>&1; then
+                x-terminal-emulator -e sh -lc 'mkdir -p "$(dirname "$1")"; touch "$1"; "${EDITOR:-vi}" "$1"' sh "$today_note" >/dev/null 2>&1 &
+            elif command -v xdg-open >/dev/null 2>&1; then
+                xdg-open "$notes_dir" >/dev/null 2>&1 &
+            elif command -v gio >/dev/null 2>&1; then
+                gio open "$notes_dir" >/dev/null 2>&1 &
+            else
+                exit 1
+            fi
+        ]=], shell_quote(notes_root())), function(_, _, _, exit_code)
+            if exit_code ~= 0 then
+                naughty.notify({
+                    preset = naughty.config.presets.warn,
+                    title = "Notes App Missing",
+                    text = "Install Obsidian or ensure x-terminal-emulator is available for vi fallback.",
+                })
+            end
+        end)
+    end
+
+    function controller.open_daily_note(date_table)
+        local note_path = daily_note_path(date_table)
+        local note_title = os.date("%A, %d %B %Y", os.time(date_table or os.date("*t")))
+        awful.spawn.easy_async_with_shell(string.format([=[
+            note_path=%s
+            note_dir="$(dirname "$note_path")"
+            mkdir -p "$note_dir"
+
+            if [ ! -f "$note_path" ]; then
+                cat > "$note_path" <<'EOF'
+# %s
+
+## Tasks
+
+- [ ]
+
+## Notes
+
+EOF
+            fi
+
+            preferred_app="${LINUXUTILS_NOTES_APP:-}"
+            if [ "$preferred_app" = "obsidian" ] && command -v obsidian >/dev/null 2>&1; then
+                obsidian "$note_path" >/dev/null 2>&1 &
+            elif [ "$preferred_app" = "joplin" ] && command -v joplin-desktop >/dev/null 2>&1; then
+                joplin-desktop >/dev/null 2>&1 &
+            elif command -v obsidian >/dev/null 2>&1; then
+                obsidian "$note_path" >/dev/null 2>&1 &
+            elif command -v joplin-desktop >/dev/null 2>&1; then
+                joplin-desktop >/dev/null 2>&1 &
+            elif command -v x-terminal-emulator >/dev/null 2>&1; then
+                x-terminal-emulator -e sh -lc '${EDITOR:-vi} "$1"' sh "$note_path" >/dev/null 2>&1 &
+            elif command -v xdg-open >/dev/null 2>&1; then
+                xdg-open "$note_path" >/dev/null 2>&1 &
+            elif command -v gio >/dev/null 2>&1; then
+                gio open "$note_path" >/dev/null 2>&1 &
+            else
+                exit 1
+            fi
+        ]=], shell_quote(note_path), note_title), function(_, _, _, exit_code)
+            if exit_code ~= 0 then
+                naughty.notify({
+                    preset = naughty.config.presets.warn,
+                    title = "Daily Note Launcher Missing",
+                    text = "Install Obsidian or ensure x-terminal-emulator is available for vi fallback.",
+                })
+            end
+        end)
     end
 
     function controller.open_time_preferences()
