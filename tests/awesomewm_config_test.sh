@@ -29,6 +29,9 @@ cd "$ROOT_DIR"
 echo "[awesome-test] Repo config syntax"
 awesome -k -c rc.lua >/dev/null
 
+echo "[awesome-test] Module API smoke"
+awesome -k -c tests/awesomewm_module_smoke_rc.lua >/dev/null
+
 echo "[awesome-test] Staged XDG config tree syntax"
 mkdir -p "$TMP_DIR/awesome/linuxutils"
 install -m 0644 rc.lua "$TMP_DIR/awesome/rc.lua"
@@ -38,8 +41,17 @@ XDG_CONFIG_HOME="$TMP_DIR" awesome -k >/dev/null
 echo "[awesome-test] Module inventory"
 require_file "$ROOT_DIR/linuxutils/common.lua"
 require_file "$ROOT_DIR/linuxutils/brightness.lua"
+require_file "$ROOT_DIR/linuxutils/audio.lua"
+require_file "$ROOT_DIR/linuxutils/presenter.lua"
+require_file "$ROOT_DIR/linuxutils/launchers.lua"
+require_file "$ROOT_DIR/linuxutils/widgets.lua"
+require_file "$ROOT_DIR/tests/awesomewm_module_smoke_rc.lua"
 require_grep 'require("linuxutils.common")' "$ROOT_DIR/rc.lua" "common module require"
 require_grep 'require("linuxutils.brightness")' "$ROOT_DIR/rc.lua" "brightness module require"
+require_grep 'require("linuxutils.audio")' "$ROOT_DIR/rc.lua" "audio module require"
+require_grep 'require("linuxutils.presenter")' "$ROOT_DIR/rc.lua" "presenter module require"
+require_grep 'require("linuxutils.launchers")' "$ROOT_DIR/rc.lua" "launchers module require"
+require_grep 'require("linuxutils.widgets")' "$ROOT_DIR/rc.lua" "widgets module require"
 
 echo "[awesome-test] Brightness + presenter bindings"
 require_grep '"XF86MonBrightnessUp"' "$ROOT_DIR/rc.lua" "brightness up binding"

@@ -7,7 +7,7 @@ AWESOME_USER_DIR ?= $(HOME)/.config/awesome
 AWESOME_USER_RC ?= $(AWESOME_USER_DIR)/rc.lua
 AWESOME_ACTIVE_RC ?= $(if $(wildcard $(AWESOME_USER_RC)),$(AWESOME_USER_RC),$(AWESOME_SYSTEM_RC))
 AWESOME_MODULE_DIR ?= linuxutils
-AWESOME_MODULE_FILES ?= $(wildcard $(AWESOME_MODULE_DIR)/*.lua)
+AWESOME_MODULE_FILES ?= $(sort $(wildcard $(AWESOME_MODULE_DIR)/*.lua))
 LOCAL_RC ?= rc.lua
 LOCAL_RC_BACKUP ?= rc.dupe.lua
 LOCAL_AWESOME_MODULE_BACKUP ?= $(AWESOME_MODULE_DIR).dupe
@@ -62,9 +62,9 @@ help:
 >@echo "Targets:"
 >@echo "  make rc-backup           Copy active Awesome rc.lua -> $(LOCAL_RC_BACKUP)"
 >@echo "  make awesome-backup      Copy $(AWESOME_SYSTEM_RC) -> $(SYSTEM_RC_BACKUP) (uses sudo)"
->@echo "  make awesome-update      Backup + install $(LOCAL_RC) -> $(AWESOME_SYSTEM_RC) (uses sudo)"
+>@echo "  make awesome-update      Backup + install $(LOCAL_RC) + $(AWESOME_MODULE_DIR)/*.lua -> $(AWESOME_SYSTEM_RC) (uses sudo)"
 >@echo "  make awesome-user-backup Copy user rc.lua -> $(USER_RC_BACKUP)"
->@echo "  make awesome-user-update Backup + install $(LOCAL_RC) -> $(AWESOME_USER_RC)"
+>@echo "  make awesome-user-update Backup + install $(LOCAL_RC) + $(AWESOME_MODULE_DIR)/*.lua -> $(AWESOME_USER_RC)"
 >@echo "  make awesome-system-backup Alias for awesome-backup"
 >@echo "  make awesome-system-update Alias for awesome-update"
 >@echo "  make awesome-test        Run AwesomeWM config validation tests"

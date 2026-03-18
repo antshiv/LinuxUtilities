@@ -62,19 +62,19 @@
   <text x="82" y="607" class="small">Loads libs, package.path, widgets, keys</text>
 
   <rect x="340" y="525" width="250" height="92" class="box accent"/>
-  <text x="360" y="554" class="mono">linuxutils/common.lua</text>
-  <text x="360" y="582" class="small">shared helpers</text>
-  <text x="360" y="607" class="small">shell_quote, command_exists, clamp_number</text>
+  <text x="360" y="554" class="mono">common.lua</text>
+  <text x="360" y="579" class="mono">brightness.lua</text>
+  <text x="360" y="607" class="small">helpers + brightness backends</text>
 
   <rect x="618" y="525" width="250" height="92" class="box accent"/>
-  <text x="638" y="554" class="mono">linuxutils/brightness.lua</text>
-  <text x="638" y="582" class="small">brightness controller</text>
-  <text x="638" y="607" class="small">backend order + notifications</text>
+  <text x="638" y="554" class="mono">audio.lua</text>
+  <text x="638" y="579" class="mono">widgets.lua</text>
+  <text x="638" y="607" class="small">media control + status widgets</text>
 
   <rect x="896" y="525" width="234" height="92" class="box accent"/>
-  <text x="916" y="554" class="mono">wibox / awful.key</text>
-  <text x="916" y="582" class="small">widgets + hotkeys</text>
-  <text x="916" y="607" class="small">status bar, tooltips, XF86 keys</text>
+  <text x="916" y="554" class="mono">presenter.lua</text>
+  <text x="916" y="579" class="mono">launchers.lua</text>
+  <text x="916" y="607" class="small">workflow actions + app launchers</text>
 
   <path d="M182 386 L182 522" class="arrow"/>
   <path d="M450 386 L450 522" class="arrow"/>
@@ -85,7 +85,7 @@
   <path d="M718 617 L980 617" class="arrow"/>
 
   <text x="74" y="690" class="hint">Example flow:</text>
-  <text x="190" y="690" class="small">Brightness key → X11 event → AwesomeWM keybinding → brightness.lua → xrandr / brightnessctl → display change + notification.</text>
+  <text x="190" y="690" class="small">Brightness key → X11 event → AwesomeWM keybinding → rc.lua alias → brightness.lua → xrandr / brightnessctl → display change + notification.</text>
   <text x="74" y="720" class="hint">Important boundary:</text>
   <text x="246" y="720" class="small">AwesomeWM does not talk directly to the kernel for windows; it coordinates with X11 and external user-space tools which then reach drivers/daemons.</text>
 </svg>

@@ -30,6 +30,10 @@ awesome-client 'awesome.restart()'</code></pre>
     <li><code>rc.lua</code> as the entrypoint</li>
     <li><code>linuxutils/common.lua</code> for shared helpers</li>
     <li><code>linuxutils/brightness.lua</code> for brightness control</li>
+    <li><code>linuxutils/audio.lua</code> for volume/media control</li>
+    <li><code>linuxutils/presenter.lua</code> for spotlight, Gromit, and presenter dash logic</li>
+    <li><code>linuxutils/launchers.lua</code> for flameshot, control-center, and app launchers</li>
+    <li><code>linuxutils/widgets.lua</code> for wibar widget builders and status refresh</li>
 </ul>
 
 <h2>Config Tree</h2>
@@ -40,8 +44,30 @@ awesome-client 'awesome.restart()'</code></pre>
         <tr><td><code>rc.lua</code></td><td>AwesomeWM entrypoint. Loads Awesome libraries, updates <code>package.path</code>, imports local modules, defines widgets, key bindings, rules, and signals.</td></tr>
         <tr><td><code>linuxutils/common.lua</code></td><td>Shared helper functions used by the config: shell quoting, hostname lookup, command existence checks, compact label helpers, numeric clamping.</td></tr>
         <tr><td><code>linuxutils/brightness.lua</code></td><td>Brightness controller with backend fallbacks: <code>brightnessctl</code>, <code>light</code>, <code>xbacklight</code>, writable <code>/sys/class/backlight/*</code>, then <code>xrandr</code>.</td></tr>
+        <tr><td><code>linuxutils/audio.lua</code></td><td>Audio controller for volume changes, mute, media keys, notifications, PipeWire/PulseAudio refresh, and audio widget tooltip text.</td></tr>
+        <tr><td><code>linuxutils/presenter.lua</code></td><td>Presenter controller for cursor spotlight, Gromit overlay commands, and the animated presenter dash helper script.</td></tr>
+        <tr><td><code>linuxutils/launchers.lua</code></td><td>Launcher/controller actions for flameshot, the rofi program palette, Linux Control Center, and system utility entrypoints.</td></tr>
+        <tr><td><code>linuxutils/widgets.lua</code></td><td>Widget factory/controller for audio, battery, network, Bluetooth, Thunderbird, and clock widgets plus periodic status refresh.</td></tr>
     </tbody>
 </table>
+
+<h2>How The Modules Stitch Together</h2>
+
+<pre><code>rc.lua
+  -> resolve_config_dir()
+  -> package.path += "&lt;config dir&gt;/?"
+  -> require("linuxutils.common")
+  -> require("linuxutils.brightness")
+  -> require("linuxutils.audio")
+  -> require("linuxutils.presenter")
+  -> require("linuxutils.launchers")
+  -> require("linuxutils.widgets")
+  -> construct controllers
+  -> alias public actions for keybindings/mouse bindings
+  -> build the wibar using widgets.lua
+</code></pre>
+
+<p><code>rc.lua</code> now behaves like a composition root. The modules own the logic; the entrypoint owns wiring, layouts, bindings, and AwesomeWM lifecycle hooks.</p>
 
 <h2>System Stack</h2>
 
@@ -97,7 +123,22 @@ package.path = table.concat({
 }, ";")
 
 local common = require("linuxutils.common")
-local brightness = require("linuxutils.brightness")</code></pre>
+local brightness = require("linuxutils.brightness")
+local audio = require("linuxutils.audio")
+local presenter = require("linuxutils.presenter")
+local launchers = require("linuxutils.launchers")
+local widgets = require("linuxutils.widgets")</code></pre>
+
+<p>After the local module requires, <code>rc.lua</code> constructs controllers and aliases their public methods into the names used later by keybindings and widget setup.</p>
+
+<pre><code>local audio_controller = audio.new({ ... })
+local presenter_controller = presenter.new({ ... })
+local launchers_controller = launchers.new({ ... })
+local widgets_controller = widgets.new({ ... })
+
+local volume_up = audio_controller.volume_up
+local open_flameshot = launchers_controller.open_flameshot
+local create_audio_widget = widgets_controller.create_audio_widget</code></pre>
 
 <p>This keeps the entrypoint small enough to reason about while still letting the config ship as a self-contained tree.</p>
 
@@ -111,6 +152,10 @@ local brightness = require("linuxutils.brightness")</code></pre>
 $EDITOR rc.lua
 $EDITOR linuxutils/common.lua
 $EDITOR linuxutils/brightness.lua
+$EDITOR linuxutils/audio.lua
+$EDITOR linuxutils/presenter.lua
+$EDITOR linuxutils/launchers.lua
+$EDITOR linuxutils/widgets.lua
 
 # 2. Validate before install
 make awesome-test
@@ -257,6 +302,7 @@ bash docs/build.sh</code></pre>
 <p><code>make awesome-test</code> currently validates:</p>
 <ul>
     <li>repo-copy syntax via <code>awesome -k -c rc.lua</code></li>
+    <li>a controller smoke config via <code>awesome -k -c tests/awesomewm_module_smoke_rc.lua</code></li>
     <li>a staged <code>$XDG_CONFIG_HOME/awesome</code> tree with the modular config layout</li>
     <li>presence of critical bindings such as brightness, spotlight, gromit, and presenter dash</li>
     <li>Makefile dry-run coverage for installing <code>linuxutils/*.lua</code></li>

@@ -48,6 +48,13 @@ make awesome-user-update
 AwesomeWM config tree notes:
 - `rc.lua` is now the entry point, with reusable Lua modules under `linuxutils/`.
 - The AwesomeWM update targets install both `rc.lua` and `linuxutils/*.lua`.
+- Current module split:
+  - `linuxutils/common.lua` shared helpers
+  - `linuxutils/brightness.lua` brightness backends and notifications
+  - `linuxutils/audio.lua` volume/media control and audio widget state
+  - `linuxutils/presenter.lua` spotlight, Gromit, and presenter dash actions
+  - `linuxutils/launchers.lua` flameshot, rofi/program launcher, control-center, and app launch helpers
+  - `linuxutils/widgets.lua` audio/battery/network/Bluetooth/mail/clock widget builders
 - Local backup targets copy `rc.lua` into `rc.dupe.lua` and mirror any installed `linuxutils/` modules into `linuxutils.dupe/` when present.
 
 ## Local Overrides
@@ -79,6 +86,12 @@ AwesomeWM validation:
 make awesome-test   # rc.lua syntax, module-tree staging, binding/deploy checks
 make test-fast      # pre-commit fast checks including AwesomeWM + docs build
 ```
+
+The AwesomeWM test path now covers:
+- `rc.lua` syntax in-repo
+- a module API smoke config under `tests/awesomewm_module_smoke_rc.lua`
+- a staged `$XDG_CONFIG_HOME/awesome` tree using the installed module layout
+- Make deploy dry-runs so `linuxutils/*.lua` stays part of the install contract
 
 ## LinuxUtilities Make Targets
 
