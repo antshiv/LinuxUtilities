@@ -51,9 +51,9 @@ awesome-client 'awesome.restart()'</code></pre>
         <tr><td><code>linuxutils/icons.lua</code></td><td>Semantic icon/palette helpers for status widgets. Produces Pango markup so Bluetooth and network indicators stay visible on the dark bar.</td></tr>
         <tr><td><code>linuxutils/audio.lua</code></td><td>Audio controller for volume changes, mute, media keys, notifications, PipeWire/PulseAudio refresh, and audio widget tooltip text.</td></tr>
         <tr><td><code>linuxutils/presenter.lua</code></td><td>Presenter controller for cursor spotlight, Gromit overlay commands, and the animated presenter dash helper script.</td></tr>
-        <tr><td><code>linuxutils/launchers.lua</code></td><td>Launcher/controller actions for flameshot, the rofi program palette, Linux Control Center, system utilities, and notes entrypoints.</td></tr>
+        <tr><td><code>linuxutils/launchers.lua</code></td><td>Launcher/controller actions for flameshot, the rofi program palette, Linux Control Center, system utilities, folder navigation, AppImage scanning/launching, notes entrypoints, and the <code>btop -&gt; htop -&gt; top</code> system monitor fallback chain.</td></tr>
         <tr><td><code>linuxutils/calendar.lua</code></td><td>Calendar popup controller. Builds the larger center-screen agenda panel, month navigation, font-size controls, and daily-note preview/actions.</td></tr>
-        <tr><td><code>linuxutils/widgets.lua</code></td><td>Widget factory/controller for audio, battery, network, Bluetooth, Thunderbird, and clock widgets plus periodic status refresh. The clock now delegates popup behavior to <code>calendar.lua</code>.</td></tr>
+        <tr><td><code>linuxutils/widgets.lua</code></td><td>Widget factory/controller for audio, battery, network, Bluetooth, system usage, Thunderbird, and clock widgets plus periodic status refresh. The clock now delegates popup behavior to <code>calendar.lua</code>.</td></tr>
         <tr><td><code>linuxutils/bindings.lua</code></td><td>Binding factory for root mouse buttons, global media/presenter/launcher hotkeys, client keys, and client-side utility mouse actions.</td></tr>
         <tr><td><code>icons/LinuxUtilitiesStatus/</code></td><td>Bundled GTK icon theme overrides for tray applets so Bluetooth and Wi-Fi indicators can use explicit colors instead of inheriting Mint's dark symbolic glyphs.</td></tr>
     </tbody>
@@ -82,16 +82,37 @@ awesome-client 'awesome.restart()'</code></pre>
 
 <p><code>rc.lua</code> now behaves like a composition root. The modules own the logic; the entrypoint owns wiring, layouts, bindings, and AwesomeWM lifecycle hooks.</p>
 
+<div class="card">
+    <h3>Right-click Menu</h3>
+    <p>The root right-click menu uses <code>freedesktop.menu.build()</code> when the freedesktop helper is available. That means installed applications are discovered from desktop-entry files under the standard XDG application directories, not from a hardcoded Lua list.</p>
+    <p>On top of that generated app menu, this config now injects a custom <code>LinuxUtilities</code> submenu with notes, files, AppImage launching, system monitor, network actions, world clock, and timezone actions. If you want more items in the application list itself, install or edit <code>.desktop</code> files; if you want workflow actions, add them to the custom submenu in <code>rc.lua</code>.</p>
+</div>
+
+<div class="card card-green">
+    <h3>Multi-screen behavior</h3>
+    <ul>
+        <li>Each screen gets its own launcher, host label, keyboard widget, and full custom status-widget set.</li>
+        <li>On narrower screens, only text-heavy labels are shortened: network SSID, host text, clock text, and system-usage labels.</li>
+        <li>The systray remains on the primary screen because AwesomeWM implements it as a singleton widget.</li>
+        <li>The top bar now includes a folder utility widget for home, repo, screenshots, notes, and the AppImage library.</li>
+        <li>An applications widget scans <code>~/Programs/AppImage</code> (or <code>LINUXUTILS_APPIMAGE_DIR</code>) so dropped <code>.AppImage</code> files show up in the launcher automatically.</li>
+    </ul>
+</div>
+
 <div class="card card-blue">
     <h3>Clock / calendar behavior</h3>
     <ul>
         <li>Left click the clock to toggle the large centered calendar popup.</li>
-        <li>Middle click opens an external calendar application.</li>
+        <li>Middle click shows a world-clock popup with local, Mumbai, and Vancouver times.</li>
         <li>Right click opens time/date preferences.</li>
         <li>Mouse wheel on the clock browses previous/next months.</li>
-        <li>The popup includes font resize controls, a <code>Close</code> action, and a preview of today's markdown note.</li>
-        <li>Today's date is highlighted with a stronger accent so it stands out from the month grid.</li>
+        <li>The wibar clock itself now includes compact <code>YVR</code> and <code>BOM</code> segments next to the local time.</li>
+        <li>The popup includes font resize controls, visible <code>Daily Note</code>, <code>Tasks</code>, <code>Notes App</code>, and <code>Close</code> actions, plus a markdown preview panel.</li>
+        <li>Left click a day cell to select it and update the preview. Right click a day cell to open that date's note immediately.</li>
+        <li>Today's date keeps a subtle outline, while the selected date gets the stronger highlight.</li>
         <li>Notes actions prefer Obsidian when installed; otherwise they fall back to opening the markdown note in <code>vi</code> inside a terminal.</li>
+        <li>The notes launcher keeps a managed mirror of repository markdown files under <code>ShivasNotes/linked/LinuxUtilities</code> so docs stay visible inside the vault.</li>
+        <li><code>Mod4+Ctrl+i</code> and <code>Mod4+Ctrl+v</code> attempt to switch the system timezone to Mumbai or Vancouver using <code>timedatectl</code> (and <code>pkexec</code> if needed).</li>
     </ul>
 </div>
 
@@ -119,6 +140,8 @@ awesome-client 'awesome.restart()'</code></pre>
             <li>Media keys and brightness handling</li>
             <li>Presenter controls for Gromit, spotlight, and dash drawing</li>
             <li>Status widgets for audio, battery, network, Bluetooth, mail, and clock</li>
+            <li>A compact CPU/RAM widget that opens the preferred process monitor</li>
+            <li>Folder and AppImage launch widgets for daily desktop tasks</li>
             <li>Workflow launchers for the Linux control center and presentation tools</li>
         </ul>
     </div>
@@ -284,9 +307,11 @@ awful.key({}, "XF86AudioRaiseVolume", volume_up,
 
 <h2>Widgets + Status Bar</h2>
 
-<p>The wibar is assembled in <code>rc.lua</code> and combines standard Awesome widgets with LinuxUtilities-specific status blocks. The right side hosts audio, battery, network, Bluetooth, keyboard layout, systray, host label, Thunderbird, clock, and layout indicators.</p>
+<p>The wibar is assembled in <code>rc.lua</code> and combines standard Awesome widgets with LinuxUtilities-specific status blocks. The right side hosts Bluetooth, network, CPU/RAM, battery, audio, keyboard layout, systray, application launcher, folder launcher, host label, Thunderbird, clock, and layout indicators.</p>
 
 <p>The network and Bluetooth widgets now render through <code>linuxutils/icons.lua</code> using light-colored Pango markup and are the primary status indicators by default. The tray applets are optional: if you set <code>LINUXUTILS_AUTOSTART_STATUS_APPLETS=1</code> before starting AwesomeWM, <code>nm-applet</code> and <code>blueman-applet</code> are relaunched with <code>GTK_ICON_THEME=LinuxUtilitiesStatus</code>, Blueman is pushed to full-color mode by setting <code>org.blueman.general symbolic-status-icons</code> to <code>false</code>, and the bundled tray icon theme under <code>icons/LinuxUtilitiesStatus/</code> overrides the icon names those applets request.</p>
+
+<p>The folder widget prefers a powerful terminal navigator: <code>yazi</code>, then <code>ranger</code>, then <code>lf</code>, and finally falls back to <code>xdg-open</code> or <code>gio</code>. The network widget now exposes <code>nmtui-connect</code> directly inside <code>x-terminal-emulator</code>, and the right-click menu mirrors that path under <code>LinuxUtilities -&gt; network -&gt; Wi-Fi picker (nmtui)</code>. The AppImage widget opens a focused launcher backed by <code>scripts/awesome_program_launcher.sh --appimages</code>.</p>
 
 <div class="card card-accent">
     <div class="diagram">┌──────────────────────────────── Wibar ────────────────────────────────────────┐

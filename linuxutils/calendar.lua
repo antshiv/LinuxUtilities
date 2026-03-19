@@ -86,12 +86,32 @@ local function markup(text, color, extra_attrs)
     return string.format("<span%s>%s</span>", attrs, safe_text)
 end
 
+local calendar_theme = {
+    panel_bg = "#111317",
+    panel_fg = "#d6d9df",
+    panel_border = "#626975",
+    surface = "#181b20",
+    surface_alt = "#14171b",
+    header_bg = "#1a1e24",
+    header_fg = "#eceff4",
+    weekday_fg = "#b9c0cc",
+    weeknumber_fg = "#8d95a3",
+    muted_fg = "#9aa3b2",
+    cell_border = "#3f454f",
+    today_bg = "#272d36",
+    today_border = "#aab2bf",
+    action_bg = "#191d23",
+    action_border = "#4f5663",
+    note_bg = "#15191e",
+}
+
 function M.new(opts)
     local awful = assert(opts and opts.awful, "calendar.new requires awful")
     local gears = assert(opts and opts.gears, "calendar.new requires gears")
     local wibox = assert(opts and opts.wibox, "calendar.new requires wibox")
     local launchers = assert(opts and opts.launchers, "calendar.new requires launchers controller")
     local controller = {}
+    local refresh_note_preview_later
 
     local font_size = tonumber(os.getenv("LINUXUTILS_CALENDAR_FONT_SIZE")) or 15
     font_size = clamp(font_size, 10, 24)
@@ -105,6 +125,7 @@ function M.new(opts)
         note_path = nil,
         note_preview = nil,
         note_hint = nil,
+        selected_date = os.date("*t"),
     }
 
     local function resolve_screen(candidate)
@@ -138,60 +159,94 @@ function M.new(opts)
             and date_table.day == now.day
     end
 
+    local function same_day(left, right)
+        return type(left) == "table"
+            and type(right) == "table"
+            and left.year == right.year
+            and left.month == right.month
+            and left.day == right.day
+    end
+
+    local function clamp_day(year, month, day)
+        local last_day = tonumber(os.date("%d", os.time({
+            year = year,
+            month = month + 1,
+            day = 0,
+            hour = 12,
+        }))) or day or 1
+
+        return {
+            year = year,
+            month = month,
+            day = math.max(1, math.min(day or 1, last_day)),
+        }
+    end
+
+    local function interactive_day_flag(flag)
+        return flag ~= "monthheader"
+            and flag ~= "header"
+            and flag ~= "weekday"
+            and flag ~= "weeknumber"
+            and flag ~= "month"
+            and flag ~= "year"
+            and flag ~= "yearheader"
+    end
+
     local function decorate_calendar_cell(widget, flag, date_table)
-        local text_color = icons.palette.text
-        local background = "#172033"
-        local border_width = 0
-        local border_color = icons.palette.bluetooth
-        local shape = gears.shape and gears.shape.rounded_rect or nil
-        local highlight_today = (flag == "focus")
-            or (
-                is_today(date_table)
-                and flag ~= "monthheader"
-                and flag ~= "header"
-                and flag ~= "weekday"
-                and flag ~= "weeknumber"
-                and flag ~= "month"
-                and flag ~= "year"
-                and flag ~= "yearheader"
-            )
+        local text_color = calendar_theme.panel_fg
+        local background = calendar_theme.surface
+        local border_width = 1
+        local border_color = calendar_theme.cell_border
+        local shape = gears.shape and gears.shape.rectangle or nil
+        local is_interactive_day = interactive_day_flag(flag)
+        local highlight_today = is_interactive_day and is_today(date_table)
+        local highlight_selected = is_interactive_day and same_day(state.selected_date, date_table)
 
         if widget and widget.get_text and widget.set_markup then
             local text = widget:get_text()
             local attrs = ""
             if flag == "monthheader" or flag == "header" then
-                text_color = icons.palette.wifi
+                text_color = calendar_theme.header_fg
                 attrs = 'weight="bold"'
             elseif flag == "weekday" then
-                text_color = icons.palette.muted
+                text_color = calendar_theme.weekday_fg
                 attrs = 'weight="bold"'
             elseif flag == "weeknumber" then
-                text_color = icons.palette.offline
-            elseif highlight_today then
-                text_color = icons.palette.text
-                background = "#15304b"
+                text_color = calendar_theme.weeknumber_fg
+            elseif highlight_selected then
+                text_color = calendar_theme.header_fg
+                background = calendar_theme.today_bg
                 border_width = 2
-                border_color = icons.palette.notes
+                border_color = calendar_theme.today_border
                 attrs = 'weight="bold"'
+            elseif highlight_today then
+                text_color = calendar_theme.panel_fg
+                background = "#20242b"
+                border_width = 1
+                border_color = "#7e8794"
             end
             widget:set_markup(markup(text, text_color, attrs))
         end
 
         if flag == "month" then
-            background = "#0f1727"
-        elseif highlight_today then
-            background = "#15304b"
+            background = calendar_theme.surface_alt
+        elseif highlight_selected then
+            background = calendar_theme.today_bg
             border_width = 2
-            border_color = icons.palette.notes
+            border_color = calendar_theme.today_border
+        elseif highlight_today then
+            background = "#20242b"
+            border_width = 1
+            border_color = "#7e8794"
         elseif flag == "monthheader" or flag == "header" then
-            background = "#111b2f"
+            background = calendar_theme.header_bg
         elseif flag == "weekday" then
-            background = "#111827"
+            background = calendar_theme.surface_alt
         elseif flag == "weeknumber" then
-            background = "#101521"
+            background = calendar_theme.surface_alt
         end
 
-        return wibox.widget {
+        local out = wibox.widget {
             {
                 widget,
                 margins = 4,
@@ -204,13 +259,29 @@ function M.new(opts)
             shape_border_color = border_color,
             widget = wibox.container.background,
         }
+
+        if is_interactive_day then
+            out:buttons(gears.table.join(
+                awful.button({ }, 1, function()
+                    controller.select_date(date_table)
+                end),
+                awful.button({ }, 3, function()
+                    controller.select_date(date_table)
+                    launchers.open_daily_note(date_table)
+                    refresh_note_preview_later()
+                end)
+            ))
+        end
+
+        return out
     end
 
-    local function today_note_path()
+    local function selected_note_path()
+        local selected = state.selected_date or os.date("*t")
         if type(launchers.daily_note_path) == "function" then
-            return launchers.daily_note_path(os.date("*t"))
+            return launchers.daily_note_path(selected)
         end
-        return expand_tilde("~/Workspace/ShivasNotes/daily/" .. os.date("%Y-%m-%d") .. ".md")
+        return expand_tilde("~/Workspace/ShivasNotes/daily/" .. os.date("%Y-%m-%d", os.time(selected)) .. ".md")
     end
 
     local function refresh_popup()
@@ -227,23 +298,23 @@ function M.new(opts)
         end
 
         if state.month_title then
-            state.month_title:set_markup(markup(format_month_title(date_table), icons.palette.text, 'weight="bold"'))
+            state.month_title:set_markup(markup(format_month_title(date_table), calendar_theme.header_fg, 'weight="bold"'))
         end
 
         if state.month_subtitle then
             state.month_subtitle:set_markup(table.concat({
-                markup(os.date("%A, %d %B %Y"), icons.palette.wifi, 'weight="bold"'),
-                markup("  •  ", icons.palette.muted),
-                markup("Mouse wheel: browse months • Today is highlighted", icons.palette.muted),
+                markup(os.date("%A, %d %B %Y", os.time(state.selected_date or os.date("*t"))), calendar_theme.weekday_fg, 'weight="bold"'),
+                markup("  •  ", calendar_theme.muted_fg),
+                markup("Left click a day to select • Right click a day to open its note", calendar_theme.muted_fg),
             }))
         end
 
-        state.note_path = today_note_path()
+        state.note_path = selected_note_path()
         if state.note_hint then
             state.note_hint:set_markup(table.concat({
-                markup("Today note", icons.palette.notes or icons.palette.wifi, 'weight="bold"'),
-                markup(": ", icons.palette.muted),
-                markup(state.note_path, icons.palette.muted),
+                markup("Selected note", calendar_theme.header_fg, 'weight="bold"'),
+                markup(": ", calendar_theme.muted_fg),
+                markup(state.note_path, calendar_theme.muted_fg),
             }))
         end
         if state.note_preview then
@@ -251,7 +322,7 @@ function M.new(opts)
         end
     end
 
-    local function refresh_note_preview_later()
+    refresh_note_preview_later = function()
         if gears.timer and gears.timer.start_new then
             gears.timer.start_new(0.8, function()
                 refresh_popup()
@@ -263,12 +334,28 @@ function M.new(opts)
     end
 
     local function make_text_action(label, callback, color)
-        local widget = wibox.widget.textbox()
-        widget:set_markup(table.concat({
-            markup("[", icons.palette.muted),
-            markup(label, color or icons.palette.wifi, 'weight="bold"'),
-            markup("]", icons.palette.muted),
-        }))
+        local text = wibox.widget.textbox()
+        text:set_markup(markup(label, color or calendar_theme.header_fg, 'weight="bold"'))
+
+        local widget = wibox.widget {
+            {
+                text,
+                margins = {
+                    left = 10,
+                    right = 10,
+                    top = 6,
+                    bottom = 6,
+                },
+                widget = wibox.container.margin,
+            },
+            bg = calendar_theme.action_bg,
+            fg = color or calendar_theme.header_fg,
+            shape = gears.shape and gears.shape.rectangle or nil,
+            shape_border_width = 1,
+            shape_border_color = calendar_theme.action_border,
+            widget = wibox.container.background,
+        }
+
         widget:buttons(gears.table.join(
             awful.button({ }, 1, callback)
         ))
@@ -290,59 +377,84 @@ function M.new(opts)
             state.note_preview.valign = "top"
         end
         state.note_preview.wrap = "word_char"
+        if state.note_preview.set_font then
+            state.note_preview:set_font("Monospace 12")
+        else
+            state.note_preview.font = "Monospace 12"
+        end
+        state.note_preview.forced_height = 96
 
         state.calendar_widget = wibox.widget {
             date = shifted_month_date(0),
             font = calendar_font(),
-            week_numbers = true,
-            long_weekdays = true,
+            week_numbers = false,
+            long_weekdays = false,
             fn_embed = decorate_calendar_cell,
             widget = wibox.widget.calendar.month,
         }
 
         local month_actions = wibox.widget {
-            make_text_action("Prev", controller.previous_month, icons.palette.wifi),
-            make_text_action("Today", controller.reset_month, icons.palette.bluetooth),
-            make_text_action("Next", controller.next_month, icons.palette.wifi),
-            make_text_action("A-", controller.decrease_font, icons.palette.offline),
-            make_text_action("A+", controller.increase_font, icons.palette.notes or icons.palette.ethernet),
+            make_text_action("Prev", controller.previous_month, calendar_theme.weekday_fg),
+            make_text_action("Today", controller.reset_month, calendar_theme.header_fg),
+            make_text_action("Next", controller.next_month, calendar_theme.weekday_fg),
+            make_text_action("A-", controller.decrease_font, calendar_theme.muted_fg),
+            make_text_action("A+", controller.increase_font, calendar_theme.header_fg),
+            make_text_action("Close", controller.hide_popup, calendar_theme.muted_fg),
             layout = wibox.layout.fixed.horizontal,
-            spacing = 10,
+            spacing = 8,
         }
 
         local note_actions = wibox.widget {
             make_text_action("Daily Note", function()
-                launchers.open_daily_note()
+                launchers.open_daily_note(state.selected_date or os.date("*t"))
                 refresh_note_preview_later()
-            end, icons.palette.notes or icons.palette.wifi),
-            make_text_action("Notes App", launchers.open_notes_app, icons.palette.notes or icons.palette.bluetooth),
-            make_text_action("Calendar App", launchers.open_calendar_app, icons.palette.wifi),
-            make_text_action("Close", controller.hide_popup, icons.palette.offline),
+            end, calendar_theme.header_fg),
+            make_text_action("Tasks", launchers.open_tasks_note, calendar_theme.weekday_fg),
+            make_text_action("Notes App", launchers.open_notes_app, calendar_theme.weekday_fg),
+            make_text_action("Calendar App", launchers.open_calendar_app, calendar_theme.weekday_fg),
             layout = wibox.layout.fixed.horizontal,
-            spacing = 10,
+            spacing = 8,
+        }
+
+        local note_panel = wibox.widget {
+            {
+                {
+                    state.note_hint,
+                    state.note_preview,
+                    layout = wibox.layout.fixed.vertical,
+                    spacing = 8,
+                },
+                margins = 14,
+                widget = wibox.container.margin,
+            },
+            bg = calendar_theme.note_bg,
+            fg = calendar_theme.panel_fg,
+            shape = gears.shape and gears.shape.rectangle or nil,
+            shape_border_width = 1,
+            shape_border_color = calendar_theme.cell_border,
+            widget = wibox.container.background,
         }
 
         state.popup = awful.popup({
             ontop = true,
             visible = false,
             border_width = 2,
-            border_color = icons.palette.bluetooth,
+            border_color = calendar_theme.panel_border,
             minimum_width = 700,
-            minimum_height = 560,
+            minimum_height = 500,
             maximum_width = 900,
-            maximum_height = 760,
+            maximum_height = 700,
             placement = awful.placement and awful.placement.centered or nil,
-            bg = "#111827",
-            fg = icons.palette.text,
+            bg = calendar_theme.panel_bg,
+            fg = calendar_theme.panel_fg,
             widget = wibox.widget {
                 {
                     state.month_title,
                     state.month_subtitle,
                     month_actions,
                     state.calendar_widget,
-                    state.note_hint,
-                    state.note_preview,
                     note_actions,
+                    note_panel,
                     layout = wibox.layout.fixed.vertical,
                     spacing = 14,
                 },
@@ -405,6 +517,7 @@ function M.new(opts)
 
     function controller.reset_month()
         state.month_offset = 0
+        state.selected_date = os.date("*t")
         ensure_popup().visible = true
         refresh_popup()
     end
@@ -421,6 +534,21 @@ function M.new(opts)
         refresh_popup()
     end
 
+    function controller.select_date(date_table)
+        if type(date_table) ~= "table" then
+            return
+        end
+
+        state.selected_date = clamp_day(date_table.year, date_table.month, date_table.day)
+        ensure_popup().visible = true
+        refresh_popup()
+    end
+
+    function controller.open_selected_note()
+        launchers.open_daily_note(state.selected_date or os.date("*t"))
+        refresh_note_preview_later()
+    end
+
     function controller.clock_tooltip_text()
         return os.date("%A, %d %B %Y\n%H:%M:%S")
             .. "\nLeft click: toggle calendar agenda"
@@ -428,6 +556,7 @@ function M.new(opts)
             .. "\nMiddle click: calendar app"
             .. "\nRight click: date/time settings"
             .. "\nWheel: browse months"
+            .. "\nCalendar days: left click select, right click open note"
     end
 
     function controller.popup_state()
@@ -436,6 +565,7 @@ function M.new(opts)
             note_path = state.note_path,
             font_size = font_size,
             month_offset = state.month_offset,
+            selected_date = state.selected_date and os.date("%Y-%m-%d", os.time(state.selected_date)) or nil,
         }
     end
 

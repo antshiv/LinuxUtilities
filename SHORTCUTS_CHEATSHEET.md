@@ -263,15 +263,32 @@ Common DSL actions:
 | `Battery left click` | Open power manager |
 | `Battery right click` | Refresh battery status |
 | `Network left click` | Open network manager |
+| `Network middle click` | Open terminal Wi-Fi picker (`nmtui-connect`) |
 | `Network right click` | Refresh network status |
+| `Network wheel up` | Open Wi-Fi scan (`nmcli`/`nmtui`) |
 | `Bluetooth left click` | Open bluetooth manager |
 | `Bluetooth right click` | Refresh bluetooth status |
+| `System left click` | Open `btop` / `htop` / `top` |
+| `System right click` | Refresh CPU/RAM usage |
+| `Folders left click` | Open home folder |
+| `Folders middle click` | Open LinuxUtilities folder |
+| `Folders right click` | Open `~/Screenshots` |
+| `Folders wheel up` | Open notes folder |
+| `Folders wheel down` | Open AppImage library |
+| `Apps left click` | Open AppImage launcher |
+| `Apps middle click` | Open full LinuxUtilities program palette |
+| `Apps right click` | Open AppImage library folder |
 | `Mail left click` | Open Thunderbird |
 | `Mail right click` | Open Thunderbird calendar |
 | `Clock left click` | Toggle large calendar popup |
-| `Clock middle click` | Open calendar app |
+| `Clock middle click` | Show world clock popup |
 | `Clock right click` | Open time preferences |
 | `Clock wheel up/down` | Previous/next month in popup |
+| `Calendar day left click` | Select that date and update note preview |
+| `Calendar day right click` | Open that date's note |
+| `Calendar popup Daily Note` | Open the selected date note |
+| `Calendar popup Tasks` | Open `tasks.md` in the notes vault |
+| `Calendar popup Notes App` | Open the notes vault/app |
 | `Calendar popup Close` | Hide the popup without returning to the clock |
 
 ## Core AwesomeWM Keyboard Shortcuts
@@ -285,10 +302,22 @@ Common DSL actions:
 | `Mod4+w` | Show main menu |
 | `Mod4+p` | Show menubar |
 | `Mod4+r` | Program launcher (rofi + custom LinuxUtilities commands) |
+| `Mod4+Shift+h` | Open system monitor (`btop` -> `htop` -> `top`) |
+| `Mod4+Ctrl+t` | Show world clock popup |
+| `Mod4+Ctrl+i` | Set timezone to Mumbai (`Asia/Kolkata`) |
+| `Mod4+Ctrl+v` | Set timezone to Vancouver (`America/Vancouver`) |
 | `Mod4+Shift+r` | Run prompt (classic) |
 | `Mod4+x` | Lua execute prompt |
 | `Mod4+Ctrl+r` | Reload awesome |
 | `Mod4+Shift+q` | Quit awesome |
+
+### Menu shortcuts
+
+| Menu path | Action |
+| --- | --- |
+| `Desktop right click -> LinuxUtilities -> network -> Wi-Fi picker (nmtui)` | Browse and connect to nearby Wi-Fi networks in a terminal UI |
+| `Desktop right click -> LinuxUtilities -> network -> Wi-Fi scan (nmcli)` | Show a raw nearby-network scan in a terminal |
+| `Desktop right click -> LinuxUtilities -> notes` | Open notes app, daily note, tasks note, or notes folder |
 
 ### Tags/workspaces
 

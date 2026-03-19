@@ -40,7 +40,7 @@ EOF
 write_entry "linuxutilities-control-center.desktop" \
   "LinuxUtilities Control Center" \
   "GTK4 control center for LinuxUtilities workflow" \
-  "bash -lc 'if [ -x \"$HOME/Programs/bin/linux_control_center\" ]; then exec \"$HOME/Programs/bin/linux_control_center\"; elif [ -x \"${BASE_DIR}/build/bin/linux_control_center\" ]; then exec \"${BASE_DIR}/build/bin/linux_control_center\"; else echo \"linux_control_center (GTK4) not found. Build with ./build_linux_control_center.sh\"; fi'"
+  "bash -lc 'if [ -x \"${BASE_DIR}/build/bin/linux_control_center\" ]; then exec \"${BASE_DIR}/build/bin/linux_control_center\"; elif [ -x \"$HOME/Programs/bin/linux_control_center\" ]; then exec \"$HOME/Programs/bin/linux_control_center\"; else echo \"linux_control_center (GTK4) not found. Build with ./build_linux_control_center.sh\"; fi'"
 
 write_entry "linuxutilities-presenter-canvas.desktop" \
   "LinuxUtilities Presenter Canvas" \

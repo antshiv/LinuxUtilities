@@ -51,18 +51,25 @@ AwesomeWM config tree notes:
 - Current module split:
   - `linuxutils/common.lua` shared helpers
   - `linuxutils/brightness.lua` brightness backends and notifications
-  - `linuxutils/icons.lua` palette-aware icon markup helpers for the wibar
-  - `linuxutils/audio.lua` volume/media control and audio widget state
-  - `linuxutils/presenter.lua` spotlight, Gromit, and presenter dash actions
-- `linuxutils/launchers.lua` flameshot, rofi/program launcher, control-center, and app launch helpers, including notes launchers
+- `linuxutils/icons.lua` palette-aware icon markup helpers for the wibar
+- `linuxutils/audio.lua` volume/media control and audio widget state
+- `linuxutils/presenter.lua` spotlight, Gromit, and presenter dash actions
+- `linuxutils/launchers.lua` flameshot, rofi/program launcher, control-center, AppImage scanning/launching, folder helpers, and notes launchers
 - `linuxutils/calendar.lua` large calendar/agenda popup with note preview and font controls
-- `linuxutils/widgets.lua` audio/battery/network/Bluetooth/mail/clock widget builders
+- `linuxutils/widgets.lua` audio/battery/network/Bluetooth/system/mail/clock widget builders
 - `linuxutils/bindings.lua` root mouse bindings, global hotkeys, client keys, and client mouse bindings
 - `icons/LinuxUtilitiesStatus/` custom tray icon theme for `nm-applet` and `blueman-applet`
 - Local backup targets copy `rc.lua` into `rc.dupe.lua` and mirror any installed `linuxutils/` modules into `linuxutils.dupe/` when present.
 - The custom AwesomeWM Bluetooth/network widgets are the default status indicators. `nm-applet` and `blueman-applet` are now opt-in; set `LINUXUTILS_AUTOSTART_STATUS_APPLETS=1` before starting AwesomeWM if you explicitly want those tray duplicates as well.
-- Notes integration defaults to `~/Workspace/ShivasNotes`. Override with `LINUXUTILS_NOTES_DIR=/path/to/notes`. By default the launcher now prefers Obsidian when available, and otherwise opens the daily markdown note in `vi` via `x-terminal-emulator`. If you want to force a specific app, set `LINUXUTILS_NOTES_APP=obsidian` or `LINUXUTILS_NOTES_APP=joplin`.
-- The calendar popup now includes a `Close` action and an explicit highlight for today's date.
+- Notes integration defaults to `~/Workspace/ShivasNotes`. Override with `LINUXUTILS_NOTES_DIR=/path/to/notes`. The launcher now targets the vault explicitly for Obsidian, and it maintains a managed markdown mirror under `ShivasNotes/linked/LinuxUtilities` so repo `.md` files are visible in the notes vault without copying them. If Obsidian is unavailable it falls back to Joplin, then `vi` via `x-terminal-emulator`. If you want to force a specific app, set `LINUXUTILS_NOTES_APP=obsidian` or `LINUXUTILS_NOTES_APP=joplin`.
+- The calendar popup now includes visible `Daily Note`, `Tasks`, `Notes App`, and `Close` actions. Days are clickable: left click selects a date and updates the note preview, right click opens that date's note.
+- A compact system widget now shows CPU/RAM usage and opens `btop`, then `htop`, then `top` on click. The keyboard shortcut is `Mod4+Shift+h`.
+- A folder utility widget now lives in the top bar. Left click opens home, middle click opens the LinuxUtilities repo folder, right click opens `~/Screenshots`, wheel-up opens the notes folder, and wheel-down opens the AppImage library. It prefers `yazi`, then `ranger`, then `lf`, and falls back to `xdg-open`/`gio`.
+- An applications widget now lives in the top bar. Left click opens an AppImage launcher sourced from `~/Programs/AppImage` (or `LINUXUTILS_APPIMAGE_DIR`), middle click opens the full LinuxUtilities program palette, and right click opens the AppImage library folder.
+- The network widget now has a direct TUI path: middle click opens `nmtui-connect` inside your terminal emulator so you can browse nearby Wi-Fi networks, and wheel-up opens a quick `nmcli` Wi-Fi scan when available.
+- The clock widget now shows local time plus compact Vancouver (`YVR`) and Mumbai (`BOM`) world clocks. Middle click opens a world-clock popup, and `Mod4+Ctrl+i` / `Mod4+Ctrl+v` attempt to switch the system timezone to Mumbai or Vancouver.
+- The Awesome right-click menu is built from freedesktop `.desktop` entries when available, so installed applications appear there automatically. It now also includes a custom `LinuxUtilities` submenu for notes, files, AppImages, system monitor, network access, world clock, and timezone actions. Use `LinuxUtilities -> network -> Wi-Fi picker (nmtui)` if you want a browsable Wi-Fi list without remembering widget mouse buttons.
+- Each screen now gets its own launcher, host label, and keyboard widget instances, and the bar shortens only text-heavy labels on narrower screens instead of dropping whole widgets. The systray remains on the primary screen because AwesomeWM exposes it as a singleton widget.
 
 ## Local Overrides
 

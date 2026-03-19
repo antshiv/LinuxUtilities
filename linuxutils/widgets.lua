@@ -30,9 +30,11 @@ function M.new(opts)
     local battery_state = { status = "unknown", percent = "?", time = "" }
     local network_state = { state = "unknown", ntype = "unknown", label = "offline" }
     local bluetooth_state = { powered = "unknown", connected = "0" }
+    local system_state = { cpu = "?", mem = "?" }
     local battery_status_widgets = {}
     local network_status_widgets = {}
     local bluetooth_status_widgets = {}
+    local system_status_widgets = {}
     local controller = {}
 
     local function set_battery_widget_text(text)
@@ -45,6 +47,10 @@ function M.new(opts)
 
     local function set_bluetooth_widget_markup(markup)
         set_widget_markup(bluetooth_status_widgets, markup)
+    end
+
+    local function set_system_widget_markup(markup)
+        set_widget_markup(system_status_widgets, markup)
     end
 
     local function refresh_battery_state()
@@ -106,8 +112,11 @@ function M.new(opts)
             network_state.ntype = stdout:match("TYPE=([^\n]+)") or "unknown"
             network_state.label = stdout:match("LABEL=([^\n]+)") or "offline"
 
-            local label_short = shorten_label(network_state.label, 12)
-            set_network_widget_markup(icons.network(network_state.ntype, label_short))
+            for _, widget in ipairs(network_status_widgets) do
+                local label_limit = widget._network_label_len or 12
+                local label_short = shorten_label(network_state.label, label_limit)
+                widget:set_markup(icons.network(network_state.ntype, label_short))
+            end
         end)
     end
 
@@ -126,10 +135,56 @@ function M.new(opts)
         end)
     end
 
+    local function refresh_system_state()
+        awful.spawn.easy_async_with_shell([=[
+            cpu_line1=$(grep '^cpu ' /proc/stat 2>/dev/null || true)
+            sleep 0.15
+            cpu_line2=$(grep '^cpu ' /proc/stat 2>/dev/null || true)
+
+            cpu_percent="?"
+            if [ -n "$cpu_line1" ] && [ -n "$cpu_line2" ]; then
+                read -r _ user1 nice1 system1 idle1 iowait1 irq1 softirq1 steal1 guest1 guestnice1 <<<"$cpu_line1"
+                read -r _ user2 nice2 system2 idle2 iowait2 irq2 softirq2 steal2 guest2 guestnice2 <<<"$cpu_line2"
+                total1=$((user1 + nice1 + system1 + idle1 + iowait1 + irq1 + softirq1 + steal1))
+                total2=$((user2 + nice2 + system2 + idle2 + iowait2 + irq2 + softirq2 + steal2))
+                idle_total1=$((idle1 + iowait1))
+                idle_total2=$((idle2 + iowait2))
+                total_delta=$((total2 - total1))
+                idle_delta=$((idle_total2 - idle_total1))
+                if [ "$total_delta" -gt 0 ]; then
+                    cpu_percent=$(( (100 * (total_delta - idle_delta)) / total_delta ))
+                fi
+            fi
+
+            mem_percent=$(awk '
+                /^MemTotal:/ { total=$2 }
+                /^MemAvailable:/ { avail=$2 }
+                END {
+                    if (total > 0 && avail >= 0) {
+                        printf "%d", ((total - avail) * 100) / total
+                    } else {
+                        printf "?"
+                    }
+                }
+            ' /proc/meminfo 2>/dev/null)
+
+            [ -z "$cpu_percent" ] && cpu_percent="?"
+            [ -z "$mem_percent" ] && mem_percent="?"
+            printf 'CPU=%s\nMEM=%s\n' "$cpu_percent" "$mem_percent"
+        ]=], function(stdout)
+            system_state.cpu = stdout:match("CPU=([^\n]+)") or "?"
+            system_state.mem = stdout:match("MEM=([^\n]+)") or "?"
+            for _, widget in ipairs(system_status_widgets) do
+                widget:set_markup(icons.system_usage(system_state.cpu, system_state.mem, widget._system_compact))
+            end
+        end)
+    end
+
     function controller.refresh_system_statuses()
         refresh_battery_state()
         refresh_network_state()
         refresh_bluetooth_state()
+        refresh_system_state()
     end
 
     function controller.create_thunderbird_widget()
@@ -222,19 +277,32 @@ function M.new(opts)
         return widget
     end
 
-    function controller.create_network_widget()
+    function controller.create_network_widget(profile)
+        local label_limit = (profile and profile.network_label_len) or 12
         local widget = wibox.widget.textbox()
         widget:set_markup(icons.network("unknown", "--"))
         widget:buttons(gears.table.join(
             awful.button({ }, 1, launchers.open_network_manager),
-            awful.button({ }, 3, refresh_network_state)
+            awful.button({ }, 2, launchers.open_network_tui),
+            awful.button({ }, 3, refresh_network_state),
+            awful.button({ }, 4, launchers.open_network_scan)
         ))
         awful.tooltip({
             objects = { widget },
             timer_function = function()
-                return "Network\nState: " .. network_state.state .. "\nType: " .. network_state.ntype .. "\nLink: " .. network_state.label .. "\nLeft click: network settings"
+                return table.concat({
+                    "Network",
+                    "State: " .. network_state.state,
+                    "Type: " .. network_state.ntype,
+                    "Link: " .. network_state.label,
+                    "Left click: network settings",
+                    "Middle click: nmtui-connect",
+                    "Right click: refresh",
+                    "Wheel up: Wi-Fi scan",
+                }, "\n")
             end,
         })
+        widget._network_label_len = label_limit
         table.insert(network_status_widgets, widget)
         refresh_network_state()
         return widget
@@ -258,14 +326,86 @@ function M.new(opts)
         return widget
     end
 
-    function controller.create_clock_widget()
-        local widget = wibox.widget.textclock(" 🕒 %a %d %b %H:%M ")
+    function controller.create_system_widget(profile)
+        local compact = profile and profile.system_compact or false
+        local widget = wibox.widget.textbox()
+        widget:set_markup(icons.system_usage("?", "?", compact))
+        widget:buttons(gears.table.join(
+            awful.button({ }, 1, launchers.open_system_monitor),
+            awful.button({ }, 3, refresh_system_state)
+        ))
+        awful.tooltip({
+            objects = { widget },
+            timer_function = function()
+                return "System Monitor\nCPU: " .. tostring(system_state.cpu) .. "%\nRAM: " .. tostring(system_state.mem) .. "%\nLeft click: open btop/htop/top\nRight click: refresh"
+            end,
+        })
+        widget._system_compact = compact
+        table.insert(system_status_widgets, widget)
+        refresh_system_state()
+        return widget
+    end
+
+    function controller.create_folder_widget()
+        local widget = wibox.widget.textbox()
+        widget:set_markup(icons.folder("Files"))
+        widget:buttons(gears.table.join(
+            awful.button({ }, 1, launchers.open_home_folder),
+            awful.button({ }, 2, launchers.open_workspace_folder),
+            awful.button({ }, 3, launchers.open_screenshots_folder),
+            awful.button({ }, 4, launchers.open_notes_folder),
+            awful.button({ }, 5, launchers.open_appimage_library)
+        ))
+        awful.tooltip({
+            objects = { widget },
+            text = "Folders\nLeft click: home\nMiddle click: LinuxUtilities\nRight click: Screenshots\nWheel up: notes\nWheel down: AppImage library\nUses yazi/ranger/lf when available",
+        })
+        return widget
+    end
+
+    function controller.create_applications_widget()
+        local widget = wibox.widget.textbox()
+        widget:set_markup(icons.applications("Apps"))
+        widget:buttons(gears.table.join(
+            awful.button({ }, 1, launchers.open_appimage_palette),
+            awful.button({ }, 2, launchers.launch_program_palette),
+            awful.button({ }, 3, launchers.open_appimage_library)
+        ))
+        awful.tooltip({
+            objects = { widget },
+            text = "Applications\nLeft click: AppImage launcher\nMiddle click: full program palette\nRight click: AppImage library folder",
+        })
+        return widget
+    end
+
+    function controller.create_clock_widget(profile)
+        local clock_format = (profile and profile.clock_format) or " 🕒 %a %d %b %H:%M "
+        local local_clock = wibox.widget.textclock(clock_format, 15)
+        local vancouver_clock = wibox.widget.textclock(
+            string.format(' <span foreground="%s">YVR</span> <span foreground="%s">%%H:%%M</span> ', icons.palette.muted, icons.palette.text),
+            15,
+            "America/Vancouver"
+        )
+        local mumbai_clock = wibox.widget.textclock(
+            string.format(' <span foreground="%s">BOM</span> <span foreground="%s">%%H:%%M</span> ', icons.palette.muted, icons.palette.text),
+            15,
+            "Asia/Kolkata"
+        )
+
+        local widget = wibox.widget {
+            local_clock,
+            vancouver_clock,
+            mumbai_clock,
+            layout = wibox.layout.fixed.horizontal,
+            spacing = 2,
+        }
+
         widget:buttons(gears.table.join(
             awful.button({ }, 1, function()
                 calendar.toggle_popup()
             end),
             awful.button({ }, 2, function()
-                launchers.open_calendar_app()
+                launchers.show_world_clock_popup()
             end),
             awful.button({ }, 3, function()
                 launchers.open_time_preferences()
@@ -278,9 +418,17 @@ function M.new(opts)
             end)
         ))
         widget._calendar_controller = calendar
+        widget._clock_format = clock_format
+        widget._local_clock = local_clock
+        widget._vancouver_clock = vancouver_clock
+        widget._mumbai_clock = mumbai_clock
         awful.tooltip({
             objects = { widget },
-            timer_function = calendar.clock_tooltip_text,
+            timer_function = function()
+                return calendar.clock_tooltip_text()
+                    .. "\nMiddle click: world clock popup"
+                    .. "\nShows: local, Vancouver, Mumbai"
+            end,
         })
         return widget
     end

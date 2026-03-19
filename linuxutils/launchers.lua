@@ -40,11 +40,202 @@ function M.new(opts)
         return notes_root() .. "/daily/" .. os.date("%Y-%m-%d", ts) .. ".md"
     end
 
+    local function tasks_note_path()
+        return notes_root() .. "/tasks.md"
+    end
+
+    local function path_basename(path)
+        if not path or path == "" then
+            return ""
+        end
+        local trimmed = tostring(path):gsub("/+$", "")
+        return trimmed:match("([^/]+)$") or trimmed
+    end
+
+    local function uri_encode(text)
+        return (tostring(text or ""):gsub("([^%w%-%._~])", function(char)
+            return string.format("%%%02X", string.byte(char))
+        end))
+    end
+
+    local function notes_vault_name()
+        return path_basename(notes_root())
+    end
+
+    local function obsidian_vault_uri()
+        return "obsidian://open?vault=" .. uri_encode(notes_vault_name())
+    end
+
+    local function obsidian_note_uri(path)
+        return "obsidian://open?path=" .. uri_encode(path or "")
+    end
+
     local function build_flameshot_target_file()
         local home = os.getenv("HOME") or ""
         local shots_dir = home ~= "" and (home .. "/Screenshots") or "Screenshots"
         local stamp = os.date("%Y-%m-%d_%H-%M-%S")
         return shots_dir, shots_dir .. "/Screenshot-" .. stamp .. ".png"
+    end
+
+    local function workspace_root()
+        local explicit = expand_tilde_path(os.getenv("LINUXUTILITIES_DIR"))
+        if explicit and explicit ~= "" then
+            return explicit
+        end
+        local home = os.getenv("HOME") or ""
+        if home ~= "" then
+            return home .. "/Workspace/LinuxUtilities"
+        end
+        return "."
+    end
+
+    local function directory_exists(path)
+        local ok, _, code = os.execute("[ -d " .. shell_quote(path or "") .. " ] >/dev/null 2>&1")
+        return ok == true or code == 0
+    end
+
+    local function appimage_root()
+        local explicit = expand_tilde_path(os.getenv("LINUXUTILS_APPIMAGE_DIR"))
+        if explicit and explicit ~= "" then
+            return explicit
+        end
+
+        local home = os.getenv("HOME") or ""
+        if home ~= "" then
+            local uppercase = home .. "/Programs/AppImage"
+            local lowercase = home .. "/Programs/appimage"
+            if directory_exists(uppercase) then
+                return uppercase
+            end
+            return lowercase
+        end
+
+        return "AppImage"
+    end
+
+    local function launcher_assets()
+        local home = os.getenv("HOME") or ""
+        local workspace_dir = expand_tilde_path(os.getenv("LINUXUTILITIES_DIR"))
+        if not workspace_dir or workspace_dir == "" then
+            workspace_dir = home ~= "" and (home .. "/Workspace/LinuxUtilities") or "."
+        end
+
+        return workspace_dir, workspace_dir .. "/scripts/awesome_program_launcher.sh", workspace_dir .. "/config/rofi_linuxutilities.rasi"
+    end
+
+    local function parse_key_values(stdout)
+        local values = {}
+        for key, value in tostring(stdout or ""):gmatch("([A-Z_]+)=([^\n]*)") do
+            values[key] = value
+        end
+        return values
+    end
+
+    local function world_clock_snapshot(callback)
+        awful.spawn.easy_async_with_shell([=[
+            local_zone="$(timedatectl show -p Timezone --value 2>/dev/null | head -n1)"
+            [ -n "$local_zone" ] || local_zone="$(date +%Z)"
+            printf 'LOCAL_ZONE=%s\n' "$local_zone"
+            printf 'LOCAL_TIME=%s\n' "$(date '+%a %d %b %H:%M %Z')"
+            printf 'MUMBAI_TIME=%s\n' "$(TZ=Asia/Kolkata date '+%a %d %b %H:%M %Z')"
+            printf 'VANCOUVER_TIME=%s\n' "$(TZ=America/Vancouver date '+%a %d %b %H:%M %Z')"
+        ]=], function(stdout)
+            if callback then
+                callback(parse_key_values(stdout))
+            end
+        end)
+    end
+
+    local function switch_timezone(tzid, label)
+        awful.spawn.easy_async_with_shell(string.format([=[
+            tz=%s
+            if ! command -v timedatectl >/dev/null 2>&1; then
+                exit 2
+            fi
+
+            if timedatectl set-timezone "$tz" >/dev/null 2>&1; then
+                exit 0
+            fi
+
+            if command -v pkexec >/dev/null 2>&1; then
+                pkexec timedatectl set-timezone "$tz" >/dev/null 2>&1
+                exit $?
+            fi
+
+            exit 1
+        ]=], shell_quote(tzid)), function(_, _, _, exit_code)
+            if exit_code == 0 then
+                world_clock_snapshot(function(snapshot)
+                    naughty.notify({
+                        title = "Timezone Updated",
+                        text = table.concat({
+                            "System timezone: " .. (snapshot.LOCAL_ZONE or label),
+                            "Local: " .. (snapshot.LOCAL_TIME or label),
+                            "Mumbai: " .. (snapshot.MUMBAI_TIME or "n/a"),
+                            "Vancouver: " .. (snapshot.VANCOUVER_TIME or "n/a"),
+                        }, "\n"),
+                        timeout = 6,
+                    })
+                end)
+                return
+            end
+
+            naughty.notify({
+                preset = naughty.config.presets.warn,
+                title = "Timezone Change Failed",
+                text = "Could not switch to " .. label .. ". Use timedatectl or install pkexec/polkit support.",
+            })
+        end)
+    end
+
+    local function open_directory(path, label)
+        awful.spawn.easy_async_with_shell(string.format([=[
+            target=%s
+            mkdir -p "$target"
+
+            preferred="${LINUXUTILS_FOLDERS_APP:-auto}"
+            if [ "$preferred" != "gui" ] && command -v x-terminal-emulator >/dev/null 2>&1; then
+                if [ "$preferred" = "yazi" ] && command -v yazi >/dev/null 2>&1; then
+                    x-terminal-emulator -e sh -lc 'cd "$1" && exec yazi "$1"' sh "$target" >/dev/null 2>&1 &
+                    exit 0
+                elif [ "$preferred" = "ranger" ] && command -v ranger >/dev/null 2>&1; then
+                    x-terminal-emulator -e sh -lc 'cd "$1" && exec ranger "$1"' sh "$target" >/dev/null 2>&1 &
+                    exit 0
+                elif [ "$preferred" = "lf" ] && command -v lf >/dev/null 2>&1; then
+                    x-terminal-emulator -e sh -lc 'cd "$1" && exec lf "$1"' sh "$target" >/dev/null 2>&1 &
+                    exit 0
+                elif [ "$preferred" = "auto" ]; then
+                    if command -v yazi >/dev/null 2>&1; then
+                        x-terminal-emulator -e sh -lc 'cd "$1" && exec yazi "$1"' sh "$target" >/dev/null 2>&1 &
+                        exit 0
+                    elif command -v ranger >/dev/null 2>&1; then
+                        x-terminal-emulator -e sh -lc 'cd "$1" && exec ranger "$1"' sh "$target" >/dev/null 2>&1 &
+                        exit 0
+                    elif command -v lf >/dev/null 2>&1; then
+                        x-terminal-emulator -e sh -lc 'cd "$1" && exec lf "$1"' sh "$target" >/dev/null 2>&1 &
+                        exit 0
+                    fi
+                fi
+            fi
+
+            if command -v xdg-open >/dev/null 2>&1; then
+                xdg-open "$target" >/dev/null 2>&1 &
+            elif command -v gio >/dev/null 2>&1; then
+                gio open "$target" >/dev/null 2>&1 &
+            elif command -v x-terminal-emulator >/dev/null 2>&1; then
+                x-terminal-emulator -e sh -lc 'cd "$1" && exec "${SHELL:-bash}"' sh "$target" >/dev/null 2>&1 &
+            else
+                exit 1
+            fi
+        ]=], shell_quote(path)), function(_, _, _, exit_code)
+            if exit_code ~= 0 then
+                naughty.notify({
+                    preset = naughty.config.presets.warn,
+                    title = "Folder Opener Missing",
+                    text = "Install yazi/ranger/lf, xdg-open, or gio to open " .. label .. ".",
+                })
+            end
+        end)
     end
 
     function controller.open_flameshot()
@@ -62,17 +253,88 @@ function M.new(opts)
         end)
     end
 
-    function controller.launch_program_palette()
-        local home = os.getenv("HOME") or ""
-        local workspace_dir = os.getenv("LINUXUTILITIES_DIR")
-        local launcher_script = nil
-        local rofi_theme = nil
+    function controller.open_home_folder()
+        open_directory(os.getenv("HOME") or ".", "home folder")
+    end
 
-        if not workspace_dir or workspace_dir == "" then
-            workspace_dir = home ~= "" and (home .. "/Workspace/LinuxUtilities") or "."
+    function controller.open_workspace_folder()
+        open_directory(workspace_root(), "LinuxUtilities folder")
+    end
+
+    function controller.open_screenshots_folder()
+        local screenshots_dir = (os.getenv("HOME") or "") .. "/Screenshots"
+        if screenshots_dir == "/Screenshots" then
+            screenshots_dir = "Screenshots"
         end
-        launcher_script = workspace_dir .. "/scripts/awesome_program_launcher.sh"
-        rofi_theme = workspace_dir .. "/config/rofi_linuxutilities.rasi"
+        open_directory(screenshots_dir, "screenshots folder")
+    end
+
+    function controller.open_notes_folder()
+        open_directory(notes_root(), "notes folder")
+    end
+
+    function controller.open_appimage_library()
+        open_directory(appimage_root(), "AppImage library")
+    end
+
+    function controller.open_system_monitor()
+        awful.spawn.easy_async_with_shell([=[
+            if command -v x-terminal-emulator >/dev/null 2>&1; then
+                if command -v btop >/dev/null 2>&1; then
+                    x-terminal-emulator -e btop >/dev/null 2>&1 &
+                elif command -v htop >/dev/null 2>&1; then
+                    x-terminal-emulator -e htop >/dev/null 2>&1 &
+                else
+                    x-terminal-emulator -e top >/dev/null 2>&1 &
+                fi
+            elif command -v btop >/dev/null 2>&1; then
+                btop >/dev/null 2>&1 &
+            elif command -v htop >/dev/null 2>&1; then
+                htop >/dev/null 2>&1 &
+            elif command -v top >/dev/null 2>&1; then
+                top >/dev/null 2>&1 &
+            else
+                exit 1
+            fi
+        ]=], function(_, _, _, exit_code)
+            if exit_code ~= 0 then
+                naughty.notify({
+                    preset = naughty.config.presets.warn,
+                    title = "System Monitor Missing",
+                    text = "Install btop or htop, or ensure a terminal is available for top.",
+                })
+            end
+        end)
+    end
+
+    function controller.show_world_clock_popup()
+        world_clock_snapshot(function(snapshot)
+            naughty.notify({
+                title = "World Clock",
+                text = table.concat({
+                    "System timezone: " .. (snapshot.LOCAL_ZONE or "unknown"),
+                    "Local: " .. (snapshot.LOCAL_TIME or "n/a"),
+                    "Mumbai: " .. (snapshot.MUMBAI_TIME or "n/a"),
+                    "Vancouver: " .. (snapshot.VANCOUVER_TIME or "n/a"),
+                    "",
+                    "Mod4+Ctrl+i: set Mumbai",
+                    "Mod4+Ctrl+v: set Vancouver",
+                }, "\n"),
+                timeout = 8,
+            })
+        end)
+    end
+
+    function controller.set_timezone_mumbai()
+        switch_timezone("Asia/Kolkata", "Mumbai (Asia/Kolkata)")
+    end
+
+    function controller.set_timezone_vancouver()
+        switch_timezone("America/Vancouver", "Vancouver (America/Vancouver)")
+    end
+
+    function controller.launch_program_palette()
+        local _, launcher_script, rofi_theme = launcher_assets()
 
         if command_exists("rofi") and gears.filesystem.file_readable(launcher_script) then
             local theme_arg = ""
@@ -94,6 +356,45 @@ function M.new(opts)
         end
 
         awful.screen.focused().mypromptbox:run()
+    end
+
+    function controller.open_appimage_palette()
+        local _, launcher_script, rofi_theme = launcher_assets()
+        local app_dir = appimage_root()
+
+        awful.spawn.easy_async_with_shell(string.format([=[
+            target=%s
+            mkdir -p "$target"
+            if find "$target" -maxdepth 3 -type f \( -iname '*.AppImage' -o -iname '*.appimage' \) | grep -q .; then
+                exit 0
+            fi
+            exit 4
+        ]=], shell_quote(app_dir)), function(_, _, _, exit_code)
+            if exit_code == 4 then
+                naughty.notify({
+                    title = "AppImage Library Empty",
+                    text = "Drop .AppImage files into " .. app_dir .. " and they will appear here.",
+                    timeout = 4,
+                })
+                controller.open_appimage_library()
+                return
+            end
+
+            if command_exists("rofi") and gears.filesystem.file_readable(launcher_script) then
+                local theme_arg = ""
+                if gears.filesystem.file_readable(rofi_theme) then
+                    theme_arg = " -theme " .. shell_quote(rofi_theme)
+                end
+                awful.spawn.with_shell(string.format(
+                    "rofi -show-icons -i -matching fuzzy%s -show appimages -modi %s",
+                    theme_arg,
+                    shell_quote("appimages:" .. launcher_script .. " --appimages")
+                ))
+                return
+            end
+
+            controller.open_appimage_library()
+        end)
     end
 
     local function extract_dir_from_client_title(c)
@@ -251,6 +552,8 @@ function M.new(opts)
         awful.spawn.easy_async_with_shell([[
             if command -v nm-connection-editor >/dev/null 2>&1; then
                 nm-connection-editor >/dev/null 2>&1 &
+            elif command -v nmtui-connect >/dev/null 2>&1 && command -v x-terminal-emulator >/dev/null 2>&1; then
+                x-terminal-emulator -e nmtui-connect >/dev/null 2>&1 &
             elif command -v nmtui >/dev/null 2>&1; then
                 x-terminal-emulator -e nmtui >/dev/null 2>&1 &
             else
@@ -262,6 +565,48 @@ function M.new(opts)
                     preset = naughty.config.presets.warn,
                     title = "Network Utility Missing",
                     text = "Install `nm-connection-editor` or `nmtui`.",
+                })
+            end
+        end)
+    end
+
+    function controller.open_network_tui()
+        awful.spawn.easy_async_with_shell([[
+            if command -v nmtui-connect >/dev/null 2>&1 && command -v x-terminal-emulator >/dev/null 2>&1; then
+                x-terminal-emulator -e nmtui-connect >/dev/null 2>&1 &
+            elif command -v nmtui >/dev/null 2>&1 && command -v x-terminal-emulator >/dev/null 2>&1; then
+                x-terminal-emulator -e nmtui >/dev/null 2>&1 &
+            elif command -v nmcli >/dev/null 2>&1 && command -v x-terminal-emulator >/dev/null 2>&1; then
+                x-terminal-emulator -e sh -lc 'nmcli device wifi list; echo; read -n1 -rsp "Press any key to close..."' >/dev/null 2>&1 &
+            else
+                exit 1
+            fi
+        ]], function(_, _, _, exit_code)
+            if exit_code ~= 0 then
+                naughty.notify({
+                    preset = naughty.config.presets.warn,
+                    title = "Network TUI Missing",
+                    text = "Install NetworkManager tools such as nmtui.",
+                })
+            end
+        end)
+    end
+
+    function controller.open_network_scan()
+        awful.spawn.easy_async_with_shell([[
+            if command -v nmcli >/dev/null 2>&1 && command -v x-terminal-emulator >/dev/null 2>&1; then
+                x-terminal-emulator -e sh -lc 'nmcli device wifi list; echo; read -n1 -rsp "Press any key to close..."' >/dev/null 2>&1 &
+            elif command -v nmtui-connect >/dev/null 2>&1 && command -v x-terminal-emulator >/dev/null 2>&1; then
+                x-terminal-emulator -e nmtui-connect >/dev/null 2>&1 &
+            else
+                exit 1
+            fi
+        ]], function(_, _, _, exit_code)
+            if exit_code ~= 0 then
+                naughty.notify({
+                    preset = naughty.config.presets.warn,
+                    title = "Wi-Fi Scan Missing",
+                    text = "Install NetworkManager tools such as nmcli or nmtui.",
                 })
             end
         end)
@@ -329,36 +674,77 @@ function M.new(opts)
         return notes_root()
     end
 
+    function controller.appimage_root()
+        return appimage_root()
+    end
+
     function controller.daily_note_path(date_table)
         return daily_note_path(date_table)
+    end
+
+    function controller.tasks_note_path()
+        return tasks_note_path()
     end
 
     function controller.open_notes_app()
         awful.spawn.easy_async_with_shell(string.format([=[
             notes_dir=%s
+            vault_uri=%s
+            repo_root=%s
             mkdir -p "$notes_dir"
             today_note="$notes_dir/daily/$(date +%%F).md"
             mkdir -p "$(dirname "$today_note")"
+            managed_links="$notes_dir/linked/LinuxUtilities"
+
+            if [ -d "$repo_root" ]; then
+                mkdir -p "$managed_links"
+                find "$managed_links" -mindepth 1 -delete >/dev/null 2>&1 || true
+                find "$repo_root" -type f \( -name '*.md' -o -name '*.markdown' \) | while IFS= read -r src; do
+                    rel="${src#$repo_root/}"
+                    dst="$managed_links/$rel"
+                    mkdir -p "$(dirname "$dst")"
+                    ln -s "$src" "$dst"
+                done
+            fi
+
+            obsidian_open() {
+                uri="$1"
+                fallback_path="$2"
+                if command -v xdg-mime >/dev/null 2>&1 && [ -n "$(xdg-mime query default x-scheme-handler/obsidian 2>/dev/null)" ]; then
+                    if command -v xdg-open >/dev/null 2>&1; then
+                        xdg-open "$uri" >/dev/null 2>&1 &
+                        return 0
+                    elif command -v gio >/dev/null 2>&1; then
+                        gio open "$uri" >/dev/null 2>&1 &
+                        return 0
+                    fi
+                fi
+                if command -v obsidian >/dev/null 2>&1; then
+                    obsidian "$fallback_path" >/dev/null 2>&1 &
+                    return 0
+                fi
+                return 1
+            }
 
             preferred_app="${LINUXUTILS_NOTES_APP:-}"
-            if [ "$preferred_app" = "obsidian" ] && command -v obsidian >/dev/null 2>&1; then
-                obsidian "$notes_dir" >/dev/null 2>&1 &
+            if [ "$preferred_app" = "obsidian" ] && obsidian_open "$vault_uri" "$notes_dir"; then
+                :
             elif [ "$preferred_app" = "joplin" ] && command -v joplin-desktop >/dev/null 2>&1; then
                 joplin-desktop >/dev/null 2>&1 &
-            elif command -v obsidian >/dev/null 2>&1; then
-                obsidian "$notes_dir" >/dev/null 2>&1 &
+            elif obsidian_open "$vault_uri" "$notes_dir"; then
+                :
             elif command -v joplin-desktop >/dev/null 2>&1; then
                 joplin-desktop >/dev/null 2>&1 &
-            elif command -v x-terminal-emulator >/dev/null 2>&1; then
-                x-terminal-emulator -e sh -lc 'mkdir -p "$(dirname "$1")"; touch "$1"; "${EDITOR:-vi}" "$1"' sh "$today_note" >/dev/null 2>&1 &
-            elif command -v xdg-open >/dev/null 2>&1; then
-                xdg-open "$notes_dir" >/dev/null 2>&1 &
             elif command -v gio >/dev/null 2>&1; then
                 gio open "$notes_dir" >/dev/null 2>&1 &
+            elif command -v xdg-open >/dev/null 2>&1; then
+                xdg-open "$notes_dir" >/dev/null 2>&1 &
+            elif command -v x-terminal-emulator >/dev/null 2>&1; then
+                x-terminal-emulator -e sh -lc 'cd "$1" && exec "${SHELL:-bash}"' sh "$notes_dir" >/dev/null 2>&1 &
             else
                 exit 1
             fi
-        ]=], shell_quote(notes_root())), function(_, _, _, exit_code)
+        ]=], shell_quote(notes_root()), shell_quote(obsidian_vault_uri()), shell_quote(workspace_root())), function(_, _, _, exit_code)
             if exit_code ~= 0 then
                 naughty.notify({
                     preset = naughty.config.presets.warn,
@@ -374,8 +760,28 @@ function M.new(opts)
         local note_title = os.date("%A, %d %B %Y", os.time(date_table or os.date("*t")))
         awful.spawn.easy_async_with_shell(string.format([=[
             note_path=%s
+            note_uri=%s
             note_dir="$(dirname "$note_path")"
             mkdir -p "$note_dir"
+
+            obsidian_open() {
+                uri="$1"
+                fallback_path="$2"
+                if command -v xdg-mime >/dev/null 2>&1 && [ -n "$(xdg-mime query default x-scheme-handler/obsidian 2>/dev/null)" ]; then
+                    if command -v xdg-open >/dev/null 2>&1; then
+                        xdg-open "$uri" >/dev/null 2>&1 &
+                        return 0
+                    elif command -v gio >/dev/null 2>&1; then
+                        gio open "$uri" >/dev/null 2>&1 &
+                        return 0
+                    fi
+                fi
+                if command -v obsidian >/dev/null 2>&1; then
+                    obsidian "$fallback_path" >/dev/null 2>&1 &
+                    return 0
+                fi
+                return 1
+            }
 
             if [ ! -f "$note_path" ]; then
                 cat > "$note_path" <<'EOF'
@@ -391,12 +797,12 @@ EOF
             fi
 
             preferred_app="${LINUXUTILS_NOTES_APP:-}"
-            if [ "$preferred_app" = "obsidian" ] && command -v obsidian >/dev/null 2>&1; then
-                obsidian "$note_path" >/dev/null 2>&1 &
+            if [ "$preferred_app" = "obsidian" ] && obsidian_open "$note_uri" "$note_path"; then
+                :
             elif [ "$preferred_app" = "joplin" ] && command -v joplin-desktop >/dev/null 2>&1; then
                 joplin-desktop >/dev/null 2>&1 &
-            elif command -v obsidian >/dev/null 2>&1; then
-                obsidian "$note_path" >/dev/null 2>&1 &
+            elif obsidian_open "$note_uri" "$note_path"; then
+                :
             elif command -v joplin-desktop >/dev/null 2>&1; then
                 joplin-desktop >/dev/null 2>&1 &
             elif command -v x-terminal-emulator >/dev/null 2>&1; then
@@ -408,12 +814,86 @@ EOF
             else
                 exit 1
             fi
-        ]=], shell_quote(note_path), note_title), function(_, _, _, exit_code)
+        ]=], shell_quote(note_path), shell_quote(obsidian_note_uri(note_path)), note_title), function(_, _, _, exit_code)
             if exit_code ~= 0 then
                 naughty.notify({
                     preset = naughty.config.presets.warn,
                     title = "Daily Note Launcher Missing",
                     text = "Install Obsidian or ensure x-terminal-emulator is available for vi fallback.",
+                })
+            end
+        end)
+    end
+
+    function controller.open_tasks_note()
+        local note_path = tasks_note_path()
+        awful.spawn.easy_async_with_shell(string.format([=[
+            note_path=%s
+            note_uri=%s
+            note_dir="$(dirname "$note_path")"
+            mkdir -p "$note_dir"
+
+            obsidian_open() {
+                uri="$1"
+                fallback_path="$2"
+                if command -v xdg-mime >/dev/null 2>&1 && [ -n "$(xdg-mime query default x-scheme-handler/obsidian 2>/dev/null)" ]; then
+                    if command -v xdg-open >/dev/null 2>&1; then
+                        xdg-open "$uri" >/dev/null 2>&1 &
+                        return 0
+                    elif command -v gio >/dev/null 2>&1; then
+                        gio open "$uri" >/dev/null 2>&1 &
+                        return 0
+                    fi
+                fi
+                if command -v obsidian >/dev/null 2>&1; then
+                    obsidian "$fallback_path" >/dev/null 2>&1 &
+                    return 0
+                fi
+                return 1
+            }
+
+            if [ ! -f "$note_path" ]; then
+                cat > "$note_path" <<'EOF'
+# Tasks
+
+## Inbox
+
+- [ ]
+
+## Next
+
+- [ ]
+
+## Waiting
+
+- [ ]
+EOF
+            fi
+
+            preferred_app="${LINUXUTILS_NOTES_APP:-}"
+            if [ "$preferred_app" = "obsidian" ] && obsidian_open "$note_uri" "$note_path"; then
+                :
+            elif [ "$preferred_app" = "joplin" ] && command -v joplin-desktop >/dev/null 2>&1; then
+                joplin-desktop >/dev/null 2>&1 &
+            elif obsidian_open "$note_uri" "$note_path"; then
+                :
+            elif command -v joplin-desktop >/dev/null 2>&1; then
+                joplin-desktop >/dev/null 2>&1 &
+            elif command -v x-terminal-emulator >/dev/null 2>&1; then
+                x-terminal-emulator -e sh -lc '${EDITOR:-vi} "$1"' sh "$note_path" >/dev/null 2>&1 &
+            elif command -v xdg-open >/dev/null 2>&1; then
+                xdg-open "$note_path" >/dev/null 2>&1 &
+            elif command -v gio >/dev/null 2>&1; then
+                gio open "$note_path" >/dev/null 2>&1 &
+            else
+                exit 1
+            fi
+        ]=], shell_quote(note_path), shell_quote(obsidian_note_uri(note_path))), function(_, _, _, exit_code)
+            if exit_code ~= 0 then
+                naughty.notify({
+                    preset = naughty.config.presets.warn,
+                    title = "Tasks Note Launcher Missing",
+                    text = "Install Obsidian or ensure x-terminal-emulator is available for the tasks note.",
                 })
             end
         end)

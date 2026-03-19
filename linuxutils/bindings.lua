@@ -182,6 +182,14 @@ local function build_global_keys(opts)
         awful.key({ modkey }, "Return", function()
             awful.spawn(terminal)
         end, { description = "open a terminal", group = "launcher" }),
+        awful.key({ modkey, "Shift" }, "h", actions.open_system_monitor,
+            { description = "open system monitor (btop/htop/top)", group = "launcher" }),
+        awful.key({ modkey, "Control" }, "t", actions.show_world_clock_popup,
+            { description = "show world clock (local, Mumbai, Vancouver)", group = "launcher" }),
+        awful.key({ modkey, "Control" }, "i", actions.set_timezone_mumbai,
+            { description = "set timezone to Mumbai (Asia/Kolkata)", group = "launcher" }),
+        awful.key({ modkey, "Control" }, "v", actions.set_timezone_vancouver,
+            { description = "set timezone to Vancouver (America/Vancouver)", group = "launcher" }),
         awful.key({ }, "F6", actions.toggle_gromit_draw,
             { description = "toggle presenter drawing (gromit)", group = "launcher" }),
         awful.key({ "Shift" }, "F6", actions.clear_gromit_draw,

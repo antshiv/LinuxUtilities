@@ -31,6 +31,7 @@ local beautiful = require("beautiful")
 -- Notification library
 local naughty = require("naughty")
 local menubar = require("menubar")
+local keyboardlayout_widget = require("awful.widget.keyboardlayout")
 local hotkeys_popup = require("awful.hotkeys_popup")
 -- Enable hotkeys help widget for VIM and other apps
 -- when client with a matching name is opened:
@@ -168,6 +169,9 @@ local create_audio_widget = widgets_controller.create_audio_widget
 local create_battery_widget = widgets_controller.create_battery_widget
 local create_network_widget = widgets_controller.create_network_widget
 local create_bluetooth_widget = widgets_controller.create_bluetooth_widget
+local create_system_widget = widgets_controller.create_system_widget
+local create_folder_widget = widgets_controller.create_folder_widget
+local create_applications_widget = widgets_controller.create_applications_widget
 local create_thunderbird_widget = widgets_controller.create_thunderbird_widget
 local create_clock_widget = widgets_controller.create_clock_widget
 
@@ -198,6 +202,13 @@ local presenter_dash_arrow = presenter_controller.presenter_dash_arrow
 local presenter_dash_reset = presenter_controller.presenter_dash_reset
 
 local open_flameshot = launchers_controller.open_flameshot
+local open_system_monitor = launchers_controller.open_system_monitor
+local open_network_manager = launchers_controller.open_network_manager
+local open_network_tui = launchers_controller.open_network_tui
+local open_network_scan = launchers_controller.open_network_scan
+local show_world_clock_popup = launchers_controller.show_world_clock_popup
+local set_timezone_mumbai = launchers_controller.set_timezone_mumbai
+local set_timezone_vancouver = launchers_controller.set_timezone_vancouver
 local launch_program_palette = launchers_controller.launch_program_palette
 local open_linux_control_center_for_client = launchers_controller.open_linux_control_center_for_client
 
@@ -278,40 +289,68 @@ myawesomemenu = {
    { "quit", function() awesome.quit() end },
 }
 
+local menu_notes = {
+   { "notes app", launchers_controller.open_notes_app },
+   { "daily note", function() launchers_controller.open_daily_note(os.date("*t")) end },
+   { "tasks note", launchers_controller.open_tasks_note },
+   { "notes folder", launchers_controller.open_notes_folder },
+}
+
+local menu_files = {
+   { "home folder", launchers_controller.open_home_folder },
+   { "LinuxUtilities folder", launchers_controller.open_workspace_folder },
+   { "screenshots folder", launchers_controller.open_screenshots_folder },
+   { "AppImage library", launchers_controller.open_appimage_library },
+   { "AppImage launcher", launchers_controller.open_appimage_palette },
+}
+
+local menu_timezones = {
+   { "show world clock", show_world_clock_popup },
+   { "set Mumbai timezone", set_timezone_mumbai },
+   { "set Vancouver timezone", set_timezone_vancouver },
+   { "time preferences", launchers_controller.open_time_preferences },
+}
+
+local menu_network = {
+   { "network settings", open_network_manager },
+   { "Wi-Fi picker (nmtui)", open_network_tui },
+   { "Wi-Fi scan (nmcli)", open_network_scan },
+}
+
+local menu_linuxutilities = {
+   { "program palette", launch_program_palette },
+   { "system monitor", open_system_monitor },
+   { "network", menu_network },
+   { "notes", menu_notes },
+   { "files", menu_files },
+   { "timezones", menu_timezones },
+   { "calendar app", launchers_controller.open_calendar_app },
+   { "Linux Control Center", function() launchers_controller.open_linux_control_center() end },
+}
+
 local menu_awesome = { "awesome", myawesomemenu, beautiful.awesome_icon }
+local menu_linuxutilities_root = { "LinuxUtilities", menu_linuxutilities }
 local menu_terminal = { "open terminal", terminal }
 
 if has_fdo then
     mymainmenu = freedesktop.menu.build({
-        before = { menu_awesome },
+        before = { menu_awesome, menu_linuxutilities_root },
         after =  { menu_terminal }
     })
 else
     mymainmenu = awful.menu({
         items = {
                   menu_awesome,
+                  menu_linuxutilities_root,
                   { "Debian", debian.menu.Debian_menu.Debian },
                   menu_terminal,
                 }
     })
 end
 
-
-mylauncher = awful.widget.launcher({ image = beautiful.awesome_icon,
-                                     menu = mymainmenu })
-
-myhostlabel = wibox.widget.textbox(" 💻 " .. identity_label .. " ")
-awful.tooltip({
-    objects = { myhostlabel },
-    text = "Current host identity",
-})
-
 -- Menubar configuration
 menubar.utils.terminal = terminal -- Set the terminal for applications that require it
 -- }}}
-
--- Keyboard map indicator and switcher
-mykeyboardlayout = awful.widget.keyboardlayout()
 
 -- {{{ Wibar
 -- Create a wibox for each screen and add it
@@ -366,10 +405,75 @@ local function set_wallpaper(s)
     end
 end
 
+local function build_screen_profile(s)
+    local width = 1920
+    if s and s.geometry and s.geometry.width then
+        width = s.geometry.width
+    elseif s and s.workarea and s.workarea.width then
+        width = s.workarea.width
+    end
+
+    if width >= 1800 then
+        return {
+            host_label = identity_label,
+            network_label_len = 12,
+            clock_format = " 🕒 %a %d %b %H:%M ",
+            system_compact = false,
+        }
+    end
+
+    if width >= 1440 then
+        return {
+            host_label = get_short_hostname(),
+            network_label_len = 10,
+            clock_format = " 🕒 %d %b %H:%M ",
+            system_compact = false,
+        }
+    end
+
+    return {
+        host_label = get_short_hostname(),
+        network_label_len = 8,
+        clock_format = " 🕒 %H:%M ",
+        system_compact = true,
+    }
+end
+
+local function create_launcher_widget()
+    return awful.widget.launcher({
+        image = beautiful.awesome_icon,
+        menu = mymainmenu,
+    })
+end
+
+local function create_host_widget(profile)
+    local label = profile and profile.host_label or identity_label
+    local widget = wibox.widget.textbox(" 💻 " .. label .. " ")
+    awful.tooltip({
+        objects = { widget },
+        text = "Current host identity\n" .. identity_label,
+    })
+    return widget
+end
+
+local function create_keyboard_widget()
+    local widget = keyboardlayout_widget.new()
+    awful.tooltip({
+        objects = { widget },
+        text = "Keyboard layout\nLeft click: next layout",
+    })
+    return widget
+end
+
+local primary_systray = wibox.widget.systray()
+primary_systray:set_screen("primary")
+
 -- Re-set wallpaper when a screen's geometry changes (e.g. different resolution)
 screen.connect_signal("property::geometry", set_wallpaper)
 
 awful.screen.connect_for_each_screen(function(s)
+    local screen_profile = build_screen_profile(s)
+
     -- Wallpaper
     set_wallpaper(s)
 
@@ -386,12 +490,19 @@ awful.screen.connect_for_each_screen(function(s)
                            awful.button({ }, 3, function () awful.layout.inc(-1) end),
                            awful.button({ }, 4, function () awful.layout.inc( 1) end),
                            awful.button({ }, 5, function () awful.layout.inc(-1) end)))
+    s.mylauncher = create_launcher_widget()
+    s.mykeyboardlayout = create_keyboard_widget()
+    s.myhostlabel = create_host_widget(screen_profile)
     s.myaudiostatus = create_audio_widget()
     s.mybatterystatus = create_battery_widget()
-    s.mynetworkstatus = create_network_widget()
+    s.mynetworkstatus = create_network_widget(screen_profile)
     s.mybluetoothstatus = create_bluetooth_widget()
+    s.mysystemstatus = create_system_widget(screen_profile)
+    s.myfoldernav = create_folder_widget()
+    s.myapplicationsnav = create_applications_widget()
     s.mythunderbirdstatus = create_thunderbird_widget()
-    s.myclock = create_clock_widget()
+    s.myclock = create_clock_widget(screen_profile)
+    s.mysystray = (s == screen.primary) and primary_systray or wibox.widget.textbox("")
     -- Create a taglist widget
     s.mytaglist = awful.widget.taglist {
         screen  = s,
@@ -414,20 +525,25 @@ awful.screen.connect_for_each_screen(function(s)
         layout = wibox.layout.align.horizontal,
         { -- Left widgets
             layout = wibox.layout.fixed.horizontal,
-            mylauncher,
+            spacing = 2,
+            s.mylauncher,
             s.mytaglist,
             s.mypromptbox,
         },
         s.mytasklist, -- Middle widget
         { -- Right widgets
             layout = wibox.layout.fixed.horizontal,
+            spacing = 2,
             s.mybluetoothstatus,
             s.mynetworkstatus,
+            s.mysystemstatus,
             s.mybatterystatus,
             s.myaudiostatus,
-            mykeyboardlayout,
-            wibox.widget.systray(),
-            myhostlabel,
+            s.mykeyboardlayout,
+            s.mysystray,
+            s.myapplicationsnav,
+            s.myfoldernav,
+            s.myhostlabel,
             s.mythunderbirdstatus,
             s.myclock,
             s.mylayoutbox,
@@ -450,6 +566,10 @@ local binding_tables = bindings.build({
     utility_mouse_button = utility_mouse_button,
     actions = {
         open_flameshot = open_flameshot,
+        open_system_monitor = open_system_monitor,
+        show_world_clock_popup = show_world_clock_popup,
+        set_timezone_mumbai = set_timezone_mumbai,
+        set_timezone_vancouver = set_timezone_vancouver,
         open_linux_control_center_for_client = open_linux_control_center_for_client,
         volume_up = volume_up,
         volume_down = volume_down,

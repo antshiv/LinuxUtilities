@@ -7,6 +7,7 @@ M.palette = {
     bluetooth = "#6ea8ff",
     ethernet = "#8bd49c",
     notes = "#9ad8ff",
+    apps = "#d7ba7d",
     offline = "#96a0b5",
 }
 
@@ -17,6 +18,9 @@ M.glyphs = {
     ethernet = "▣",
     online = "◎",
     offline = "○",
+    system = "▤",
+    folder = "▥",
+    apps = "▦",
 }
 
 local function escape_markup(text)
@@ -66,6 +70,30 @@ function M.network(ntype, label)
         return M.decorate(M.glyphs.online, M.palette.wifi, label, M.palette.text)
     end
     return M.decorate(M.glyphs.offline, M.palette.offline, label or "offline", M.palette.muted)
+end
+
+function M.system_usage(cpu_percent, mem_percent, compact)
+    local cpu_value = tonumber(cpu_percent)
+    local mem_value = tonumber(mem_percent)
+    local cpu_label
+    local mem_label
+
+    if compact then
+        cpu_label = cpu_value and string.format("C%d", cpu_value) or "C--"
+        mem_label = mem_value and string.format("R%d", mem_value) or "R--"
+    else
+        cpu_label = cpu_value and string.format("CPU %d%%", cpu_value) or "CPU --"
+        mem_label = mem_value and string.format("RAM %d%%", mem_value) or "RAM --"
+    end
+    return M.decorate(M.glyphs.system, M.palette.notes, cpu_label .. " " .. mem_label, M.palette.text)
+end
+
+function M.folder(label)
+    return M.decorate(M.glyphs.folder, M.palette.wifi, label or "Files", M.palette.text)
+end
+
+function M.applications(label)
+    return M.decorate(M.glyphs.apps, M.palette.apps, label or "Apps", M.palette.text)
 end
 
 return M

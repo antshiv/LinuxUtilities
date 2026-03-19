@@ -134,6 +134,7 @@ redshift -x         # reset</code></pre>
 ./build_linux_control_center.sh --install
 pkill -f linux_control_center || true
 ~/Programs/bin/linux_control_center ~/Workspace/LinuxUtilities</code></pre>
+    <p>Current launcher scripts prefer <code>~/Workspace/LinuxUtilities/build/bin/linux_control_center</code> first and fall back to <code>~/Programs/bin/linux_control_center</code>, so rebuilding from the repo should take effect immediately even before reinstalling.</p>
     <p>Check what command resolves first:</p>
     <pre><code>which linux_control_center
 ls -l ~/Programs/bin/linux_control_center \
@@ -188,6 +189,19 @@ AUDIO_OUTPUT_SINK=&lt;hdmi_sink_name&gt; make audio-bt-mic</code></pre>
         <li><kbd>F6</kbd> / <kbd>F11</kbd> — some browsers use these for address bar / fullscreen</li>
         <li>Solution: use the keys only when Gromit is active, or remap in <code>rc.lua</code></li>
     </ul>
+</details>
+
+<details>
+    <summary><strong>I want to see nearby Wi-Fi networks, but I do not see a separate nmtui window</strong></summary>
+    <p><code>nmtui</code> is a terminal UI, not a standalone GTK dialog. In this setup it opens inside your default terminal emulator.</p>
+    <ul>
+        <li>Middle click the network widget in the top bar.</li>
+        <li>Or use <code>Desktop right click -&gt; LinuxUtilities -&gt; network -&gt; Wi-Fi picker (nmtui)</code>.</li>
+        <li>For a raw scan only, use <code>Desktop right click -&gt; LinuxUtilities -&gt; network -&gt; Wi-Fi scan (nmcli)</code>.</li>
+    </ul>
+    <p>If nothing opens, confirm the required tools exist:</p>
+    <pre><code>command -v nmtui-connect
+command -v x-terminal-emulator</code></pre>
 </details>
 
 <details>

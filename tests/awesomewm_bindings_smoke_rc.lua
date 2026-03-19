@@ -21,6 +21,10 @@ local launcher_calls = {
     brightness_up = 0,
     launcher = 0,
     spotlight = 0,
+    system_monitor = 0,
+    world_clock = 0,
+    timezone_mumbai = 0,
+    timezone_vancouver = 0,
 }
 
 local function flatten_join(...)
@@ -245,6 +249,18 @@ local binding_tables = bindings.build({
         launch_program_palette = function()
             launcher_calls.launcher = launcher_calls.launcher + 1
         end,
+        open_system_monitor = function()
+            launcher_calls.system_monitor = launcher_calls.system_monitor + 1
+        end,
+        show_world_clock_popup = function()
+            launcher_calls.world_clock = launcher_calls.world_clock + 1
+        end,
+        set_timezone_mumbai = function()
+            launcher_calls.timezone_mumbai = launcher_calls.timezone_mumbai + 1
+        end,
+        set_timezone_vancouver = function()
+            launcher_calls.timezone_vancouver = launcher_calls.timezone_vancouver + 1
+        end,
         toggle_gromit_draw = function()
         end,
         clear_gromit_draw = function()
@@ -309,6 +325,10 @@ assert(find_button(binding_tables.clientbuttons, 9) ~= nil)
 
 assert(find_key(binding_tables.globalkeys, "XF86MonBrightnessUp", "increase brightness") ~= nil)
 assert(find_key(binding_tables.globalkeys, "XF86AudioRaiseVolume", "increase volume") ~= nil)
+assert(find_key(binding_tables.globalkeys, "h", "open system monitor (btop/htop/top)") ~= nil)
+assert(find_key(binding_tables.globalkeys, "t", "show world clock (local, Mumbai, Vancouver)") ~= nil)
+assert(find_key(binding_tables.globalkeys, "i", "set timezone to Mumbai (Asia/Kolkata)") ~= nil)
+assert(find_key(binding_tables.globalkeys, "v", "set timezone to Vancouver (America/Vancouver)") ~= nil)
 assert(find_key(binding_tables.globalkeys, "F6", "toggle presenter drawing (gromit)") ~= nil)
 assert(find_key(binding_tables.globalkeys, "F7", "toggle cursor spotlight") ~= nil)
 assert(find_key(binding_tables.globalkeys, "Print", "open flameshot") ~= nil)
@@ -317,6 +337,10 @@ find_button(binding_tables.root_buttons, 8).callback()
 find_button(binding_tables.root_buttons, 9).callback()
 find_key(binding_tables.globalkeys, "XF86MonBrightnessUp", "increase brightness").callback()
 find_key(binding_tables.globalkeys, "XF86AudioRaiseVolume", "increase volume").callback()
+find_key(binding_tables.globalkeys, "h", "open system monitor (btop/htop/top)").callback()
+find_key(binding_tables.globalkeys, "t", "show world clock (local, Mumbai, Vancouver)").callback()
+find_key(binding_tables.globalkeys, "i", "set timezone to Mumbai (Asia/Kolkata)").callback()
+find_key(binding_tables.globalkeys, "v", "set timezone to Vancouver (America/Vancouver)").callback()
 find_key(binding_tables.globalkeys, "F7", "toggle cursor spotlight").callback()
 find_key(binding_tables.globalkeys, "r", "program launcher (rofi + custom commands)").callback()
 
@@ -324,6 +348,10 @@ assert(launcher_calls.flameshot == 1)
 assert(launcher_calls.utility == 1)
 assert(launcher_calls.brightness_up == 1)
 assert(launcher_calls.volume_up == 1)
+assert(launcher_calls.system_monitor == 1)
+assert(launcher_calls.world_clock == 1)
+assert(launcher_calls.timezone_mumbai == 1)
+assert(launcher_calls.timezone_vancouver == 1)
 assert(launcher_calls.spotlight == 1)
 assert(launcher_calls.launcher == 1)
 
