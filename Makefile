@@ -54,13 +54,14 @@ SMB_530_MOUNT ?= /mnt/w530
 SMB_530_CREDENTIALS ?= $(HOME)/.smbcredentials-530
 AUDIO_OUTPUT_SINK ?=
 BT_CARD ?=
+BT_DEVICE ?=
 
 -include config/local.mk
 ifneq ($(HOST_SHORT),)
 -include config/host/$(HOST_SHORT).mk
 endif
 
-.PHONY: help rc-backup awesome-backup awesome-update awesome-user-backup awesome-user-update awesome-system-backup awesome-system-update awesome-test test-fast apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve present-live present-profile present-profile-live present-profile-list audio-help audio-status audio-bt-mic audio-bt-music shorts-help shorts-record shorts-transcribe shorts-render manim-help manim-version manim-smoke manim-scene manim-shell wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external samba-530-probe mount-530 umount-530 desktop-install
+.PHONY: help rc-backup awesome-backup awesome-update awesome-user-backup awesome-user-update awesome-system-backup awesome-system-update awesome-test test-fast apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve present-live present-profile present-profile-live present-profile-list audio-help audio-status audio-bt-mic audio-bt-music audio-bt-recover shorts-help shorts-record shorts-transcribe shorts-render manim-help manim-version manim-smoke manim-scene manim-shell wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external samba-530-probe mount-530 umount-530 desktop-install
 
 help:
 >@echo "Targets:"
@@ -93,6 +94,7 @@ help:
 >@echo "  make audio-status        Show Bluetooth card/profile + sink/source defaults"
 >@echo "  make audio-bt-mic        Switch BT headset to mic mode (HFP/HSP)"
 >@echo "  make audio-bt-music      Switch BT headset back to music mode (A2DP)"
+>@echo "  make audio-bt-recover    Recover silent BT headset playback after PipeWire/Bluetooth glitches"
 >@echo "  make shorts-help         Show transcript-driven shorts pipeline commands"
 >@echo "  make manim-help          Show Manim helper commands (uses $(MANIM_DIR))"
 >@echo "  make wacom-help          Show quick Wacom mapping cheatsheet"
@@ -369,6 +371,9 @@ audio-bt-mic:
 
 audio-bt-music:
 >@BT_CARD="$(BT_CARD)" ./scripts/audio_bt_profile.sh music-mode
+
+audio-bt-recover:
+>@BT_CARD="$(BT_CARD)" BT_DEVICE="$(BT_DEVICE)" ./scripts/audio_bt_profile.sh recover
 
 shorts-help:
 >@echo "Shorts pipeline:"

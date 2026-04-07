@@ -93,6 +93,7 @@ Good candidates for overrides:
 - `SMB_530_HOST`, `SMB_530_SHARE`, `SMB_530_MOUNT`
 - `AUDIO_OUTPUT_SINK`
 - `BT_CARD`
+- `BT_DEVICE`
 
 AwesomeWM validation:
 
@@ -204,12 +205,16 @@ make audio-help
 make audio-status
 make audio-bt-mic
 make audio-bt-music
+make audio-bt-recover
 ```
 
 Optional overrides for Bluetooth profile helpers:
 
 - `AUDIO_OUTPUT_SINK=<sink_name>` to force output (useful to keep HDMI output in mic mode)
 - `BT_CARD=<bluez_card...>` to target a specific headset card
+- `BT_DEVICE=<MAC>` to target a specific headset by Bluetooth address
+
+`make audio-bt-recover` is the recovery path for the failure we just hit: headset still shows as Bluetooth-connected, but PipeWire lost the `bluez_output.*` sink after an OOM, restart, or stale transport. It restarts the user audio services, reconnects the headset, restores A2DP playback, and moves active streams back to the Bluetooth sink.
 
 `PRESENT_WACOM_MODE` options:
 - `none` (default): do not change mapping
@@ -267,7 +272,7 @@ make manim-shell
 - `cursor_spotlight.c`: Lightweight X11 cursor spotlight overlay utility.
 - `build_cursor_spotlight.sh`: Build helper for `cursor_spotlight`.
 - `launch_present_live.sh`: Opens reveal.js + Presenter Canvas (+ optional code URL) for live presentation flow.
-- `scripts/audio_bt_profile.sh`: Switch Bluetooth headset between mic mode (`HFP/HSP`) and music mode (`A2DP`), plus status/help.
+- `scripts/audio_bt_profile.sh`: Switch Bluetooth headset between mic mode (`HFP/HSP`) and music mode (`A2DP`), show status/help, and recover playback after PipeWire/Bluetooth desync.
 - `MICROPHONE_HELP.md`: Quick operational guide for Bluetooth mic profile behavior and sink/source routing.
 - `scripts/presentation_mode.sh`: One-click presentation profile (`prep` / `live`).
 - `scripts/awesome_program_launcher.sh`: Custom rofi launcher mode (favorites + recents + grouped actions).
@@ -313,6 +318,8 @@ GTK4 Control Center also includes a `Commands` tab:
 - quick launcher buttons matching the Mod4+r palette favorites
 - one-click `Presentation Prep` and `Presentation Live`
 - raw command entry to run shell commands directly from the app
+
+The `Audio` tab now includes direct Bluetooth headset helpers for `BT Mic Mode`, `BT Music Mode`, `BT Status`, `Mic Help`, and `Recover BT Audio` when a headset stays connected but goes silent.
 
 ## Presenter Drawing (Epic Pen Style)
 

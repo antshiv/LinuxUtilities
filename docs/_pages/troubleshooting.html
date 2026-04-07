@@ -168,6 +168,19 @@ make audio-bt-music</code></pre>
 AUDIO_OUTPUT_SINK=&lt;hdmi_sink_name&gt; make audio-bt-mic</code></pre>
 </details>
 
+<details open>
+    <summary><strong>Bluetooth headset is connected, but audio is silent</strong></summary>
+    <p>This usually means the Bluetooth link survived, but PipeWire/WirePlumber lost the <code>bluez_output.*</code> sink after an OOM, restart, or stale transport. Use the recovery helper:</p>
+    <pre><code>cd ~/Workspace/LinuxUtilities
+make audio-bt-recover</code></pre>
+    <p>GUI path: open <code>linux_control_center</code> and use <code>Audio -&gt; Recover BT Audio</code>, or <code>Bluetooth Center -&gt; Headset -&gt; Recover Silent BT Audio</code>.</p>
+    <p>The helper restarts the user audio services, reconnects the headset, restores the A2DP playback profile, and moves active app streams back to the Bluetooth sink.</p>
+    <p>If you need to target a specific headset:</p>
+    <pre><code>BT_DEVICE=&lt;MAC&gt; make audio-bt-recover
+# or
+BT_CARD=&lt;bluez_card...&gt; make audio-bt-recover</code></pre>
+</details>
+
 <h2>AwesomeWM</h2>
 
 <details>

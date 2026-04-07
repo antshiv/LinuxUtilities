@@ -885,6 +885,10 @@ static void gtk4_apply_css(Gtk4State *state) {
         "button.utility-btn.utility-btn-active { border-color: rgba(115,214,255,1.0); background: rgba(45,108,166,0.95); }\n"
         ".utility-title { color: #e6f3ff; font-weight: 700; }\n"
         ".utility-subtitle { color: #9fb9d4; }\n"
+        "scale.lcu-audio-scale trough { min-height: 12px; border-radius: 999px; background: rgba(196,224,248,0.34); border: 1px solid rgba(212,236,255,0.56); }\n"
+        "scale.lcu-audio-scale highlight { border-radius: 999px; background: linear-gradient(90deg, #6fd4ff 0%, #b8f0ff 100%); }\n"
+        "scale.lcu-audio-scale slider { min-width: 18px; min-height: 18px; border-radius: 999px; background: #f4fbff; border: 1px solid rgba(74,156,228,0.92); box-shadow: 0 0 0 3px rgba(111,212,255,0.18); }\n"
+        "scale.lcu-audio-scale slider:hover { background: #ffffff; border-color: rgba(128,205,255,0.98); }\n"
         "paned > separator { background: rgba(100,150,220,0.35); min-width: 8px; min-height: 8px; }\n"
         "textview { font-size: 13px; line-height: 1.35; }\n";
     if (!state) {
@@ -3593,6 +3597,7 @@ static void gtk4_open_bluetooth_center(Gtk4State *state) {
     gchar *cmd_bt_refresh = NULL;
     gchar *cmd_bt_ui_reset = NULL;
     gchar *cmd_bt_trust = NULL;
+    gchar *cmd_bt_audio_recover = NULL;
     const gchar *cmd_scan_on = "bluetoothctl scan on";
     const gchar *cmd_scan_off = "bluetoothctl scan off";
     const gchar *cmd_pairable = "bash -lc \"bluetoothctl pairable on >/dev/null 2>&1 || true; bluetoothctl discoverable on >/dev/null 2>&1 || true\"";
@@ -3605,6 +3610,7 @@ static void gtk4_open_bluetooth_center(Gtk4State *state) {
     cmd_bt_refresh = gtk4_repo_shell(state, "./scripts/bluetooth_refresh.sh refresh");
     cmd_bt_ui_reset = gtk4_repo_shell(state, "./scripts/bluetooth_refresh.sh ui");
     cmd_bt_trust = gtk4_repo_shell(state, "./scripts/bluetooth_refresh.sh trust");
+    cmd_bt_audio_recover = gtk4_repo_shell(state, "./scripts/audio_bt_profile.sh recover");
 
     win = gtk_window_new();
     gtk_window_set_title(GTK_WINDOW(win), "Bluetooth Center");
@@ -3691,7 +3697,7 @@ static void gtk4_open_bluetooth_center(Gtk4State *state) {
     gtk_widget_set_margin_bottom(audio_tab, 8);
     gtk_widget_set_margin_start(audio_tab, 8);
     gtk_widget_set_margin_end(audio_tab, 8);
-    audio_info = gtk_label_new("Headset recovery: trust + reconnect paired audio endpoints.");
+    audio_info = gtk_label_new("Headset recovery for the common failure mode: Bluetooth still says connected, but PipeWire lost the playback sink.");
     gtk_label_set_xalign(GTK_LABEL(audio_info), 0.0f);
     gtk_label_set_wrap(GTK_LABEL(audio_info), TRUE);
     gtk_widget_add_css_class(audio_info, "dim-label");
@@ -3699,14 +3705,17 @@ static void gtk4_open_bluetooth_center(Gtk4State *state) {
     gtk_grid_set_row_spacing(GTK_GRID(audio_grid), 8);
     gtk_grid_set_column_spacing(GTK_GRID(audio_grid), 8);
     gtk_grid_attach(GTK_GRID(audio_grid),
-                    gtk4_make_bt_center_action(state, "Trust + Reconnect Paired Audio", cmd_bt_trust, "Trusted/reconnect requested."),
+                    gtk4_make_bt_center_action(state, "Recover Silent BT Audio", cmd_bt_audio_recover, "Bluetooth audio recovery started."),
                     0, 0, 2, 1);
     gtk_grid_attach(GTK_GRID(audio_grid),
+                    gtk4_make_bt_center_action(state, "Trust + Reconnect Paired Audio", cmd_bt_trust, "Trusted/reconnect requested."),
+                    0, 1, 2, 1);
+    gtk_grid_attach(GTK_GRID(audio_grid),
                     gtk4_make_bt_center_action(state, "Open Audio Mixer", "pavucontrol", "Opening audio mixer..."),
-                    0, 1, 1, 1);
+                    0, 2, 1, 1);
     gtk_grid_attach(GTK_GRID(audio_grid),
                     gtk4_make_bt_center_action(state, "Open Device Pairing", "blueman-manager", "Opening pairing manager..."),
-                    1, 1, 1, 1);
+                    1, 2, 1, 1);
     gtk_box_append(GTK_BOX(audio_tab), audio_info);
     gtk_box_append(GTK_BOX(audio_tab), audio_grid);
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), audio_tab, gtk_label_new("Headset"));
@@ -4238,7 +4247,7 @@ static GtkWidget *gtk4_build_audio_tab(Gtk4State *state) {
     GtkWidget *status = gtk_label_new("Audio ready.");
     GtkWidget *scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 150, 1);
     GtkWidget *buttons = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
-    GtkWidget *bt_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    GtkWidget *bt_grid = gtk_grid_new();
     GtkWidget *apply = gtk_button_new_with_label("Apply Volume");
     GtkWidget *minus = gtk_button_new_with_label("-5%");
     GtkWidget *plus = gtk_button_new_with_label("+5%");
@@ -4247,9 +4256,10 @@ static GtkWidget *gtk4_build_audio_tab(Gtk4State *state) {
     GtkWidget *mixer = gtk_button_new_with_label("Open Pavucontrol");
     GtkWidget *bt_mic_mode = gtk_button_new_with_label("BT Mic Mode");
     GtkWidget *bt_music_mode = gtk_button_new_with_label("BT Music Mode");
+    GtkWidget *bt_recover = gtk_button_new_with_label("Recover BT Audio");
     GtkWidget *bt_status = gtk_button_new_with_label("BT Status");
     GtkWidget *bt_help = gtk_button_new_with_label("Mic Help");
-    GtkWidget *bt_note = gtk_label_new("A2DP = music quality/no mic. HFP/HSP = mic enabled/lower speaker quality.");
+    GtkWidget *bt_note = gtk_label_new("A2DP = music quality/no mic. HFP/HSP = mic enabled/lower speaker quality. If the headset is connected but silent, use Recover BT Audio.");
 
     gtk_widget_set_margin_top(root, 12);
     gtk_widget_set_margin_bottom(root, 12);
@@ -4262,8 +4272,11 @@ static GtkWidget *gtk4_build_audio_tab(Gtk4State *state) {
     gtk_label_set_xalign(GTK_LABEL(bt_note), 0.0f);
     gtk_label_set_wrap(GTK_LABEL(bt_note), TRUE);
     gtk_widget_add_css_class(bt_note, "dim-label");
+    gtk_widget_add_css_class(scale, "lcu-audio-scale");
     gtk_scale_set_draw_value(GTK_SCALE(scale), TRUE);
     gtk_range_set_value(GTK_RANGE(scale), 20);
+    gtk_grid_set_row_spacing(GTK_GRID(bt_grid), 8);
+    gtk_grid_set_column_spacing(GTK_GRID(bt_grid), 8);
 
     gtk_box_append(GTK_BOX(buttons), apply);
     gtk_box_append(GTK_BOX(buttons), minus);
@@ -4271,15 +4284,16 @@ static GtkWidget *gtk4_build_audio_tab(Gtk4State *state) {
     gtk_box_append(GTK_BOX(buttons), mute);
     gtk_box_append(GTK_BOX(buttons), refresh);
     gtk_box_append(GTK_BOX(buttons), mixer);
-    gtk_box_append(GTK_BOX(bt_row), bt_mic_mode);
-    gtk_box_append(GTK_BOX(bt_row), bt_music_mode);
-    gtk_box_append(GTK_BOX(bt_row), bt_status);
-    gtk_box_append(GTK_BOX(bt_row), bt_help);
+    gtk_grid_attach(GTK_GRID(bt_grid), bt_mic_mode, 0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(bt_grid), bt_music_mode, 1, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(bt_grid), bt_recover, 2, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(bt_grid), bt_status, 0, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(bt_grid), bt_help, 1, 1, 2, 1);
 
     gtk_box_append(GTK_BOX(panel), status);
     gtk_box_append(GTK_BOX(panel), scale);
     gtk_box_append(GTK_BOX(panel), buttons);
-    gtk_box_append(GTK_BOX(panel), bt_row);
+    gtk_box_append(GTK_BOX(panel), bt_grid);
     gtk_box_append(GTK_BOX(panel), bt_note);
     gtk_box_append(GTK_BOX(root), title);
     gtk_box_append(GTK_BOX(root), panel);
@@ -4298,12 +4312,15 @@ static GtkWidget *gtk4_build_audio_tab(Gtk4State *state) {
     g_object_set_data(G_OBJECT(bt_mic_mode), "bt-audio-status", "Requested Bluetooth mic mode (HFP/HSP).");
     g_object_set_data(G_OBJECT(bt_music_mode), "bt-audio-mode", "music-mode");
     g_object_set_data(G_OBJECT(bt_music_mode), "bt-audio-status", "Requested Bluetooth music mode (A2DP).");
+    g_object_set_data(G_OBJECT(bt_recover), "bt-audio-mode", "recover");
+    g_object_set_data(G_OBJECT(bt_recover), "bt-audio-status", "Bluetooth audio recovery started.");
     g_object_set_data(G_OBJECT(bt_status), "bt-audio-mode", "status");
     g_object_set_data(G_OBJECT(bt_status), "bt-audio-status", "Opening Bluetooth audio status...");
     g_object_set_data(G_OBJECT(bt_help), "bt-audio-mode", "help");
     g_object_set_data(G_OBJECT(bt_help), "bt-audio-status", "Opening microphone help...");
     g_signal_connect(bt_mic_mode, "clicked", G_CALLBACK(gtk4_on_audio_bt_profile_action), state);
     g_signal_connect(bt_music_mode, "clicked", G_CALLBACK(gtk4_on_audio_bt_profile_action), state);
+    g_signal_connect(bt_recover, "clicked", G_CALLBACK(gtk4_on_audio_bt_profile_action), state);
     g_signal_connect(bt_status, "clicked", G_CALLBACK(gtk4_on_audio_bt_profile_action), state);
     g_signal_connect(bt_help, "clicked", G_CALLBACK(gtk4_on_audio_bt_profile_action), state);
     return root;

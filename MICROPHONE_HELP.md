@@ -23,6 +23,9 @@ make audio-bt-mic
 # Return to high-quality playback profile (A2DP)
 make audio-bt-music
 
+# Recover a silent BT headset after PipeWire/WirePlumber restart or OOM
+make audio-bt-recover
+
 # Show usage help
 make audio-help
 ```
@@ -52,6 +55,7 @@ AUDIO_OUTPUT_SINK=alsa_output.pci-0000_00_1f.3.hdmi-stereo make audio-bt-mic
 
 - Use `headset-head-unit-msbc` when available for better call quality.
 - On some headsets, mic mode still sounds narrowband.
+- If the headset is still Bluetooth-connected but you get no sound, `make audio-bt-recover` is the fast recovery path. It restarts the user audio services, reconnects the headset, restores A2DP, and moves active playback streams back to the Bluetooth sink.
 - If no Bluetooth card appears, reconnect headset and run:
 
 ```bash
