@@ -47,6 +47,7 @@ Modes:
   samba-unmount         Run the Samba unmount helper directly
   samba-unmount-ui      Open Samba unmount in a terminal
   samba-open            Open the Samba mountpoint
+  samba-guide           Open the Samba setup SVG guide
   help                  Show this help text
 EOF
 }
@@ -500,6 +501,7 @@ main() {
     samba-unmount) cd "$ROOT_DIR" && ./umount_530.sh ;;
     samba-unmount-ui) launch_terminal_from_repo "./umount_530.sh" ;;
     samba-open) open_target "$SMB_530_MOUNT" ;;
+    samba-guide) open_target "$ROOT_DIR/docs/assets/svg/samba-setup-flow.svg" ;;
     help|-h|--help) usage ;;
     *)
       echo "Unknown mode: $mode" >&2

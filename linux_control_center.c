@@ -4521,6 +4521,7 @@ static GtkWidget *gtk4_build_storage_tab(Gtk4State *state) {
     GtkWidget *samba_mount = gtk_button_new_with_label("Mount Samba 530");
     GtkWidget *samba_unmount = gtk_button_new_with_label("Unmount Samba 530");
     GtkWidget *samba_open = gtk_button_new_with_label("Open Samba 530");
+    GtkWidget *samba_guide = gtk_button_new_with_label("Samba Setup Guide");
     GtkWidget *usb_note = gtk_label_new("External USB partitions are detected from block devices and mounted through udisksctl. Auto Mount On starts a lightweight watcher so new drives mount when you plug them in.");
     GtkWidget *samba_note = gtk_label_new("Samba actions reuse the existing 530 mount helper. Probe/mount/unmount open in a terminal so sudo and credential prompts still work.");
 
@@ -4564,6 +4565,7 @@ static GtkWidget *gtk4_build_storage_tab(Gtk4State *state) {
     gtk_grid_attach(GTK_GRID(samba_grid), samba_mount, 1, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(samba_grid), samba_unmount, 2, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(samba_grid), samba_open, 0, 1, 3, 1);
+    gtk_grid_attach(GTK_GRID(samba_grid), samba_guide, 0, 2, 3, 1);
 
     gtk_box_append(GTK_BOX(panel), status);
     gtk_box_append(GTK_BOX(panel), usb_grid);
@@ -4598,6 +4600,8 @@ static GtkWidget *gtk4_build_storage_tab(Gtk4State *state) {
     g_object_set_data(G_OBJECT(samba_unmount), "storage-status", "Opening Samba unmount helper in a terminal.");
     g_object_set_data(G_OBJECT(samba_open), "storage-mode", "samba-open");
     g_object_set_data(G_OBJECT(samba_open), "storage-status", "Opening Samba mountpoint.");
+    g_object_set_data(G_OBJECT(samba_guide), "storage-mode", "samba-guide");
+    g_object_set_data(G_OBJECT(samba_guide), "storage-status", "Opening Samba setup guide.");
     g_signal_connect(usb_mount, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
     g_signal_connect(usb_open, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
     g_signal_connect(usb_unmount, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
@@ -4609,6 +4613,7 @@ static GtkWidget *gtk4_build_storage_tab(Gtk4State *state) {
     g_signal_connect(samba_mount, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
     g_signal_connect(samba_unmount, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
     g_signal_connect(samba_open, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
+    g_signal_connect(samba_guide, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
     return root;
 }
 

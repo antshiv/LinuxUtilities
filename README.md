@@ -176,7 +176,10 @@ make drives-eject-external
 make drives-auto-start
 make drives-auto-stop
 make drives-samba-status
+make drives-samba-guide
 ```
+
+![Samba setup flow](docs/assets/svg/samba-setup-flow.svg)
 
 If guest access is disabled, create `~/.smbcredentials-530`:
 

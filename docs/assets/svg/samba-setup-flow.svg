@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Samba setup in five steps</title>
+  <desc id="desc">Infographic showing how to configure the LinuxUtilities Samba helper: choose host/share/mount values, save them in config/local.mk, create credentials, probe the share, then mount it from the CLI or Drives tab.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#16212b"/>
+      <stop offset="100%" stop-color="#22313f"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#172532"/>
+      <stop offset="100%" stop-color="#1f2f3d"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8ee3ff"/>
+    </marker>
+    <style>
+      .title { font: 700 30px 'Inter', 'Segoe UI', sans-serif; fill: #f6fbff; }
+      .subtitle { font: 400 18px 'Inter', 'Segoe UI', sans-serif; fill: #bfd4e3; }
+      .body { font: 400 17px 'Inter', 'Segoe UI', sans-serif; fill: #dce9f2; }
+      .mono { font: 600 16px 'JetBrains Mono', monospace; fill: #c2f0ff; }
+      .stepno { font: 700 24px 'JetBrains Mono', monospace; fill: #081319; }
+      .steptitle { font: 700 22px 'Inter', 'Segoe UI', sans-serif; fill: #f4fbff; }
+      .note { font: 400 16px 'Inter', 'Segoe UI', sans-serif; fill: #c8d7e3; }
+      .footer { font: 400 15px 'Inter', 'Segoe UI', sans-serif; fill: #b8cad8; }
+      .card { fill: url(#panel); stroke: rgba(255,255,255,0.16); stroke-width: 2; rx: 22; }
+      .badge1 { fill: #76e0f7; }
+      .badge2 { fill: #8ad7a0; }
+      .badge3 { fill: #ffd27a; }
+      .badge4 { fill: #ffad7a; }
+      .badge5 { fill: #f58ca8; }
+      .arrow { stroke: #8ee3ff; stroke-width: 4; fill: none; marker-end: url(#arrow); opacity: 0.9; }
+      .footerbox { fill: rgba(255,255,255,0.05); stroke: rgba(142,227,255,0.35); stroke-width: 2; rx: 18; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="720" fill="url(#bg)"/>
+
+  <text x="56" y="66" class="title">Samba Setup in 5 Steps</text>
+  <text x="56" y="98" class="subtitle">Use this flow when you want to point the LinuxUtilities Samba helper at a new share or bring it up on a fresh machine.</text>
+
+  <rect x="52" y="146" width="208" height="248" class="card"/>
+  <circle cx="94" cy="188" r="24" class="badge1"/>
+  <text x="86" y="196" class="stepno">1</text>
+  <text x="82" y="236" class="steptitle">Pick the share</text>
+  <text x="82" y="270" class="body">Decide the target:</text>
+  <text x="82" y="302" class="mono">HOST</text>
+  <text x="82" y="328" class="mono">SHARE</text>
+  <text x="82" y="354" class="mono">MOUNTPOINT</text>
+  <text x="82" y="384" class="note">Example mount:</text>
+  <text x="82" y="412" class="mono">/mnt/teamshare</text>
+
+  <rect x="280" y="146" width="208" height="248" class="card"/>
+  <circle cx="322" cy="188" r="24" class="badge2"/>
+  <text x="314" y="196" class="stepno">2</text>
+  <text x="310" y="236" class="steptitle">Save overrides</text>
+  <text x="310" y="270" class="body">Put them in:</text>
+  <text x="310" y="302" class="mono">config/local.mk</text>
+  <text x="310" y="332" class="mono">SMB_530_HOST=...</text>
+  <text x="310" y="358" class="mono">SMB_530_SHARE=...</text>
+  <text x="310" y="384" class="mono">SMB_530_MOUNT=...</text>
+  <text x="310" y="414" class="note">Or pass them on one command line.</text>
+
+  <rect x="508" y="146" width="208" height="248" class="card"/>
+  <circle cx="550" cy="188" r="24" class="badge3"/>
+  <text x="542" y="196" class="stepno">3</text>
+  <text x="538" y="236" class="steptitle">Add credentials</text>
+  <text x="538" y="270" class="body">Create:</text>
+  <text x="538" y="302" class="mono">~/.smbcredentials-530</text>
+  <text x="538" y="332" class="mono">username=...</text>
+  <text x="538" y="358" class="mono">password=...</text>
+  <text x="538" y="388" class="mono">chmod 600 ~/.smbcredentials-530</text>
+  <text x="538" y="418" class="note">Needed when guest access is off.</text>
+
+  <rect x="736" y="146" width="208" height="248" class="card"/>
+  <circle cx="778" cy="188" r="24" class="badge4"/>
+  <text x="770" y="196" class="stepno">4</text>
+  <text x="766" y="236" class="steptitle">Probe first</text>
+  <text x="766" y="270" class="body">Check reachability and list shares:</text>
+  <text x="766" y="316" class="mono">make samba-530-probe</text>
+  <text x="766" y="354" class="note">If probe fails, fix host, share,</text>
+  <text x="766" y="380" class="note">credentials, or network before mounting.</text>
+
+  <rect x="964" y="146" width="184" height="248" class="card"/>
+  <circle cx="1006" cy="188" r="24" class="badge5"/>
+  <text x="998" y="196" class="stepno">5</text>
+  <text x="994" y="236" class="steptitle">Mount it</text>
+  <text x="994" y="270" class="body">Choose either path:</text>
+  <text x="994" y="308" class="mono">make mount-530</text>
+  <text x="994" y="336" class="body">or</text>
+  <text x="994" y="364" class="mono">Drives -&gt; Mount Samba 530</text>
+  <text x="994" y="402" class="note">Open later with:</text>
+  <text x="994" y="428" class="mono">make umount-530</text>
+
+  <path d="M260 270 L280 270" class="arrow"/>
+  <path d="M488 270 L508 270" class="arrow"/>
+  <path d="M716 270 L736 270" class="arrow"/>
+  <path d="M944 270 L964 270" class="arrow"/>
+
+  <rect x="56" y="454" width="1088" height="196" class="footerbox"/>
+  <text x="82" y="494" class="steptitle">Quick Reference</text>
+  <text x="82" y="532" class="mono">make drives-samba-status</text>
+  <text x="300" y="532" class="body">See current Samba mount state.</text>
+  <text x="82" y="566" class="mono">LinuxUtilities -&gt; storage -&gt; Samba setup guide</text>
+  <text x="540" y="566" class="body">Open this flow from AwesomeWM.</text>
+  <text x="82" y="600" class="mono">SMB_530_HOST=host SMB_530_SHARE=share SMB_530_MOUNT=/mnt/other make mount-530</text>
+  <text x="82" y="632" class="footer">To target another Samba drive/share, reuse the helper with a different host/share/mount triple. If you want multiple persistent profiles later, add more named helpers or a small profile table.</text>
+</svg>

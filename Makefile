@@ -61,7 +61,7 @@ ifneq ($(HOST_SHORT),)
 -include config/host/$(HOST_SHORT).mk
 endif
 
-.PHONY: help rc-backup awesome-backup awesome-update awesome-user-backup awesome-user-update awesome-system-backup awesome-system-update awesome-test test-fast apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve present-live present-profile present-profile-live present-profile-list audio-help audio-status audio-bt-mic audio-bt-music audio-bt-recover audio-route-status audio-mic-external audio-mic-internal audio-route-recorders audio-route-auto-start audio-route-auto-stop drives-status drives-mount-external drives-open-external drives-unmount-external drives-eject-external drives-auto-start drives-auto-stop drives-samba-status shorts-help shorts-record shorts-transcribe shorts-render manim-help manim-version manim-smoke manim-scene manim-shell wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external samba-530-probe mount-530 umount-530 desktop-install
+.PHONY: help rc-backup awesome-backup awesome-update awesome-user-backup awesome-user-update awesome-system-backup awesome-system-update awesome-test test-fast apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve present-live present-profile present-profile-live present-profile-list audio-help audio-status audio-bt-mic audio-bt-music audio-bt-recover audio-route-status audio-mic-external audio-mic-internal audio-route-recorders audio-route-auto-start audio-route-auto-stop drives-status drives-mount-external drives-open-external drives-unmount-external drives-eject-external drives-auto-start drives-auto-stop drives-samba-status drives-samba-guide shorts-help shorts-record shorts-transcribe shorts-render manim-help manim-version manim-smoke manim-scene manim-shell wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external samba-530-probe mount-530 umount-530 desktop-install
 
 help:
 >@echo "Targets:"
@@ -109,6 +109,7 @@ help:
 >@echo "  make drives-auto-start   Start background USB auto-mount watcher"
 >@echo "  make drives-auto-stop    Stop background USB auto-mount watcher"
 >@echo "  make drives-samba-status Show Samba mount status summary"
+>@echo "  make drives-samba-guide  Open the Samba setup SVG guide"
 >@echo "  make shorts-help         Show transcript-driven shorts pipeline commands"
 >@echo "  make manim-help          Show Manim helper commands (uses $(MANIM_DIR))"
 >@echo "  make wacom-help          Show quick Wacom mapping cheatsheet"
@@ -430,6 +431,9 @@ drives-auto-stop:
 
 drives-samba-status:
 >@./scripts/storage_drives.sh samba-status
+
+drives-samba-guide:
+>@./scripts/storage_drives.sh samba-guide
 
 shorts-help:
 >@echo "Shorts pipeline:"

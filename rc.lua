@@ -329,6 +329,7 @@ local menu_storage = {
    { "Samba 530 mount", launchers_controller.mount_samba_530 },
    { "Samba 530 unmount", launchers_controller.unmount_samba_530 },
    { "open Samba 530", launchers_controller.open_samba_530 },
+   { "Samba setup guide", launchers_controller.open_samba_530_guide },
 }
 
 local menu_linuxutilities = {

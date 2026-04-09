@@ -568,6 +568,14 @@ function M.new(opts)
         )
     end
 
+    function controller.open_samba_530_guide()
+        run_linuxutilities_snippet(
+            "./scripts/storage_drives.sh samba-guide",
+            "Samba Guide Failed",
+            "Could not open the Samba setup guide."
+        )
+    end
+
     local function notify_linux_control_center_pwd(text)
         naughty.notify({
             title = "Linux Utility Path",
