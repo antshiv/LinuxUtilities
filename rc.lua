@@ -317,10 +317,25 @@ local menu_network = {
    { "Wi-Fi scan (nmcli)", open_network_scan },
 }
 
+local menu_storage = {
+   { "Drives Center", launchers_controller.open_drives_center },
+   { "storage status", launchers_controller.show_storage_status },
+   { "mount external USB", launchers_controller.mount_external_drives },
+   { "open external USB", launchers_controller.open_external_drives },
+   { "unmount external USB", launchers_controller.unmount_external_drives },
+   { "auto-mount on", launchers_controller.start_drive_automount },
+   { "auto-mount off", launchers_controller.stop_drive_automount },
+   { "Samba 530 probe", launchers_controller.probe_samba_530 },
+   { "Samba 530 mount", launchers_controller.mount_samba_530 },
+   { "Samba 530 unmount", launchers_controller.unmount_samba_530 },
+   { "open Samba 530", launchers_controller.open_samba_530 },
+}
+
 local menu_linuxutilities = {
    { "program palette", launch_program_palette },
    { "system monitor", open_system_monitor },
    { "network", menu_network },
+   { "storage", menu_storage },
    { "notes", menu_notes },
    { "files", menu_files },
    { "timezones", menu_timezones },

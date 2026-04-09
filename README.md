@@ -166,6 +166,16 @@ make mount-530
 
 # unmount later
 make umount-530
+
+# storage summary + USB drive helpers
+make drives-status
+make drives-mount-external
+make drives-open-external
+make drives-unmount-external
+make drives-eject-external
+make drives-auto-start
+make drives-auto-stop
+make drives-samba-status
 ```
 
 If guest access is disabled, create `~/.smbcredentials-530`:
@@ -319,7 +329,15 @@ GTK4 Control Center also includes a `Commands` tab:
 - one-click `Presentation Prep` and `Presentation Live`
 - raw command entry to run shell commands directly from the app
 
-The `Audio` tab now includes direct Bluetooth headset helpers for `BT Mic Mode`, `BT Music Mode`, `BT Status`, `Mic Help`, and `Recover BT Audio` when a headset stays connected but goes silent.
+The `Audio` tab now includes direct Bluetooth headset helpers for `BT Mic Mode`, `BT Music Mode`, `BT Status`, `Mic Help`, and `Recover BT Audio` when a headset stays connected but goes silent. It also exposes microphone routing controls for `Use External Mic`, `Use Internal Mic`, `Route Audacity / Teams`, and `Auto Mic Route On/Off`, backed by `scripts/audio_source_route.sh`.
+
+The `Drives` tab now includes:
+- external USB drive detection with `Mount External`, `Open External`, `Unmount External`, and `Eject USB Disk`
+- a background `Auto Mount On` watcher for newly attached USB drives
+- a live status panel for external drives plus the Samba 530 mount state
+- terminal-backed `Probe Samba 530`, `Mount Samba 530`, `Unmount Samba 530`, and `Open Samba 530`
+
+AwesomeWM also now exposes the same storage actions under `LinuxUtilities -> storage`, so USB and Samba helpers are reachable from the desktop menu without remembering script names.
 
 ## Presenter Drawing (Epic Pen Style)
 

@@ -61,7 +61,7 @@ ifneq ($(HOST_SHORT),)
 -include config/host/$(HOST_SHORT).mk
 endif
 
-.PHONY: help rc-backup awesome-backup awesome-update awesome-user-backup awesome-user-update awesome-system-backup awesome-system-update awesome-test test-fast apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve present-live present-profile present-profile-live present-profile-list audio-help audio-status audio-bt-mic audio-bt-music audio-bt-recover shorts-help shorts-record shorts-transcribe shorts-render manim-help manim-version manim-smoke manim-scene manim-shell wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external samba-530-probe mount-530 umount-530 desktop-install
+.PHONY: help rc-backup awesome-backup awesome-update awesome-user-backup awesome-user-update awesome-system-backup awesome-system-update awesome-test test-fast apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve present-live present-profile present-profile-live present-profile-list audio-help audio-status audio-bt-mic audio-bt-music audio-bt-recover audio-route-status audio-mic-external audio-mic-internal audio-route-recorders audio-route-auto-start audio-route-auto-stop drives-status drives-mount-external drives-open-external drives-unmount-external drives-eject-external drives-auto-start drives-auto-stop drives-samba-status shorts-help shorts-record shorts-transcribe shorts-render manim-help manim-version manim-smoke manim-scene manim-shell wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external samba-530-probe mount-530 umount-530 desktop-install
 
 help:
 >@echo "Targets:"
@@ -95,6 +95,20 @@ help:
 >@echo "  make audio-bt-mic        Switch BT headset to mic mode (HFP/HSP)"
 >@echo "  make audio-bt-music      Switch BT headset back to music mode (A2DP)"
 >@echo "  make audio-bt-recover    Recover silent BT headset playback after PipeWire/Bluetooth glitches"
+>@echo "  make audio-route-status  Show current mic routing + active recording apps"
+>@echo "  make audio-mic-external  Switch default input to detected external microphone"
+>@echo "  make audio-mic-internal  Revert default input to the internal microphone"
+>@echo "  make audio-route-recorders Move active recording apps to the current default input"
+>@echo "  make audio-route-auto-start Start background auto-routing for external mic plug/unplug"
+>@echo "  make audio-route-auto-stop Stop background auto-routing for external mic plug/unplug"
+>@echo "  make drives-status       Show external-drive + Samba status summary"
+>@echo "  make drives-mount-external Mount all detected external USB partitions"
+>@echo "  make drives-open-external Mount + open the first detected external USB drive"
+>@echo "  make drives-unmount-external Unmount detected external USB partitions"
+>@echo "  make drives-eject-external Unmount + power off detected external USB disks"
+>@echo "  make drives-auto-start   Start background USB auto-mount watcher"
+>@echo "  make drives-auto-stop    Stop background USB auto-mount watcher"
+>@echo "  make drives-samba-status Show Samba mount status summary"
 >@echo "  make shorts-help         Show transcript-driven shorts pipeline commands"
 >@echo "  make manim-help          Show Manim helper commands (uses $(MANIM_DIR))"
 >@echo "  make wacom-help          Show quick Wacom mapping cheatsheet"
@@ -374,6 +388,48 @@ audio-bt-music:
 
 audio-bt-recover:
 >@BT_CARD="$(BT_CARD)" BT_DEVICE="$(BT_DEVICE)" ./scripts/audio_bt_profile.sh recover
+
+audio-route-status:
+>@./scripts/audio_source_route.sh status
+
+audio-mic-external:
+>@./scripts/audio_source_route.sh use-external
+
+audio-mic-internal:
+>@./scripts/audio_source_route.sh use-internal
+
+audio-route-recorders:
+>@./scripts/audio_source_route.sh route-recorders
+
+audio-route-auto-start:
+>@./scripts/audio_source_route.sh auto-start
+
+audio-route-auto-stop:
+>@./scripts/audio_source_route.sh auto-stop
+
+drives-status:
+>@./scripts/storage_drives.sh status
+
+drives-mount-external:
+>@./scripts/storage_drives.sh mount-external
+
+drives-open-external:
+>@./scripts/storage_drives.sh open-external
+
+drives-unmount-external:
+>@./scripts/storage_drives.sh unmount-external
+
+drives-eject-external:
+>@./scripts/storage_drives.sh eject-external
+
+drives-auto-start:
+>@./scripts/storage_drives.sh auto-start
+
+drives-auto-stop:
+>@./scripts/storage_drives.sh auto-stop
+
+drives-samba-status:
+>@./scripts/storage_drives.sh samba-status
 
 shorts-help:
 >@echo "Shorts pipeline:"

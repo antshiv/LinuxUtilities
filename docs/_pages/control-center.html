@@ -53,7 +53,12 @@ gcc -o build/bin/linux_control_center linux_control_center.c \
 
     <div class="card">
         <h3><span class="wrn">🎙️</span> Audio + Mic Helpers</h3>
-        <p>Audio tab includes quick actions for Bluetooth mic mode (HFP/HSP), music mode (A2DP), silent-headset recovery, status dump, and microphone help.</p>
+        <p>Audio tab includes quick actions for Bluetooth mic mode (HFP/HSP), music mode (A2DP), silent-headset recovery, status dump, microphone help, and external-mic routing for Audacity/Teams/browser recording apps.</p>
+    </div>
+
+    <div class="card">
+        <h3><span class="wrn">💾</span> Drives + Samba Helpers</h3>
+        <p>Drives tab shows external USB partitions and Samba 530 status, with direct actions to mount/open/unmount/eject USB media and to launch the Samba probe/mount helpers.</p>
     </div>
 
     <div class="card">
@@ -99,3 +104,5 @@ pkill -f linux_control_center || true
 awful.key({ modkey }, "c", function()
     awful.spawn("linux_control_center")
 end, {description = "open control center", group = "utilities"})</code></pre>
+
+<p>The AwesomeWM menu also mirrors the new storage actions under <code>LinuxUtilities -&gt; storage</code>, so you can reach the Drives tab, USB mount helpers, and Samba 530 helper actions from the desktop menu.</p>

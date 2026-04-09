@@ -17,6 +17,8 @@ for script in \
     import_screenshots.sh \
     install_gromit_profile.sh \
     scripts/audio_bt_profile.sh \
+    scripts/audio_source_route.sh \
+    scripts/storage_drives.sh \
     scripts/bluetooth_refresh.sh \
     redshift.sh \
     install_workspace_shortcuts.sh \
@@ -34,11 +36,7 @@ make -n docs >/dev/null
 make -n docs-serve >/dev/null
 make -n wacom >/dev/null
 make -n wacom-hdmi >/dev/null
-if [[ -n "${DISPLAY:-}" ]] && command -v xrandr >/dev/null 2>&1 && xrandr --query >/dev/null 2>&1; then
-    make -n wacom-switch >/dev/null
-else
-    echo "[fast] Skipping make -n wacom-switch (no active X11 display)"
-fi
+echo "[fast] Skipping make -n wacom-switch (target performs live X11/tablet probing even under make -n)"
 
 echo "[fast] AwesomeWM config tests"
 "$ROOT_DIR/tests/awesomewm_config_test.sh"

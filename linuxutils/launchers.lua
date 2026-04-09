@@ -238,6 +238,25 @@ function M.new(opts)
         end)
     end
 
+    local function run_linuxutilities_snippet(snippet, failure_title, failure_text)
+        awful.spawn.easy_async_with_shell(string.format([=[
+            root=%s
+            if [ ! -d "$root" ]; then
+                exit 4
+            fi
+            cd "$root" || exit 4
+            %s
+        ]=], shell_quote(workspace_root()), snippet), function(_, _, _, exit_code)
+            if exit_code ~= 0 then
+                naughty.notify({
+                    preset = naughty.config.presets.warn,
+                    title = failure_title or "LinuxUtilities Helper Failed",
+                    text = failure_text or "Check that the LinuxUtilities workspace exists and the helper command succeeded.",
+                })
+            end
+        end)
+    end
+
     function controller.open_flameshot()
         if flameshot_lock then
             return
@@ -463,6 +482,90 @@ function M.new(opts)
                 })
             end
         end)
+    end
+
+    function controller.open_drives_center()
+        controller.open_linux_control_center()
+    end
+
+    function controller.show_storage_status()
+        run_linuxutilities_snippet(
+            "./scripts/storage_drives.sh status > /tmp/linuxutilities_storage_status.txt 2>&1 && xdg-open /tmp/linuxutilities_storage_status.txt",
+            "Storage Status Failed",
+            "Could not open the LinuxUtilities storage status report."
+        )
+    end
+
+    function controller.mount_external_drives()
+        run_linuxutilities_snippet(
+            "./scripts/storage_drives.sh mount-external",
+            "External Drive Mount Failed",
+            "Could not mount the detected external USB drives."
+        )
+    end
+
+    function controller.open_external_drives()
+        run_linuxutilities_snippet(
+            "./scripts/storage_drives.sh open-external",
+            "External Drive Open Failed",
+            "Could not open a mounted external USB drive."
+        )
+    end
+
+    function controller.unmount_external_drives()
+        run_linuxutilities_snippet(
+            "./scripts/storage_drives.sh unmount-external",
+            "External Drive Unmount Failed",
+            "Could not unmount the detected external USB drives."
+        )
+    end
+
+    function controller.start_drive_automount()
+        run_linuxutilities_snippet(
+            "./scripts/storage_drives.sh auto-start",
+            "Drive Auto-Mount Failed",
+            "Could not start the background USB auto-mount watcher."
+        )
+    end
+
+    function controller.stop_drive_automount()
+        run_linuxutilities_snippet(
+            "./scripts/storage_drives.sh auto-stop",
+            "Drive Auto-Mount Stop Failed",
+            "Could not stop the background USB auto-mount watcher."
+        )
+    end
+
+    function controller.probe_samba_530()
+        run_linuxutilities_snippet(
+            "./scripts/storage_drives.sh samba-probe-ui",
+            "Samba Probe Failed",
+            "Could not launch the Samba probe helper."
+        )
+    end
+
+    function controller.mount_samba_530()
+        run_linuxutilities_snippet(
+            "./scripts/storage_drives.sh samba-mount-ui",
+            "Samba Mount Failed",
+            "Could not launch the Samba mount helper."
+        )
+    end
+
+    function controller.unmount_samba_530()
+        run_linuxutilities_snippet(
+            "./scripts/storage_drives.sh samba-unmount-ui",
+            "Samba Unmount Failed",
+            "Could not launch the Samba unmount helper."
+        )
+    end
+
+    function controller.open_samba_530()
+        run_linuxutilities_snippet(
+            "./scripts/storage_drives.sh samba-open",
+            "Samba Open Failed",
+            "Could not open the Samba mountpoint."
+        )
     end
 
     local function notify_linux_control_center_pwd(text)

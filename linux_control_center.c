@@ -227,6 +227,9 @@ typedef struct {
     GtkWidget *night_auto_switch;
     GtkWidget *audio_status;
     GtkWidget *audio_scale;
+    GtkWidget *audio_details;
+    GtkWidget *storage_status;
+    GtkWidget *storage_details;
 
     gboolean tool_syncing;
     Gtk4Tool active_tool;
@@ -386,6 +389,15 @@ static void gtk4_set_status(GtkWidget *label, const gchar *text, const gchar *fa
     g_free(copy);
 }
 
+static void gtk4_set_text_view_text(GtkWidget *view, const gchar *text) {
+    GtkTextBuffer *buffer = NULL;
+    if (!view || !GTK_IS_TEXT_VIEW(view)) {
+        return;
+    }
+    buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(view));
+    gtk_text_buffer_set_text(buffer, text ? text : "", -1);
+}
+
 static gchar *gtk4_repo_shell(Gtk4State *state, const gchar *snippet) {
     gchar *quoted = NULL;
     gchar *cmd = NULL;
@@ -411,6 +423,45 @@ static gchar *gtk4_launcher_action_cmd(Gtk4State *state, const gchar *label) {
     g_free(quoted);
     g_free(snippet);
     return cmd;
+}
+
+static gchar *gtk4_repo_capture(Gtk4State *state, const gchar *snippet, const gchar *fallback) {
+    gchar *cmd = NULL;
+    gchar *stdout_buf = NULL;
+    gchar *stderr_buf = NULL;
+    gchar *result = NULL;
+    GError *error = NULL;
+    gint wait_status = 0;
+
+    cmd = gtk4_repo_shell(state, snippet);
+    if (!cmd) {
+      return g_strdup(fallback ? fallback : "");
+    }
+
+    if (!g_spawn_command_line_sync(cmd, &stdout_buf, &stderr_buf, &wait_status, &error)) {
+        result = g_strdup_printf("%s\n%s",
+                                 fallback ? fallback : "Command failed.",
+                                 error ? error->message : "unknown error");
+        g_clear_error(&error);
+    } else if (wait_status != 0) {
+        if (stderr_buf && *stderr_buf) {
+            result = g_strdup(stderr_buf);
+        } else if (stdout_buf && *stdout_buf) {
+            result = g_strdup(stdout_buf);
+        } else {
+            result = g_strdup(fallback ? fallback : "Command failed.");
+        }
+    } else if (stdout_buf && *stdout_buf) {
+        result = g_strdup(stdout_buf);
+    } else {
+        result = g_strdup(fallback ? fallback : "");
+    }
+
+    g_strchomp(result);
+    g_free(cmd);
+    g_free(stdout_buf);
+    g_free(stderr_buf);
+    return result;
 }
 
 static gchar *gtk4_default_ui_state_path(void) {
@@ -3406,6 +3457,7 @@ static gboolean gtk4_on_night_auto_toggled(GtkSwitch *sw, gboolean state, gpoint
 static void gtk4_audio_refresh(Gtk4State *state) {
     gchar *pactl = NULL;
     gchar *msg = NULL;
+    gchar *details = NULL;
     if (!state || !state->audio_status) {
         return;
     }
@@ -3414,8 +3466,35 @@ static void gtk4_audio_refresh(Gtk4State *state) {
                           state->audio_scale ? gtk_range_get_value(GTK_RANGE(state->audio_scale)) : 0.0,
                           pactl ? "pactl available" : "pactl not found");
     gtk_label_set_text(GTK_LABEL(state->audio_status), msg);
+    details = gtk4_repo_capture(state,
+                                "./scripts/audio_source_route.sh gui-summary",
+                                "Audio routing details unavailable.");
+    if (state->audio_details) {
+        gtk4_set_text_view_text(state->audio_details, details);
+    }
+    g_free(details);
     g_free(msg);
     g_free(pactl);
+}
+
+static void gtk4_storage_refresh(Gtk4State *state) {
+    gchar *status = NULL;
+    gchar *details = NULL;
+    if (!state || !state->storage_status) {
+        return;
+    }
+    status = gtk4_repo_capture(state,
+                               "./scripts/storage_drives.sh auto-status",
+                               "Storage watcher status unavailable.");
+    gtk4_set_status(state->storage_status, status, "Storage watcher status unavailable.");
+    details = gtk4_repo_capture(state,
+                                "./scripts/storage_drives.sh gui-summary",
+                                "Storage details unavailable.");
+    if (state->storage_details) {
+        gtk4_set_text_view_text(state->storage_details, details);
+    }
+    g_free(details);
+    g_free(status);
 }
 
 static void gtk4_on_audio_apply(GtkButton *button, gpointer user_data) {
@@ -3488,9 +3567,53 @@ static void gtk4_on_audio_bt_profile_action(GtkButton *button, gpointer user_dat
     gtk4_audio_refresh(state);
 }
 
+static void gtk4_on_audio_route_action(GtkButton *button, gpointer user_data) {
+    Gtk4State *state = user_data;
+    const gchar *mode = g_object_get_data(G_OBJECT(button), "audio-route-mode");
+    const gchar *ok = g_object_get_data(G_OBJECT(button), "audio-route-status");
+    gchar *snippet = NULL;
+    gchar *cmd = NULL;
+    (void)button;
+    if (!state || !mode || !*mode) {
+        return;
+    }
+    if (g_strcmp0(mode, "status") == 0) {
+        snippet = g_strdup("./scripts/audio_source_route.sh status > /tmp/linuxutilities_audio_route_status.txt 2>&1 && xdg-open /tmp/linuxutilities_audio_route_status.txt");
+    } else {
+        snippet = g_strdup_printf("./scripts/audio_source_route.sh %s", mode);
+    }
+    cmd = gtk4_repo_shell(state, snippet);
+    gtk4_spawn_with_feedback(state, cmd, ok ? ok : "Audio routing action launched.");
+    g_free(cmd);
+    g_free(snippet);
+    gtk4_audio_refresh(state);
+}
+
 static void gtk4_on_audio_refresh(GtkButton *button, gpointer user_data) {
     (void)button;
     gtk4_audio_refresh(user_data);
+}
+
+static void gtk4_on_storage_action(GtkButton *button, gpointer user_data) {
+    Gtk4State *state = user_data;
+    const gchar *mode = g_object_get_data(G_OBJECT(button), "storage-mode");
+    const gchar *ok = g_object_get_data(G_OBJECT(button), "storage-status");
+    gchar *snippet = NULL;
+    gchar *cmd = NULL;
+    (void)button;
+    if (!state || !mode || !*mode) {
+        return;
+    }
+    if (g_strcmp0(mode, "status") == 0) {
+        snippet = g_strdup("./scripts/storage_drives.sh status > /tmp/linuxutilities_storage_status.txt 2>&1 && xdg-open /tmp/linuxutilities_storage_status.txt");
+    } else {
+        snippet = g_strdup_printf("./scripts/storage_drives.sh %s", mode);
+    }
+    cmd = gtk4_repo_shell(state, snippet);
+    gtk4_spawn_with_feedback(state, cmd, ok ? ok : "Storage action launched.");
+    g_free(cmd);
+    g_free(snippet);
+    gtk4_storage_refresh(state);
 }
 
 static gboolean gtk4_clear_utility_click_indicator(gpointer data) {
@@ -4247,18 +4370,28 @@ static GtkWidget *gtk4_build_audio_tab(Gtk4State *state) {
     GtkWidget *status = gtk_label_new("Audio ready.");
     GtkWidget *scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 150, 1);
     GtkWidget *buttons = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    GtkWidget *mic_grid = gtk_grid_new();
     GtkWidget *bt_grid = gtk_grid_new();
+    GtkWidget *details_scroll = gtk_scrolled_window_new();
+    GtkWidget *details = gtk_text_view_new();
     GtkWidget *apply = gtk_button_new_with_label("Apply Volume");
     GtkWidget *minus = gtk_button_new_with_label("-5%");
     GtkWidget *plus = gtk_button_new_with_label("+5%");
     GtkWidget *mute = gtk_button_new_with_label("Mute / Unmute");
     GtkWidget *refresh = gtk_button_new_with_label("Refresh");
     GtkWidget *mixer = gtk_button_new_with_label("Open Pavucontrol");
+    GtkWidget *mic_external = gtk_button_new_with_label("Use External Mic");
+    GtkWidget *mic_internal = gtk_button_new_with_label("Use Internal Mic");
+    GtkWidget *mic_route_recorders = gtk_button_new_with_label("Route Audacity / Teams");
+    GtkWidget *mic_auto_start = gtk_button_new_with_label("Auto Mic Route On");
+    GtkWidget *mic_auto_stop = gtk_button_new_with_label("Auto Mic Route Off");
+    GtkWidget *mic_status = gtk_button_new_with_label("Mic Routing Status");
     GtkWidget *bt_mic_mode = gtk_button_new_with_label("BT Mic Mode");
     GtkWidget *bt_music_mode = gtk_button_new_with_label("BT Music Mode");
     GtkWidget *bt_recover = gtk_button_new_with_label("Recover BT Audio");
     GtkWidget *bt_status = gtk_button_new_with_label("BT Status");
     GtkWidget *bt_help = gtk_button_new_with_label("Mic Help");
+    GtkWidget *mic_note = gtk_label_new("Audacity, Teams, and browsers record from the current default input. Use External Mic, then Route Audacity / Teams, or leave Auto Mic Route On.");
     GtkWidget *bt_note = gtk_label_new("A2DP = music quality/no mic. HFP/HSP = mic enabled/lower speaker quality. If the headset is connected but silent, use Recover BT Audio.");
 
     gtk_widget_set_margin_top(root, 12);
@@ -4269,14 +4402,28 @@ static GtkWidget *gtk4_build_audio_tab(Gtk4State *state) {
     gtk_widget_add_css_class(title, "title-2");
     gtk_label_set_xalign(GTK_LABEL(title), 0.0f);
     gtk_label_set_xalign(GTK_LABEL(status), 0.0f);
+    gtk_label_set_xalign(GTK_LABEL(mic_note), 0.0f);
     gtk_label_set_xalign(GTK_LABEL(bt_note), 0.0f);
+    gtk_label_set_wrap(GTK_LABEL(mic_note), TRUE);
     gtk_label_set_wrap(GTK_LABEL(bt_note), TRUE);
+    gtk_widget_add_css_class(mic_note, "dim-label");
     gtk_widget_add_css_class(bt_note, "dim-label");
     gtk_widget_add_css_class(scale, "lcu-audio-scale");
     gtk_scale_set_draw_value(GTK_SCALE(scale), TRUE);
     gtk_range_set_value(GTK_RANGE(scale), 20);
+    gtk_grid_set_row_spacing(GTK_GRID(mic_grid), 8);
+    gtk_grid_set_column_spacing(GTK_GRID(mic_grid), 8);
     gtk_grid_set_row_spacing(GTK_GRID(bt_grid), 8);
     gtk_grid_set_column_spacing(GTK_GRID(bt_grid), 8);
+    gtk_widget_set_vexpand(details_scroll, TRUE);
+    gtk_widget_add_css_class(details_scroll, "lcu-surface");
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(details_scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(details_scroll), details);
+    gtk_widget_set_size_request(details_scroll, -1, 180);
+    gtk_text_view_set_editable(GTK_TEXT_VIEW(details), FALSE);
+    gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(details), FALSE);
+    gtk_text_view_set_monospace(GTK_TEXT_VIEW(details), TRUE);
+    gtk_widget_set_focusable(details, FALSE);
 
     gtk_box_append(GTK_BOX(buttons), apply);
     gtk_box_append(GTK_BOX(buttons), minus);
@@ -4284,6 +4431,12 @@ static GtkWidget *gtk4_build_audio_tab(Gtk4State *state) {
     gtk_box_append(GTK_BOX(buttons), mute);
     gtk_box_append(GTK_BOX(buttons), refresh);
     gtk_box_append(GTK_BOX(buttons), mixer);
+    gtk_grid_attach(GTK_GRID(mic_grid), mic_external, 0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(mic_grid), mic_internal, 1, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(mic_grid), mic_route_recorders, 2, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(mic_grid), mic_auto_start, 0, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(mic_grid), mic_auto_stop, 1, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(mic_grid), mic_status, 2, 1, 1, 1);
     gtk_grid_attach(GTK_GRID(bt_grid), bt_mic_mode, 0, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(bt_grid), bt_music_mode, 1, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(bt_grid), bt_recover, 2, 0, 1, 1);
@@ -4293,13 +4446,17 @@ static GtkWidget *gtk4_build_audio_tab(Gtk4State *state) {
     gtk_box_append(GTK_BOX(panel), status);
     gtk_box_append(GTK_BOX(panel), scale);
     gtk_box_append(GTK_BOX(panel), buttons);
+    gtk_box_append(GTK_BOX(panel), mic_grid);
+    gtk_box_append(GTK_BOX(panel), mic_note);
     gtk_box_append(GTK_BOX(panel), bt_grid);
     gtk_box_append(GTK_BOX(panel), bt_note);
+    gtk_box_append(GTK_BOX(panel), details_scroll);
     gtk_box_append(GTK_BOX(root), title);
     gtk_box_append(GTK_BOX(root), panel);
 
     state->audio_status = status;
     state->audio_scale = scale;
+    state->audio_details = details;
     g_object_set_data(G_OBJECT(minus), "delta", "-5");
     g_object_set_data(G_OBJECT(plus), "delta", "+5");
     g_signal_connect(apply, "clicked", G_CALLBACK(gtk4_on_audio_apply), state);
@@ -4308,6 +4465,18 @@ static GtkWidget *gtk4_build_audio_tab(Gtk4State *state) {
     g_signal_connect(mute, "clicked", G_CALLBACK(gtk4_on_audio_toggle_mute), state);
     g_signal_connect(refresh, "clicked", G_CALLBACK(gtk4_on_audio_refresh), state);
     g_signal_connect(mixer, "clicked", G_CALLBACK(gtk4_on_audio_open_mixer), state);
+    g_object_set_data(G_OBJECT(mic_external), "audio-route-mode", "use-external");
+    g_object_set_data(G_OBJECT(mic_external), "audio-route-status", "Switched default input to the external microphone.");
+    g_object_set_data(G_OBJECT(mic_internal), "audio-route-mode", "use-internal");
+    g_object_set_data(G_OBJECT(mic_internal), "audio-route-status", "Reverted default input to the internal microphone.");
+    g_object_set_data(G_OBJECT(mic_route_recorders), "audio-route-mode", "route-recorders");
+    g_object_set_data(G_OBJECT(mic_route_recorders), "audio-route-status", "Moved active recording apps to the current default input.");
+    g_object_set_data(G_OBJECT(mic_auto_start), "audio-route-mode", "auto-start");
+    g_object_set_data(G_OBJECT(mic_auto_start), "audio-route-status", "Started automatic microphone routing.");
+    g_object_set_data(G_OBJECT(mic_auto_stop), "audio-route-mode", "auto-stop");
+    g_object_set_data(G_OBJECT(mic_auto_stop), "audio-route-status", "Stopped automatic microphone routing.");
+    g_object_set_data(G_OBJECT(mic_status), "audio-route-mode", "status");
+    g_object_set_data(G_OBJECT(mic_status), "audio-route-status", "Opening microphone routing status...");
     g_object_set_data(G_OBJECT(bt_mic_mode), "bt-audio-mode", "mic-mode");
     g_object_set_data(G_OBJECT(bt_mic_mode), "bt-audio-status", "Requested Bluetooth mic mode (HFP/HSP).");
     g_object_set_data(G_OBJECT(bt_music_mode), "bt-audio-mode", "music-mode");
@@ -4323,6 +4492,123 @@ static GtkWidget *gtk4_build_audio_tab(Gtk4State *state) {
     g_signal_connect(bt_recover, "clicked", G_CALLBACK(gtk4_on_audio_bt_profile_action), state);
     g_signal_connect(bt_status, "clicked", G_CALLBACK(gtk4_on_audio_bt_profile_action), state);
     g_signal_connect(bt_help, "clicked", G_CALLBACK(gtk4_on_audio_bt_profile_action), state);
+    g_signal_connect(mic_external, "clicked", G_CALLBACK(gtk4_on_audio_route_action), state);
+    g_signal_connect(mic_internal, "clicked", G_CALLBACK(gtk4_on_audio_route_action), state);
+    g_signal_connect(mic_route_recorders, "clicked", G_CALLBACK(gtk4_on_audio_route_action), state);
+    g_signal_connect(mic_auto_start, "clicked", G_CALLBACK(gtk4_on_audio_route_action), state);
+    g_signal_connect(mic_auto_stop, "clicked", G_CALLBACK(gtk4_on_audio_route_action), state);
+    g_signal_connect(mic_status, "clicked", G_CALLBACK(gtk4_on_audio_route_action), state);
+    return root;
+}
+
+static GtkWidget *gtk4_build_storage_tab(Gtk4State *state) {
+    GtkWidget *root = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    GtkWidget *title = gtk_label_new("Drives");
+    GtkWidget *panel = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    GtkWidget *status = gtk_label_new("Storage watcher status unavailable.");
+    GtkWidget *usb_grid = gtk_grid_new();
+    GtkWidget *samba_grid = gtk_grid_new();
+    GtkWidget *details_scroll = gtk_scrolled_window_new();
+    GtkWidget *details = gtk_text_view_new();
+    GtkWidget *usb_mount = gtk_button_new_with_label("Mount External");
+    GtkWidget *usb_open = gtk_button_new_with_label("Open External");
+    GtkWidget *usb_unmount = gtk_button_new_with_label("Unmount External");
+    GtkWidget *usb_eject = gtk_button_new_with_label("Eject USB Disk");
+    GtkWidget *usb_auto_start = gtk_button_new_with_label("Auto Mount On");
+    GtkWidget *usb_auto_stop = gtk_button_new_with_label("Auto Mount Off");
+    GtkWidget *storage_status_btn = gtk_button_new_with_label("Storage Status");
+    GtkWidget *samba_probe = gtk_button_new_with_label("Probe Samba 530");
+    GtkWidget *samba_mount = gtk_button_new_with_label("Mount Samba 530");
+    GtkWidget *samba_unmount = gtk_button_new_with_label("Unmount Samba 530");
+    GtkWidget *samba_open = gtk_button_new_with_label("Open Samba 530");
+    GtkWidget *usb_note = gtk_label_new("External USB partitions are detected from block devices and mounted through udisksctl. Auto Mount On starts a lightweight watcher so new drives mount when you plug them in.");
+    GtkWidget *samba_note = gtk_label_new("Samba actions reuse the existing 530 mount helper. Probe/mount/unmount open in a terminal so sudo and credential prompts still work.");
+
+    gtk_widget_set_margin_top(root, 12);
+    gtk_widget_set_margin_bottom(root, 12);
+    gtk_widget_set_margin_start(root, 12);
+    gtk_widget_set_margin_end(root, 12);
+    gtk_widget_add_css_class(panel, "lcu-panel");
+    gtk_widget_add_css_class(title, "title-2");
+    gtk_label_set_xalign(GTK_LABEL(title), 0.0f);
+    gtk_label_set_xalign(GTK_LABEL(status), 0.0f);
+    gtk_label_set_xalign(GTK_LABEL(usb_note), 0.0f);
+    gtk_label_set_xalign(GTK_LABEL(samba_note), 0.0f);
+    gtk_label_set_wrap(GTK_LABEL(usb_note), TRUE);
+    gtk_label_set_wrap(GTK_LABEL(samba_note), TRUE);
+    gtk_widget_add_css_class(usb_note, "dim-label");
+    gtk_widget_add_css_class(samba_note, "dim-label");
+    gtk_grid_set_row_spacing(GTK_GRID(usb_grid), 8);
+    gtk_grid_set_column_spacing(GTK_GRID(usb_grid), 8);
+    gtk_grid_set_row_spacing(GTK_GRID(samba_grid), 8);
+    gtk_grid_set_column_spacing(GTK_GRID(samba_grid), 8);
+    gtk_widget_set_vexpand(details_scroll, TRUE);
+    gtk_widget_add_css_class(details_scroll, "lcu-surface");
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(details_scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(details_scroll), details);
+    gtk_widget_set_size_request(details_scroll, -1, 220);
+    gtk_text_view_set_editable(GTK_TEXT_VIEW(details), FALSE);
+    gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(details), FALSE);
+    gtk_text_view_set_monospace(GTK_TEXT_VIEW(details), TRUE);
+    gtk_widget_set_focusable(details, FALSE);
+
+    gtk_grid_attach(GTK_GRID(usb_grid), usb_mount, 0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(usb_grid), usb_open, 1, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(usb_grid), usb_unmount, 2, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(usb_grid), usb_eject, 0, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(usb_grid), usb_auto_start, 1, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(usb_grid), usb_auto_stop, 2, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(usb_grid), storage_status_btn, 0, 2, 3, 1);
+
+    gtk_grid_attach(GTK_GRID(samba_grid), samba_probe, 0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(samba_grid), samba_mount, 1, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(samba_grid), samba_unmount, 2, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(samba_grid), samba_open, 0, 1, 3, 1);
+
+    gtk_box_append(GTK_BOX(panel), status);
+    gtk_box_append(GTK_BOX(panel), usb_grid);
+    gtk_box_append(GTK_BOX(panel), usb_note);
+    gtk_box_append(GTK_BOX(panel), samba_grid);
+    gtk_box_append(GTK_BOX(panel), samba_note);
+    gtk_box_append(GTK_BOX(panel), details_scroll);
+    gtk_box_append(GTK_BOX(root), title);
+    gtk_box_append(GTK_BOX(root), panel);
+
+    state->storage_status = status;
+    state->storage_details = details;
+    g_object_set_data(G_OBJECT(usb_mount), "storage-mode", "mount-external");
+    g_object_set_data(G_OBJECT(usb_mount), "storage-status", "Mounted detected external USB partitions.");
+    g_object_set_data(G_OBJECT(usb_open), "storage-mode", "open-external");
+    g_object_set_data(G_OBJECT(usb_open), "storage-status", "Opening mounted external drive.");
+    g_object_set_data(G_OBJECT(usb_unmount), "storage-mode", "unmount-external");
+    g_object_set_data(G_OBJECT(usb_unmount), "storage-status", "Unmounted detected external USB partitions.");
+    g_object_set_data(G_OBJECT(usb_eject), "storage-mode", "eject-external");
+    g_object_set_data(G_OBJECT(usb_eject), "storage-status", "Powered off detected external USB disks.");
+    g_object_set_data(G_OBJECT(usb_auto_start), "storage-mode", "auto-start");
+    g_object_set_data(G_OBJECT(usb_auto_start), "storage-status", "Started external-drive auto-mount watcher.");
+    g_object_set_data(G_OBJECT(usb_auto_stop), "storage-mode", "auto-stop");
+    g_object_set_data(G_OBJECT(usb_auto_stop), "storage-status", "Stopped external-drive auto-mount watcher.");
+    g_object_set_data(G_OBJECT(storage_status_btn), "storage-mode", "status");
+    g_object_set_data(G_OBJECT(storage_status_btn), "storage-status", "Opening storage status...");
+    g_object_set_data(G_OBJECT(samba_probe), "storage-mode", "samba-probe-ui");
+    g_object_set_data(G_OBJECT(samba_probe), "storage-status", "Opening Samba probe in a terminal.");
+    g_object_set_data(G_OBJECT(samba_mount), "storage-mode", "samba-mount-ui");
+    g_object_set_data(G_OBJECT(samba_mount), "storage-status", "Opening Samba mount helper in a terminal.");
+    g_object_set_data(G_OBJECT(samba_unmount), "storage-mode", "samba-unmount-ui");
+    g_object_set_data(G_OBJECT(samba_unmount), "storage-status", "Opening Samba unmount helper in a terminal.");
+    g_object_set_data(G_OBJECT(samba_open), "storage-mode", "samba-open");
+    g_object_set_data(G_OBJECT(samba_open), "storage-status", "Opening Samba mountpoint.");
+    g_signal_connect(usb_mount, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
+    g_signal_connect(usb_open, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
+    g_signal_connect(usb_unmount, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
+    g_signal_connect(usb_eject, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
+    g_signal_connect(usb_auto_start, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
+    g_signal_connect(usb_auto_stop, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
+    g_signal_connect(storage_status_btn, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
+    g_signal_connect(samba_probe, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
+    g_signal_connect(samba_mount, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
+    g_signal_connect(samba_unmount, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
+    g_signal_connect(samba_open, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
     return root;
 }
 
@@ -5537,6 +5823,7 @@ static GtkWidget *gtk4_build_ui(Gtk4State *state) {
     GtkWidget *global_status = gtk_label_new("Ready.");
     GtkWidget *tab_night = gtk4_build_night_tab(state);
     GtkWidget *tab_audio = gtk4_build_audio_tab(state);
+    GtkWidget *tab_storage = gtk4_build_storage_tab(state);
     GtkWidget *tab_utils = gtk4_build_utilities_tab(state);
     GtkWidget *tab_commands = gtk4_build_command_palette_tab(state);
     GtkWidget *tab_shortcuts = gtk4_build_shortcuts_tab(state);
@@ -5563,6 +5850,7 @@ static GtkWidget *gtk4_build_ui(Gtk4State *state) {
 
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_night, gtk_label_new("Night Light"));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_audio, gtk_label_new("Audio"));
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_storage, gtk_label_new("Drives"));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_utils, gtk_label_new("Utilities"));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_commands, gtk_label_new("Commands"));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_shortcuts, gtk_label_new("Shortcuts"));
@@ -5592,6 +5880,7 @@ static gboolean gtk4_post_activate_idle(gpointer data) {
     gtk4_reload(state);
     gtk4_night_refresh(state);
     gtk4_audio_refresh(state);
+    gtk4_storage_refresh(state);
     return G_SOURCE_REMOVE;
 }
 
