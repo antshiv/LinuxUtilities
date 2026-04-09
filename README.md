@@ -340,6 +340,11 @@ The `Drives` tab now includes:
 - a live status panel for external drives plus the Samba 530 mount state
 - terminal-backed `Probe Samba 530`, `Mount Samba 530`, `Unmount Samba 530`, and `Open Samba 530`
 
+The `Dependencies` tab now includes:
+- the current `make deps-check-build` and `make deps-check-runtime` output in one place
+- apt install guidance for common runtime tools like `pavucontrol`, `rofi`, `blueman`, and `redshift`
+- a quick path back to the repo setup docs
+
 AwesomeWM also now exposes the same storage actions under `LinuxUtilities -> storage`, so USB and Samba helpers are reachable from the desktop menu without remembering script names.
 
 ## Presenter Drawing (Epic Pen Style)

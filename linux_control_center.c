@@ -230,6 +230,8 @@ typedef struct {
     GtkWidget *audio_details;
     GtkWidget *storage_status;
     GtkWidget *storage_details;
+    GtkWidget *deps_status;
+    GtkWidget *deps_details;
 
     gboolean tool_syncing;
     Gtk4Tool active_tool;
@@ -287,14 +289,20 @@ typedef struct {
     guint thumb_anim_source_id;
     gint thumb_anim_target_pos;
     gboolean thumb_anim_hide_on_end;
+    guint thumb_load_source_id;
+    guint thumb_load_index;
     gboolean editor_styles_visible;
     gboolean editor_thumbs_visible;
     gboolean editor_dock_right;
+    gboolean screenshots_loaded;
+    GPtrArray *thumb_entries_pending;
     gchar *ui_state_file;
 } Gtk4State;
 
 static void gtk4_editor_load_image(Gtk4State *state, const gchar *path);
 static void gtk4_reload(Gtk4State *state);
+static void gtk4_thumb_load_cancel(Gtk4State *state);
+static gboolean gtk4_thumb_load_batch_cb(gpointer data);
 static void gtk4_set_active_tool(Gtk4State *state, Gtk4Tool tool);
 static gchar *gtk4_get_trimmed_entry_text(GtkWidget *entry);
 static void gtk4_apply_current_text_style_to_mark(Gtk4State *state, Gtk4Mark *mark);
@@ -425,43 +433,143 @@ static gchar *gtk4_launcher_action_cmd(Gtk4State *state, const gchar *label) {
     return cmd;
 }
 
-static gchar *gtk4_repo_capture(Gtk4State *state, const gchar *snippet, const gchar *fallback) {
-    gchar *cmd = NULL;
+typedef struct {
+    GtkWidget *label;
+    GtkWidget *view;
+    gchar *fallback;
+    gchar *label_fallback;
+} Gtk4RepoCaptureAsyncCtx;
+
+static void gtk4_repo_capture_async_ctx_free(Gtk4RepoCaptureAsyncCtx *ctx) {
+    if (!ctx) {
+        return;
+    }
+    if (ctx->label) {
+        g_object_unref(ctx->label);
+    }
+    if (ctx->view) {
+        g_object_unref(ctx->view);
+    }
+    g_free(ctx->fallback);
+    g_free(ctx->label_fallback);
+    g_free(ctx);
+}
+
+static void gtk4_repo_capture_async_finish(GObject *source, GAsyncResult *result, gpointer user_data) {
+    Gtk4RepoCaptureAsyncCtx *ctx = user_data;
+    GSubprocess *proc = G_SUBPROCESS(source);
     gchar *stdout_buf = NULL;
     gchar *stderr_buf = NULL;
-    gchar *result = NULL;
+    gchar *text = NULL;
     GError *error = NULL;
-    gint wait_status = 0;
+
+    if (!g_subprocess_communicate_utf8_finish(proc, result, &stdout_buf, &stderr_buf, &error)) {
+        text = g_strdup_printf("%s\n%s",
+                               ctx && ctx->fallback ? ctx->fallback : "Command failed.",
+                               error ? error->message : "unknown error");
+        g_clear_error(&error);
+    } else if (!g_subprocess_get_successful(proc)) {
+        if (stderr_buf && *stderr_buf) {
+            text = g_strdup(stderr_buf);
+        } else if (stdout_buf && *stdout_buf) {
+            text = g_strdup(stdout_buf);
+        } else {
+            text = g_strdup(ctx && ctx->fallback ? ctx->fallback : "Command failed.");
+        }
+    } else if (stdout_buf && *stdout_buf) {
+        text = g_strdup(stdout_buf);
+    } else {
+        text = g_strdup(ctx && ctx->fallback ? ctx->fallback : "");
+    }
+
+    g_strchomp(text);
+    if (ctx && ctx->label && GTK_IS_LABEL(ctx->label)) {
+        gtk4_set_status(ctx->label, text, ctx->label_fallback ? ctx->label_fallback : ctx->fallback);
+    }
+    if (ctx && ctx->view && GTK_IS_TEXT_VIEW(ctx->view)) {
+        gtk4_set_text_view_text(ctx->view, text);
+    }
+
+    g_free(text);
+    g_free(stdout_buf);
+    g_free(stderr_buf);
+    gtk4_repo_capture_async_ctx_free(ctx);
+}
+
+static void gtk4_repo_capture_async(Gtk4State *state,
+                                    const gchar *snippet,
+                                    const gchar *fallback,
+                                    GtkWidget *label,
+                                    const gchar *label_fallback,
+                                    GtkWidget *view) {
+    gchar *cmd = NULL;
+    gchar **argv = NULL;
+    GError *error = NULL;
+    GSubprocess *proc = NULL;
+    Gtk4RepoCaptureAsyncCtx *ctx = NULL;
+    gchar *msg = NULL;
 
     cmd = gtk4_repo_shell(state, snippet);
     if (!cmd) {
-      return g_strdup(fallback ? fallback : "");
-    }
-
-    if (!g_spawn_command_line_sync(cmd, &stdout_buf, &stderr_buf, &wait_status, &error)) {
-        result = g_strdup_printf("%s\n%s",
-                                 fallback ? fallback : "Command failed.",
-                                 error ? error->message : "unknown error");
-        g_clear_error(&error);
-    } else if (wait_status != 0) {
-        if (stderr_buf && *stderr_buf) {
-            result = g_strdup(stderr_buf);
-        } else if (stdout_buf && *stdout_buf) {
-            result = g_strdup(stdout_buf);
-        } else {
-            result = g_strdup(fallback ? fallback : "Command failed.");
+        if (label && GTK_IS_LABEL(label)) {
+            gtk4_set_status(label, fallback, label_fallback ? label_fallback : fallback);
         }
-    } else if (stdout_buf && *stdout_buf) {
-        result = g_strdup(stdout_buf);
-    } else {
-        result = g_strdup(fallback ? fallback : "");
+        if (view && GTK_IS_TEXT_VIEW(view)) {
+            gtk4_set_text_view_text(view, fallback ? fallback : "");
+        }
+        return;
     }
 
-    g_strchomp(result);
+    if (!g_shell_parse_argv(cmd, NULL, &argv, &error)) {
+        msg = g_strdup_printf("%s\n%s",
+                              fallback ? fallback : "Command parse failed.",
+                              error ? error->message : "unknown error");
+        if (label && GTK_IS_LABEL(label)) {
+            gtk4_set_status(label, msg, label_fallback ? label_fallback : fallback);
+        }
+        if (view && GTK_IS_TEXT_VIEW(view)) {
+            gtk4_set_text_view_text(view, msg);
+        }
+        g_free(msg);
+        g_clear_error(&error);
+        g_free(cmd);
+        return;
+    }
+
+    proc = g_subprocess_newv((const gchar * const *)argv,
+                             G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_PIPE,
+                             &error);
+    if (!proc) {
+        msg = g_strdup_printf("%s\n%s",
+                              fallback ? fallback : "Command launch failed.",
+                              error ? error->message : "unknown error");
+        if (label && GTK_IS_LABEL(label)) {
+            gtk4_set_status(label, msg, label_fallback ? label_fallback : fallback);
+        }
+        if (view && GTK_IS_TEXT_VIEW(view)) {
+            gtk4_set_text_view_text(view, msg);
+        }
+        g_free(msg);
+        g_clear_error(&error);
+        g_strfreev(argv);
+        g_free(cmd);
+        return;
+    }
+
+    ctx = g_new0(Gtk4RepoCaptureAsyncCtx, 1);
+    ctx->fallback = g_strdup(fallback ? fallback : "");
+    ctx->label_fallback = g_strdup(label_fallback ? label_fallback : fallback);
+    if (label) {
+        ctx->label = g_object_ref(label);
+    }
+    if (view) {
+        ctx->view = g_object_ref(view);
+    }
+    g_subprocess_communicate_utf8_async(proc, NULL, NULL, gtk4_repo_capture_async_finish, ctx);
+
+    g_object_unref(proc);
+    g_strfreev(argv);
     g_free(cmd);
-    g_free(stdout_buf);
-    g_free(stderr_buf);
-    return result;
 }
 
 static gchar *gtk4_default_ui_state_path(void) {
@@ -2507,6 +2615,103 @@ static void gtk4_thumb_cancel_animation(Gtk4State *state) {
     }
 }
 
+static void gtk4_thumb_load_cancel(Gtk4State *state) {
+    if (!state) {
+        return;
+    }
+    if (state->thumb_load_source_id != 0) {
+        g_source_remove(state->thumb_load_source_id);
+        state->thumb_load_source_id = 0;
+    }
+    if (state->thumb_entries_pending) {
+        g_ptr_array_free(state->thumb_entries_pending, TRUE);
+        state->thumb_entries_pending = NULL;
+    }
+    state->thumb_load_index = 0;
+}
+
+static gboolean gtk4_thumb_load_batch_cb(gpointer data) {
+    Gtk4State *state = data;
+    guint end = 0;
+    gchar *status = NULL;
+
+    if (!state || !state->thumb_flow || !state->thumb_entries_pending) {
+        if (state) {
+            if (state->thumb_entries_pending) {
+                g_ptr_array_free(state->thumb_entries_pending, TRUE);
+                state->thumb_entries_pending = NULL;
+            }
+            state->thumb_load_index = 0;
+            state->thumb_load_source_id = 0;
+        }
+        return G_SOURCE_REMOVE;
+    }
+
+    end = MIN(state->thumb_load_index + 12, state->thumb_entries_pending->len);
+    for (; state->thumb_load_index < end; state->thumb_load_index += 1) {
+        Gtk4ImageEntry *entry = g_ptr_array_index(state->thumb_entries_pending, state->thumb_load_index);
+        gint preview_w = (state->thumb_preview_width > 0) ? state->thumb_preview_width : 240;
+        gint preview_h = (state->thumb_preview_height > 0) ? state->thumb_preview_height : 150;
+        GdkPixbuf *pix = gdk_pixbuf_new_from_file_at_scale(entry->path, preview_w, preview_h, TRUE, NULL);
+        GtkWidget *row = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+        GtkWidget *label = gtk_label_new(entry->name);
+        GtkWidget *preview = NULL;
+
+        gtk_widget_set_tooltip_text(row, entry->path);
+        g_object_set_data_full(G_OBJECT(row), "shot-path", g_strdup(entry->path), g_free);
+        gtk_widget_add_css_class(row, "thumb-card");
+        gtk_widget_set_margin_start(row, 4);
+        gtk_widget_set_margin_end(row, 4);
+        gtk_widget_set_margin_top(row, 4);
+        gtk_widget_set_margin_bottom(row, 4);
+
+        if (pix) {
+            GdkTexture *texture = gdk_texture_new_for_pixbuf(pix);
+            preview = gtk_picture_new_for_paintable(GDK_PAINTABLE(texture));
+            gtk_picture_set_can_shrink(GTK_PICTURE(preview), TRUE);
+            gtk_picture_set_content_fit(GTK_PICTURE(preview), GTK_CONTENT_FIT_CONTAIN);
+            gtk_widget_set_size_request(preview, preview_w, preview_h);
+            g_object_unref(texture);
+            g_object_unref(pix);
+        } else {
+            preview = gtk_image_new_from_icon_name("image-x-generic-symbolic");
+            gtk_widget_set_size_request(preview, preview_w, preview_h);
+        }
+
+        gtk_label_set_xalign(GTK_LABEL(label), 0.0f);
+        gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
+        gtk_widget_add_css_class(label, "thumb-name");
+        gtk_widget_set_size_request(label, preview_w, -1);
+        gtk_box_append(GTK_BOX(row), preview);
+        gtk_box_append(GTK_BOX(row), label);
+        gtk_flow_box_append(GTK_FLOW_BOX(state->thumb_flow), row);
+    }
+
+    status = g_strdup_printf("Loading screenshots %u/%u from %s",
+                             state->thumb_load_index,
+                             state->thumb_entries_pending->len,
+                             state->shots_dir ? state->shots_dir : ".");
+    gtk4_set_status(state->status_label, status, "Loading screenshots...");
+    g_free(status);
+    gtk4_update_selection_ui(state);
+
+    if (state->thumb_load_index < state->thumb_entries_pending->len) {
+        return G_SOURCE_CONTINUE;
+    }
+
+    status = g_strdup_printf("%u image(s) loaded from %s",
+                             state->thumb_entries_pending->len,
+                             state->shots_dir ? state->shots_dir : ".");
+    gtk4_set_status(state->status_label, status, "Reloaded.");
+    g_free(status);
+    state->screenshots_loaded = TRUE;
+    g_ptr_array_free(state->thumb_entries_pending, TRUE);
+    state->thumb_entries_pending = NULL;
+    state->thumb_load_index = 0;
+    state->thumb_load_source_id = 0;
+    return G_SOURCE_REMOVE;
+}
+
 static gboolean gtk4_thumb_animate_step_cb(gpointer data) {
     Gtk4State *state = data;
     gint current = 0;
@@ -3193,6 +3398,8 @@ static void gtk4_reload(Gtk4State *state) {
         return;
     }
 
+    gtk4_thumb_load_cancel(state);
+    state->screenshots_loaded = FALSE;
     query = gtk_editable_get_text(GTK_EDITABLE(state->search_entry));
     while ((child = gtk_widget_get_first_child(state->thumb_flow)) != NULL) {
         gtk_flow_box_remove(GTK_FLOW_BOX(state->thumb_flow), child);
@@ -3230,53 +3437,22 @@ static void gtk4_reload(Gtk4State *state) {
     g_dir_close(dir);
     g_ptr_array_sort(entries, gtk4_compare_entries_desc);
 
-    for (guint i = 0; i < entries->len; i += 1) {
-        Gtk4ImageEntry *entry = g_ptr_array_index(entries, i);
-        gint preview_w = (state->thumb_preview_width > 0) ? state->thumb_preview_width : 240;
-        gint preview_h = (state->thumb_preview_height > 0) ? state->thumb_preview_height : 150;
-        GdkPixbuf *pix = gdk_pixbuf_new_from_file_at_scale(entry->path, preview_w, preview_h, TRUE, NULL);
-        GtkWidget *row = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
-        GtkWidget *label = gtk_label_new(entry->name);
-        GtkWidget *preview = NULL;
-
-        gtk_widget_set_tooltip_text(row, entry->path);
-        g_object_set_data_full(G_OBJECT(row), "shot-path", g_strdup(entry->path), g_free);
-        gtk_widget_add_css_class(row, "thumb-card");
-        gtk_widget_set_margin_start(row, 4);
-        gtk_widget_set_margin_end(row, 4);
-        gtk_widget_set_margin_top(row, 4);
-        gtk_widget_set_margin_bottom(row, 4);
-
-        if (pix) {
-            GdkTexture *texture = gdk_texture_new_for_pixbuf(pix);
-            preview = gtk_picture_new_for_paintable(GDK_PAINTABLE(texture));
-            gtk_picture_set_can_shrink(GTK_PICTURE(preview), TRUE);
-            gtk_picture_set_content_fit(GTK_PICTURE(preview), GTK_CONTENT_FIT_CONTAIN);
-            gtk_widget_set_size_request(preview, preview_w, preview_h);
-            g_object_unref(texture);
-            g_object_unref(pix);
-        } else {
-            preview = gtk_image_new_from_icon_name("image-x-generic-symbolic");
-            gtk_widget_set_size_request(preview, preview_w, preview_h);
-        }
-
-        gtk_label_set_xalign(GTK_LABEL(label), 0.0f);
-        gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
-        gtk_widget_add_css_class(label, "thumb-name");
-        gtk_widget_set_size_request(label, preview_w, -1);
-        gtk_box_append(GTK_BOX(row), preview);
-        gtk_box_append(GTK_BOX(row), label);
-        gtk_flow_box_append(GTK_FLOW_BOX(state->thumb_flow), row);
-    }
-
     if (entries->len == 0) {
         status = g_strdup_printf("No images found in %s", state->shots_dir);
+        state->screenshots_loaded = TRUE;
+        g_ptr_array_free(entries, TRUE);
     } else {
-        status = g_strdup_printf("%u image(s) loaded from %s", entries->len, state->shots_dir);
+        status = g_strdup_printf("Queued %u image(s) from %s", entries->len, state->shots_dir);
+        state->thumb_entries_pending = entries;
+        state->thumb_load_index = 0;
+        state->thumb_load_source_id = g_idle_add(gtk4_thumb_load_batch_cb, state);
+        entries = NULL;
     }
     gtk4_set_status(state->status_label, status, "Reloaded.");
     g_free(status);
-    g_ptr_array_free(entries, TRUE);
+    if (entries) {
+        g_ptr_array_free(entries, TRUE);
+    }
     gtk4_update_selection_ui(state);
 }
 
@@ -3457,7 +3633,6 @@ static gboolean gtk4_on_night_auto_toggled(GtkSwitch *sw, gboolean state, gpoint
 static void gtk4_audio_refresh(Gtk4State *state) {
     gchar *pactl = NULL;
     gchar *msg = NULL;
-    gchar *details = NULL;
     if (!state || !state->audio_status) {
         return;
     }
@@ -3466,35 +3641,62 @@ static void gtk4_audio_refresh(Gtk4State *state) {
                           state->audio_scale ? gtk_range_get_value(GTK_RANGE(state->audio_scale)) : 0.0,
                           pactl ? "pactl available" : "pactl not found");
     gtk_label_set_text(GTK_LABEL(state->audio_status), msg);
-    details = gtk4_repo_capture(state,
-                                "./scripts/audio_source_route.sh gui-summary",
-                                "Audio routing details unavailable.");
     if (state->audio_details) {
-        gtk4_set_text_view_text(state->audio_details, details);
+        gtk4_set_text_view_text(state->audio_details, "Refreshing audio routing details...");
     }
-    g_free(details);
+    gtk4_repo_capture_async(state,
+                            "./scripts/audio_source_route.sh gui-summary",
+                            "Audio routing details unavailable.",
+                            NULL,
+                            NULL,
+                            state->audio_details);
     g_free(msg);
     g_free(pactl);
 }
 
 static void gtk4_storage_refresh(Gtk4State *state) {
-    gchar *status = NULL;
-    gchar *details = NULL;
     if (!state || !state->storage_status) {
         return;
     }
-    status = gtk4_repo_capture(state,
-                               "./scripts/storage_drives.sh auto-status",
-                               "Storage watcher status unavailable.");
-    gtk4_set_status(state->storage_status, status, "Storage watcher status unavailable.");
-    details = gtk4_repo_capture(state,
-                                "./scripts/storage_drives.sh gui-summary",
-                                "Storage details unavailable.");
+    gtk4_set_status(state->storage_status, "Refreshing storage watcher status...", "Storage watcher status unavailable.");
     if (state->storage_details) {
-        gtk4_set_text_view_text(state->storage_details, details);
+        gtk4_set_text_view_text(state->storage_details, "Refreshing storage details...");
     }
-    g_free(details);
-    g_free(status);
+    gtk4_repo_capture_async(state,
+                            "./scripts/storage_drives.sh auto-status",
+                            "Storage watcher status unavailable.",
+                            state->storage_status,
+                            "Storage watcher status unavailable.",
+                            NULL);
+    gtk4_repo_capture_async(state,
+                            "./scripts/storage_drives.sh gui-summary",
+                            "Storage details unavailable.",
+                            NULL,
+                            NULL,
+                            state->storage_details);
+}
+
+static void gtk4_deps_refresh(Gtk4State *state) {
+    if (!state || !state->deps_status) {
+        return;
+    }
+    gtk4_set_status(state->deps_status, "Refreshing dependency checks...", "Dependency checks unavailable.");
+    if (state->deps_details) {
+        gtk4_set_text_view_text(state->deps_details,
+                                "Checking build and runtime dependencies...\n\nThis view mirrors make deps-check-build and make deps-check-runtime.");
+    }
+    gtk4_repo_capture_async(state,
+                            "build_ok=1; make deps-check-build >/dev/null 2>&1 || build_ok=0; make deps-check-runtime >/dev/null 2>&1 || true; if [ \"$build_ok\" -eq 1 ]; then printf 'Dependency checks refreshed.\\n'; else printf 'Build dependencies missing. See details below.\\n'; fi",
+                            "Dependency checks unavailable.",
+                            state->deps_status,
+                            "Dependency checks unavailable.",
+                            NULL);
+    gtk4_repo_capture_async(state,
+                            "make deps-check-build 2>&1 || true; printf '\\n'; make deps-check-runtime 2>&1 || true",
+                            "Dependency checks unavailable.",
+                            NULL,
+                            NULL,
+                            state->deps_details);
 }
 
 static void gtk4_on_audio_apply(GtkButton *button, gpointer user_data) {
@@ -3614,6 +3816,11 @@ static void gtk4_on_storage_action(GtkButton *button, gpointer user_data) {
     g_free(cmd);
     g_free(snippet);
     gtk4_storage_refresh(state);
+}
+
+static void gtk4_on_deps_refresh(GtkButton *button, gpointer user_data) {
+    (void)button;
+    gtk4_deps_refresh(user_data);
 }
 
 static gboolean gtk4_clear_utility_click_indicator(gpointer data) {
@@ -4614,6 +4821,70 @@ static GtkWidget *gtk4_build_storage_tab(Gtk4State *state) {
     g_signal_connect(samba_unmount, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
     g_signal_connect(samba_open, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
     g_signal_connect(samba_guide, "clicked", G_CALLBACK(gtk4_on_storage_action), state);
+    return root;
+}
+
+static GtkWidget *gtk4_build_deps_tab(Gtk4State *state) {
+    GtkWidget *root = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    GtkWidget *title = gtk_label_new("Dependencies");
+    GtkWidget *panel = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    GtkWidget *status = gtk_label_new("Dependency checks unavailable.");
+    GtkWidget *note = gtk_label_new("This view mirrors make deps-check-build and make deps-check-runtime so you can see missing tools like pavucontrol, blueman, rofi, and redshift without leaving the app.");
+    GtkWidget *install_note = gtk_label_new("Common runtime install:\nsudo apt install pavucontrol rofi playerctl redshift network-manager-gnome blueman picom flameshot x11-xserver-utils xserver-xorg-input-wacom gromit-mpx xdotool xvfb");
+    GtkWidget *build_note = gtk_label_new("Build deps:\nsudo apt install build-essential pkg-config libx11-dev libxext-dev libxfixes-dev libxrender-dev libcairo2-dev libgtk-4-dev");
+    GtkWidget *buttons = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    GtkWidget *refresh = gtk_button_new_with_label("Refresh Checks");
+    GtkWidget *setup_doc = gtk_button_new_with_label("Open Setup Doc");
+    GtkWidget *details_scroll = gtk_scrolled_window_new();
+    GtkWidget *details = gtk_text_view_new();
+    gchar *cmd_setup = gtk4_repo_shell(state, "xdg-open README.md");
+
+    gtk_widget_set_margin_top(root, 12);
+    gtk_widget_set_margin_bottom(root, 12);
+    gtk_widget_set_margin_start(root, 12);
+    gtk_widget_set_margin_end(root, 12);
+    gtk_widget_add_css_class(panel, "lcu-panel");
+    gtk_widget_add_css_class(title, "title-2");
+    gtk_label_set_xalign(GTK_LABEL(title), 0.0f);
+    gtk_label_set_xalign(GTK_LABEL(status), 0.0f);
+    gtk_label_set_xalign(GTK_LABEL(note), 0.0f);
+    gtk_label_set_xalign(GTK_LABEL(install_note), 0.0f);
+    gtk_label_set_xalign(GTK_LABEL(build_note), 0.0f);
+    gtk_label_set_wrap(GTK_LABEL(note), TRUE);
+    gtk_label_set_wrap(GTK_LABEL(install_note), TRUE);
+    gtk_label_set_wrap(GTK_LABEL(build_note), TRUE);
+    gtk_widget_add_css_class(note, "dim-label");
+    gtk_widget_add_css_class(install_note, "dim-label");
+    gtk_widget_add_css_class(build_note, "dim-label");
+    gtk_widget_set_vexpand(details_scroll, TRUE);
+    gtk_widget_add_css_class(details_scroll, "lcu-surface");
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(details_scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(details_scroll), details);
+    gtk_widget_set_size_request(details_scroll, -1, 260);
+    gtk_text_view_set_editable(GTK_TEXT_VIEW(details), FALSE);
+    gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(details), FALSE);
+    gtk_text_view_set_monospace(GTK_TEXT_VIEW(details), TRUE);
+    gtk_widget_set_focusable(details, FALSE);
+
+    gtk_box_append(GTK_BOX(buttons), refresh);
+    gtk_box_append(GTK_BOX(buttons), setup_doc);
+    gtk_box_append(GTK_BOX(panel), status);
+    gtk_box_append(GTK_BOX(panel), note);
+    gtk_box_append(GTK_BOX(panel), install_note);
+    gtk_box_append(GTK_BOX(panel), build_note);
+    gtk_box_append(GTK_BOX(panel), buttons);
+    gtk_box_append(GTK_BOX(panel), details_scroll);
+    gtk_box_append(GTK_BOX(root), title);
+    gtk_box_append(GTK_BOX(root), panel);
+
+    state->deps_status = status;
+    state->deps_details = details;
+    g_signal_connect(refresh, "clicked", G_CALLBACK(gtk4_on_deps_refresh), state);
+    if (cmd_setup) {
+        g_object_set_data_full(G_OBJECT(setup_doc), "cmd", cmd_setup, g_free);
+    }
+    g_object_set_data_full(G_OBJECT(setup_doc), "status", g_strdup("Opening setup documentation..."), g_free);
+    g_signal_connect(setup_doc, "clicked", G_CALLBACK(gtk4_on_utility_clicked), state);
     return root;
 }
 
@@ -5813,6 +6084,12 @@ static void gtk4_on_notebook_switch_page(GtkNotebook *notebook,
     const gchar *tab_text = gtk_notebook_get_tab_label_text(notebook, page);
     gchar *msg = g_strdup_printf("Active tab: %s (%u)", tab_text ? tab_text : "unknown", page_num);
     gtk4_set_global_status(state, msg);
+    if (state &&
+        (gint)page_num == state->screenshots_page &&
+        !state->screenshots_loaded &&
+        state->thumb_load_source_id == 0) {
+        gtk4_reload(state);
+    }
     g_free(msg);
 }
 
@@ -5829,6 +6106,7 @@ static GtkWidget *gtk4_build_ui(Gtk4State *state) {
     GtkWidget *tab_night = gtk4_build_night_tab(state);
     GtkWidget *tab_audio = gtk4_build_audio_tab(state);
     GtkWidget *tab_storage = gtk4_build_storage_tab(state);
+    GtkWidget *tab_deps = gtk4_build_deps_tab(state);
     GtkWidget *tab_utils = gtk4_build_utilities_tab(state);
     GtkWidget *tab_commands = gtk4_build_command_palette_tab(state);
     GtkWidget *tab_shortcuts = gtk4_build_shortcuts_tab(state);
@@ -5856,6 +6134,7 @@ static GtkWidget *gtk4_build_ui(Gtk4State *state) {
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_night, gtk_label_new("Night Light"));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_audio, gtk_label_new("Audio"));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_storage, gtk_label_new("Drives"));
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_deps, gtk_label_new("Dependencies"));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_utils, gtk_label_new("Utilities"));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_commands, gtk_label_new("Commands"));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_shortcuts, gtk_label_new("Shortcuts"));
@@ -5882,10 +6161,14 @@ static gboolean gtk4_post_activate_idle(gpointer data) {
     if (!state) {
         return G_SOURCE_REMOVE;
     }
-    gtk4_reload(state);
+    if (state->notebook &&
+        gtk_notebook_get_current_page(GTK_NOTEBOOK(state->notebook)) == state->screenshots_page) {
+        gtk4_reload(state);
+    }
     gtk4_night_refresh(state);
     gtk4_audio_refresh(state);
     gtk4_storage_refresh(state);
+    gtk4_deps_refresh(state);
     return G_SOURCE_REMOVE;
 }
 
@@ -5913,6 +6196,7 @@ static void gtk4_state_free(Gtk4State *state) {
         return;
     }
     gtk4_thumb_cancel_animation(state);
+    gtk4_thumb_load_cancel(state);
     if (state->night_apply_source_id != 0) {
         g_source_remove(state->night_apply_source_id);
         state->night_apply_source_id = 0;
