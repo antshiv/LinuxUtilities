@@ -4,6 +4,20 @@ local function join_with_table(gears, ...)
     return gears.table.join(...)
 end
 
+local function launch_control_center(actions, c)
+    if c and actions.open_linux_control_center_for_client then
+        actions.open_linux_control_center_for_client(c)
+        return
+    end
+    if actions.open_linux_control_center then
+        actions.open_linux_control_center()
+        return
+    end
+    if actions.open_linux_control_center_for_client then
+        actions.open_linux_control_center_for_client(c)
+    end
+end
+
 local function build_root_buttons(opts)
     local awful = opts.awful
     local gears = opts.gears
@@ -22,7 +36,7 @@ local function build_root_buttons(opts)
         awful.button({ }, 5, awful.tag.viewprev),
         awful.button({ }, flameshot_mouse_button, actions.open_flameshot),
         awful.button({ }, utility_mouse_button, function()
-            actions.open_linux_control_center_for_client(client_global.focus)
+            launch_control_center(actions, client_global.focus)
         end),
         awful.button({ modkey }, 2, actions.volume_toggle_mute),
         awful.button({ modkey }, 4, actions.volume_up),
@@ -334,7 +348,13 @@ local function build_global_keys(opts)
         end, { description = "lua execute prompt", group = "awesome" }),
         awful.key({ modkey }, "p", function()
             menubar.show()
-        end, { description = "show the menubar", group = "launcher" })
+        end, { description = "show the menubar", group = "launcher" }),
+        awful.key({ modkey, "Control" }, "a", actions.open_audio_controls,
+            { description = "audio controls", group = "device controls" }),
+        awful.key({ modkey, "Control" }, "b", actions.open_bluetooth_controls,
+            { description = "bluetooth controls", group = "device controls" }),
+        awful.key({ modkey, "Control" }, "w", actions.open_network_controls,
+            { description = "network controls", group = "device controls" })
     )
 
     return add_tag_number_keys(globalkeys, opts)
@@ -358,7 +378,7 @@ local function build_client_buttons(opts)
         end),
         awful.button({ }, utility_mouse_button, function(c)
             c:emit_signal("request::activate", "mouse_click", { raise = false })
-            actions.open_linux_control_center_for_client(c)
+            launch_control_center(actions, c)
         end),
         awful.button({ modkey }, 1, function(c)
             c:emit_signal("request::activate", "mouse_click", { raise = true })

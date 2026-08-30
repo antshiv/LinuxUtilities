@@ -17,6 +17,8 @@ local menu_state = { show_calls = 0, toggle_calls = 0 }
 local launcher_calls = {
     flameshot = 0,
     utility = 0,
+    utility_generic = 0,
+    utility_client = 0,
     volume_up = 0,
     brightness_up = 0,
     launcher = 0,
@@ -66,6 +68,8 @@ local focused_screen = {
 
 local focused_client = {
     screen = focused_screen,
+    emit_signal = function()
+    end,
     raise = function()
     end,
     move_to_tag = function()
@@ -225,8 +229,13 @@ local binding_tables = bindings.build({
         open_flameshot = function()
             launcher_calls.flameshot = launcher_calls.flameshot + 1
         end,
+        open_linux_control_center = function()
+            launcher_calls.utility = launcher_calls.utility + 1
+            launcher_calls.utility_generic = launcher_calls.utility_generic + 1
+        end,
         open_linux_control_center_for_client = function()
             launcher_calls.utility = launcher_calls.utility + 1
+            launcher_calls.utility_client = launcher_calls.utility_client + 1
         end,
         volume_up = function()
             launcher_calls.volume_up = launcher_calls.volume_up + 1
@@ -335,6 +344,7 @@ assert(find_key(binding_tables.globalkeys, "Print", "open flameshot") ~= nil)
 
 find_button(binding_tables.root_buttons, 8).callback()
 find_button(binding_tables.root_buttons, 9).callback()
+find_button(binding_tables.clientbuttons, 9).callback(focused_client)
 find_key(binding_tables.globalkeys, "XF86MonBrightnessUp", "increase brightness").callback()
 find_key(binding_tables.globalkeys, "XF86AudioRaiseVolume", "increase volume").callback()
 find_key(binding_tables.globalkeys, "h", "open system monitor (btop/htop/top)").callback()
@@ -345,7 +355,9 @@ find_key(binding_tables.globalkeys, "F7", "toggle cursor spotlight").callback()
 find_key(binding_tables.globalkeys, "r", "program launcher (rofi + custom commands)").callback()
 
 assert(launcher_calls.flameshot == 1)
-assert(launcher_calls.utility == 1)
+assert(launcher_calls.utility == 2)
+assert(launcher_calls.utility_generic == 0)
+assert(launcher_calls.utility_client == 2)
 assert(launcher_calls.brightness_up == 1)
 assert(launcher_calls.volume_up == 1)
 assert(launcher_calls.system_monitor == 1)

@@ -18,6 +18,7 @@ local presenter = require("linuxutils.presenter")
 local launchers = require("linuxutils.launchers")
 local calendar = require("linuxutils.calendar")
 local widgets = require("linuxutils.widgets")
+local device_events = require("linuxutils.device_events")
 
 local notifications = {}
 
@@ -236,6 +237,32 @@ local widgets_controller = widgets.new({
     launchers = launchers_controller,
     calendar = calendar_controller,
 })
+
+local device_event_count = 0
+local device_event_callback = nil
+local fake_dbus = {
+    add_match = function(bus, rule)
+        assert(bus == "session")
+        assert(rule:match("com.antshiv.LinuxUtilities") ~= nil)
+    end,
+    connect_signal = function(interface, callback)
+        assert(interface == "com.antshiv.LinuxUtilities")
+        device_event_callback = callback
+    end,
+}
+local device_events_controller = device_events.new({
+    gears = gears,
+    dbus_api = fake_dbus,
+    callbacks = {
+        network = function()
+            device_event_count = device_event_count + 1
+        end,
+    },
+})
+assert(device_events_controller.start() == true)
+assert(type(device_event_callback) == "function")
+device_event_callback({}, "network")
+assert(device_event_count == 1)
 
 assert(type(brightness_controller.up) == "function")
 assert(type(brightness_controller.down) == "function")

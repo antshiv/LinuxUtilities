@@ -48,6 +48,7 @@ local launchers = require("linuxutils.launchers")
 local calendar = require("linuxutils.calendar")
 local widgets = require("linuxutils.widgets")
 local bindings = require("linuxutils.bindings")
+local device_events = require("linuxutils.device_events")
 
 -- {{{ Error handling
 -- Check if awesome encountered an error during startup and fell back to
@@ -164,6 +165,22 @@ local widgets_controller = widgets.new({
     calendar = calendar_controller,
 })
 
+local device_events_controller = device_events.new({
+    gears = gears,
+    callbacks = {
+        audio = function()
+            audio_controller.refresh(false)
+        end,
+        network = widgets_controller.refresh_network,
+        bluetooth = widgets_controller.refresh_bluetooth,
+        all = function()
+            audio_controller.refresh(false)
+            widgets_controller.refresh_network()
+            widgets_controller.refresh_bluetooth()
+        end,
+    },
+})
+
 local refresh_system_statuses = widgets_controller.refresh_system_statuses
 local create_audio_widget = widgets_controller.create_audio_widget
 local create_battery_widget = widgets_controller.create_battery_widget
@@ -206,10 +223,14 @@ local open_system_monitor = launchers_controller.open_system_monitor
 local open_network_manager = launchers_controller.open_network_manager
 local open_network_tui = launchers_controller.open_network_tui
 local open_network_scan = launchers_controller.open_network_scan
+local open_audio_controls = launchers_controller.open_audio_controls
+local open_network_controls = launchers_controller.open_network_controls
+local open_bluetooth_controls = launchers_controller.open_bluetooth_controls
 local show_world_clock_popup = launchers_controller.show_world_clock_popup
 local set_timezone_mumbai = launchers_controller.set_timezone_mumbai
 local set_timezone_vancouver = launchers_controller.set_timezone_vancouver
 local launch_program_palette = launchers_controller.launch_program_palette
+local open_linux_control_center = launchers_controller.open_linux_control_center
 local open_linux_control_center_for_client = launchers_controller.open_linux_control_center_for_client
 
 local function autostart_desktop_applets()
@@ -246,10 +267,12 @@ local function autostart_compositor()
 end
 
 enable_audio_auto_switch()
+device_events_controller.start()
 autostart_compositor()
 autostart_desktop_applets()
 gears.timer({
-    timeout = 10,
+    -- D-Bus events normally refresh immediately; this is a conservative fallback.
+    timeout = 60,
     autostart = true,
     call_now = true,
     callback = function()
@@ -293,6 +316,7 @@ local menu_notes = {
    { "notes app", launchers_controller.open_notes_app },
    { "daily note", function() launchers_controller.open_daily_note(os.date("*t")) end },
    { "tasks note", launchers_controller.open_tasks_note },
+   { "reminders", launchers_controller.open_reminders },
    { "notes folder", launchers_controller.open_notes_folder },
 }
 
@@ -586,7 +610,11 @@ local binding_tables = bindings.build({
         show_world_clock_popup = show_world_clock_popup,
         set_timezone_mumbai = set_timezone_mumbai,
         set_timezone_vancouver = set_timezone_vancouver,
+        open_linux_control_center = open_linux_control_center,
         open_linux_control_center_for_client = open_linux_control_center_for_client,
+        open_audio_controls = open_audio_controls,
+        open_network_controls = open_network_controls,
+        open_bluetooth_controls = open_bluetooth_controls,
         volume_up = volume_up,
         volume_down = volume_down,
         volume_toggle_mute = volume_toggle_mute,

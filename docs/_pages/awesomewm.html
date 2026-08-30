@@ -53,7 +53,8 @@ awesome-client 'awesome.restart()'</code></pre>
         <tr><td><code>linuxutils/presenter.lua</code></td><td>Presenter controller for cursor spotlight, Gromit overlay commands, and the animated presenter dash helper script.</td></tr>
         <tr><td><code>linuxutils/launchers.lua</code></td><td>Launcher/controller actions for flameshot, the rofi program palette, Linux Control Center, system utilities, folder navigation, AppImage scanning/launching, notes entrypoints, and the <code>btop -&gt; htop -&gt; top</code> system monitor fallback chain.</td></tr>
         <tr><td><code>linuxutils/calendar.lua</code></td><td>Calendar popup controller. Builds the larger center-screen agenda panel, month navigation, font-size controls, and daily-note preview/actions.</td></tr>
-        <tr><td><code>linuxutils/widgets.lua</code></td><td>Widget factory/controller for audio, battery, network, Bluetooth, system usage, Thunderbird, and clock widgets plus periodic status refresh. The clock now delegates popup behavior to <code>calendar.lua</code>.</td></tr>
+        <tr><td><code>linuxutils/widgets.lua</code></td><td>Widget factory/controller for audio, battery, network, Bluetooth, system usage, Thunderbird, and clock widgets. Network, Bluetooth, and audio refresh from device events with a conservative periodic fallback.</td></tr>
+        <tr><td><code>linuxutils/device_events.lua</code></td><td>Consumes LinuxUtilities session D-Bus events and debounces focused widget refreshes.</td></tr>
         <tr><td><code>linuxutils/bindings.lua</code></td><td>Binding factory for root mouse buttons, global media/presenter/launcher hotkeys, client keys, and client-side utility mouse actions.</td></tr>
         <tr><td><code>icons/LinuxUtilitiesStatus/</code></td><td>Bundled GTK icon theme overrides for tray applets so Bluetooth and Wi-Fi indicators can use explicit colors instead of inheriting Mint's dark symbolic glyphs.</td></tr>
     </tbody>

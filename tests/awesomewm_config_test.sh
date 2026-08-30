@@ -65,6 +65,11 @@ require_grep 'require("linuxutils.widgets")' "$ROOT_DIR/rc.lua" "widgets module 
 require_grep 'require("linuxutils.bindings")' "$ROOT_DIR/rc.lua" "bindings module require"
 require_grep 'require("linuxutils.icons")' "$ROOT_DIR/linuxutils/widgets.lua" "icons module require"
 require_grep 'widgets.new requires calendar controller' "$ROOT_DIR/linuxutils/widgets.lua" "calendar injection assertion"
+require_grep 'device_events.new requires gears' "$ROOT_DIR/linuxutils/device_events.lua" "device event module assertion"
+require_grep 'com.antshiv.LinuxUtilities' "$ROOT_DIR/linuxutils/device_events.lua" "device event D-Bus contract"
+require_grep 'open_audio_controls' "$ROOT_DIR/linuxutils/bindings.lua" "audio control hotkey"
+require_grep 'open_bluetooth_controls' "$ROOT_DIR/linuxutils/bindings.lua" "bluetooth control hotkey"
+require_grep 'open_network_controls' "$ROOT_DIR/linuxutils/bindings.lua" "network control hotkey"
 require_grep 'keyboardlayout_widget.new()' "$ROOT_DIR/rc.lua" "per-screen keyboard widget creation"
 require_grep 'build_screen_profile' "$ROOT_DIR/rc.lua" "screen width profile helper"
 require_grep 'menu_linuxutilities' "$ROOT_DIR/rc.lua" "LinuxUtilities right-click submenu"
@@ -84,8 +89,23 @@ require_grep 'Programs/AppImage' "$ROOT_DIR/linuxutils/launchers.lua" "AppImage 
 require_grep 'open_appimage_palette' "$ROOT_DIR/linuxutils/launchers.lua" "AppImage palette launcher"
 require_grep 'open_network_tui' "$ROOT_DIR/linuxutils/launchers.lua" "network tui launcher"
 require_grep 'x-terminal-emulator -e nmtui-connect' "$ROOT_DIR/linuxutils/launchers.lua" "network tui terminal launch"
+require_grep 'elif command -v nmtui >/dev/null 2>&1 && command -v x-terminal-emulator >/dev/null 2>&1; then' "$ROOT_DIR/linuxutils/launchers.lua" "network manager terminal fallback guard"
+require_grep 'elif command -v bluetoothctl >/dev/null 2>&1 && command -v x-terminal-emulator >/dev/null 2>&1; then' "$ROOT_DIR/linuxutils/launchers.lua" "bluetooth terminal fallback guard"
+require_grep 'elif command -v upower >/dev/null 2>&1 && command -v x-terminal-emulator >/dev/null 2>&1; then' "$ROOT_DIR/linuxutils/launchers.lua" "power terminal fallback guard"
+require_grep 'title = "Calendar Utility Missing"' "$ROOT_DIR/linuxutils/launchers.lua" "calendar launcher warning"
+require_grep 'title = "Thunderbird Calendar Missing"' "$ROOT_DIR/linuxutils/launchers.lua" "thunderbird calendar warning"
 require_grep 'create_applications_widget' "$ROOT_DIR/linuxutils/widgets.lua" "applications widget"
 require_grep 'APPIMAGE_ONLY=1' "$ROOT_DIR/scripts/awesome_program_launcher.sh" "AppImage-only launcher mode"
+require_grep 'LINUXUTILITIES_DIR' "$ROOT_DIR/linuxutils/presenter.lua" "presenter workspace override"
+if rg -q --fixed-strings '$HOME/Workspace/LinuxUtilities/build/bin/linux_control_center' "$ROOT_DIR/linuxutils/launchers.lua"; then
+    fail "hard-coded LinuxUtilities control-center path is still present"
+fi
+if rg -q --fixed-strings '$HOME/Workspace/LinuxUtilities/build/bin/cursor_spotlight' "$ROOT_DIR/linuxutils/presenter.lua"; then
+    fail "hard-coded cursor_spotlight path is still present"
+fi
+if rg -q --fixed-strings 'script="$HOME/Workspace/LinuxUtilities/presenter_dash.sh"' "$ROOT_DIR/linuxutils/presenter.lua"; then
+    fail "hard-coded presenter_dash path is still present"
+fi
 
 echo "[awesome-test] Brightness + presenter bindings"
 require_grep '"XF86MonBrightnessUp"' "$ROOT_DIR/linuxutils/bindings.lua" "brightness up binding"

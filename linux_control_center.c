@@ -157,6 +157,9 @@ typedef struct {
     GtkWidget *notebook;
     GtkWidget *global_status;
     gint screenshots_page;
+    gint audio_page;
+    gint connectivity_page;
+    gchar *initial_panel;
 
     gchar *launch_dir;
     gchar *shots_dir;
@@ -1014,11 +1017,16 @@ static void gtk4_apply_theme(gboolean dark) {
 
 static void gtk4_apply_css(Gtk4State *state) {
     static const gchar *css =
-        ".lcu-root { background: #0a1324; color: #d8e8ff; }\n"
-        ".lcu-header { background: #101d31; border-bottom: 1px solid rgba(130,170,220,0.20); padding: 10px; }\n"
+        "window { background: rgba(5,12,23,0.96); }\n"
+        ".lcu-root { background: linear-gradient(145deg, rgba(8,19,36,0.96), rgba(13,29,50,0.92)); color: #d8e8ff; }\n"
+        ".lcu-header { background: rgba(12,27,47,0.82); border-bottom: 1px solid rgba(130,190,235,0.24); padding: 12px; }\n"
         ".lcu-title { font-weight: 700; font-size: 18px; }\n"
-        ".lcu-panel { background: rgba(20,34,56,0.74); border: 1px solid rgba(120,170,230,0.20); border-radius: 10px; padding: 10px; }\n"
-        ".lcu-surface { background: #16243a; border: 1px solid rgba(120,170,230,0.25); border-radius: 8px; }\n"
+        ".lcu-panel { background: rgba(17,35,58,0.68); border: 1px solid rgba(120,190,235,0.24); border-radius: 14px; padding: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.20); }\n"
+        ".lcu-surface { background: rgba(8,23,40,0.72); border: 1px solid rgba(120,190,235,0.24); border-radius: 12px; }\n"
+        ".lcu-section-label { color: #75d7ff; font-family: monospace; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; margin-top: 8px; }\n"
+        ".lcu-audio-hero { background: linear-gradient(110deg, rgba(25,72,105,0.78), rgba(20,43,69,0.72)); border: 1px solid rgba(111,212,255,0.42); border-radius: 14px; padding: 14px; }\n"
+        "button.lcu-primary-action { background: #70d5ff; color: #071521; border: 1px solid #a7e7ff; border-radius: 9px; font-weight: 800; padding: 9px 14px; }\n"
+        "button.lcu-primary-action:hover { background: #a7e7ff; }\n"
         ".dim-label { color: #9bb6d5; }\n"
         ".shortcut-content { background: transparent; }\n"
         ".shortcut-h1 { color: #d6ebff; font-weight: 700; font-size: 17px; margin-top: 2px; }\n"
@@ -1139,6 +1147,97 @@ static GPtrArray *gtk4_selected_paths(Gtk4State *state) {
     g_list_free(selected);
 
     return paths;
+}
+
+static gboolean gtk4_set_clipboard_text(Gtk4State *state, const gchar *text) {
+    GdkDisplay *display = NULL;
+    GdkClipboard *clipboard = NULL;
+    GdkClipboard *primary = NULL;
+
+    if (!text || *text == '\0') {
+        return FALSE;
+    }
+
+    display = state && state->window ? gtk_widget_get_display(state->window) : gdk_display_get_default();
+    if (!display) {
+        return FALSE;
+    }
+
+    clipboard = gdk_display_get_clipboard(display);
+    if (clipboard) {
+        gdk_clipboard_set_text(clipboard, text);
+    }
+
+    primary = gdk_display_get_primary_clipboard(display);
+    if (primary) {
+        gdk_clipboard_set_text(primary, text);
+    }
+
+    return clipboard != NULL || primary != NULL;
+}
+
+static gchar *gtk4_selected_paths_text(GPtrArray *paths) {
+    GString *text = g_string_new(NULL);
+
+    if (!paths) {
+        return g_string_free(text, FALSE);
+    }
+
+    for (guint i = 0; i < paths->len; i += 1) {
+        const gchar *path = g_ptr_array_index(paths, i);
+        g_string_append(text, path ? path : "");
+        if (i + 1 < paths->len) {
+            g_string_append_c(text, '\n');
+        }
+    }
+
+    return g_string_free(text, FALSE);
+}
+
+static gchar *gtk4_selected_prompt_text(GPtrArray *paths) {
+    GString *text = g_string_new("Please analyze these files:");
+
+    if (!paths) {
+        return g_string_free(text, FALSE);
+    }
+
+    for (guint i = 0; i < paths->len; i += 1) {
+        const gchar *path = g_ptr_array_index(paths, i);
+        g_string_append_printf(text, "\n @%s", path ? path : "");
+    }
+
+    return g_string_free(text, FALSE);
+}
+
+static void gtk4_copy_selected_payload(Gtk4State *state, gboolean prompt_mode) {
+    GPtrArray *paths = gtk4_selected_paths(state);
+    gchar *payload = NULL;
+
+    if (!state) {
+        g_ptr_array_free(paths, TRUE);
+        return;
+    }
+
+    if (paths->len == 0) {
+        gtk4_set_status(state->status_label,
+                        prompt_mode ? "Select image(s) to build a prompt." : "Select one or more images first.",
+                        "No images selected.");
+        g_ptr_array_free(paths, TRUE);
+        return;
+    }
+
+    payload = prompt_mode ? gtk4_selected_prompt_text(paths) : gtk4_selected_paths_text(paths);
+    if (gtk4_set_clipboard_text(state, payload)) {
+        gtk4_set_status(state->status_label,
+                        prompt_mode ? "Copied AI prompt to clipboard and primary selection."
+                                    : "Copied full path(s) to clipboard and primary selection.",
+                        "Copied.");
+    } else {
+        gtk4_set_status(state->status_label, "Clipboard unavailable in this session.", "Copy failed.");
+    }
+
+    g_free(payload);
+    g_ptr_array_free(paths, TRUE);
 }
 
 static void gtk4_update_selection_ui(Gtk4State *state) {
@@ -3441,6 +3540,7 @@ static void gtk4_reload(Gtk4State *state) {
         status = g_strdup_printf("No images found in %s", state->shots_dir);
         state->screenshots_loaded = TRUE;
         g_ptr_array_free(entries, TRUE);
+        entries = NULL;
     } else {
         status = g_strdup_printf("Queued %u image(s) from %s", entries->len, state->shots_dir);
         state->thumb_entries_pending = entries;
@@ -3645,7 +3745,7 @@ static void gtk4_audio_refresh(Gtk4State *state) {
         gtk4_set_text_view_text(state->audio_details, "Refreshing audio routing details...");
     }
     gtk4_repo_capture_async(state,
-                            "./scripts/audio_source_route.sh gui-summary",
+                            "./scripts/audio_bt_profile.sh gui-summary; printf '\\nINPUT ROUTING\\n'; ./scripts/audio_source_route.sh gui-summary",
                             "Audio routing details unavailable.",
                             NULL,
                             NULL,
@@ -4574,6 +4674,7 @@ static GtkWidget *gtk4_build_audio_tab(Gtk4State *state) {
     GtkWidget *root = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
     GtkWidget *title = gtk_label_new("Audio Control");
     GtkWidget *panel = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    GtkWidget *hero = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
     GtkWidget *status = gtk_label_new("Audio ready.");
     GtkWidget *scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 150, 1);
     GtkWidget *buttons = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
@@ -4595,22 +4696,35 @@ static GtkWidget *gtk4_build_audio_tab(Gtk4State *state) {
     GtkWidget *mic_status = gtk_button_new_with_label("Mic Routing Status");
     GtkWidget *bt_mic_mode = gtk_button_new_with_label("BT Mic Mode");
     GtkWidget *bt_music_mode = gtk_button_new_with_label("BT Music Mode");
-    GtkWidget *bt_recover = gtk_button_new_with_label("Recover BT Audio");
+    GtkWidget *bt_auto_start = gtk_button_new_with_label("Enable Automatic Switching");
+    GtkWidget *bt_auto_stop = gtk_button_new_with_label("Disable Automatic Switching");
+    GtkWidget *bt_recover = gtk_button_new_with_label("Fix Headset Now");
     GtkWidget *bt_status = gtk_button_new_with_label("BT Status");
     GtkWidget *bt_help = gtk_button_new_with_label("Mic Help");
     GtkWidget *mic_note = gtk_label_new("Audacity, Teams, and browsers record from the current default input. Use External Mic, then Route Audacity / Teams, or leave Auto Mic Route On.");
-    GtkWidget *bt_note = gtk_label_new("A2DP = music quality/no mic. HFP/HSP = mic enabled/lower speaker quality. If the headset is connected but silent, use Recover BT Audio.");
+    GtkWidget *bt_note = gtk_label_new("LinuxUtilities keeps music in high-quality A2DP, switches to the Sony microphone and call output while recording, then restores music automatically. Use Fix Headset Now if a meeting cannot hear you.");
+    GtkWidget *auto_label = gtk_label_new("AUTOMATIC HEADSET");
+    GtkWidget *input_label = gtk_label_new("INPUT ROUTING");
+    GtkWidget *manual_label = gtk_label_new("LIVE STATUS");
 
     gtk_widget_set_margin_top(root, 12);
     gtk_widget_set_margin_bottom(root, 12);
     gtk_widget_set_margin_start(root, 12);
     gtk_widget_set_margin_end(root, 12);
     gtk_widget_add_css_class(panel, "lcu-panel");
+    gtk_widget_add_css_class(hero, "lcu-audio-hero");
+    gtk_widget_add_css_class(bt_recover, "lcu-primary-action");
+    gtk_widget_add_css_class(auto_label, "lcu-section-label");
+    gtk_widget_add_css_class(input_label, "lcu-section-label");
+    gtk_widget_add_css_class(manual_label, "lcu-section-label");
     gtk_widget_add_css_class(title, "title-2");
     gtk_label_set_xalign(GTK_LABEL(title), 0.0f);
     gtk_label_set_xalign(GTK_LABEL(status), 0.0f);
     gtk_label_set_xalign(GTK_LABEL(mic_note), 0.0f);
     gtk_label_set_xalign(GTK_LABEL(bt_note), 0.0f);
+    gtk_label_set_xalign(GTK_LABEL(auto_label), 0.0f);
+    gtk_label_set_xalign(GTK_LABEL(input_label), 0.0f);
+    gtk_label_set_xalign(GTK_LABEL(manual_label), 0.0f);
     gtk_label_set_wrap(GTK_LABEL(mic_note), TRUE);
     gtk_label_set_wrap(GTK_LABEL(bt_note), TRUE);
     gtk_widget_add_css_class(mic_note, "dim-label");
@@ -4644,19 +4758,25 @@ static GtkWidget *gtk4_build_audio_tab(Gtk4State *state) {
     gtk_grid_attach(GTK_GRID(mic_grid), mic_auto_start, 0, 1, 1, 1);
     gtk_grid_attach(GTK_GRID(mic_grid), mic_auto_stop, 1, 1, 1, 1);
     gtk_grid_attach(GTK_GRID(mic_grid), mic_status, 2, 1, 1, 1);
-    gtk_grid_attach(GTK_GRID(bt_grid), bt_mic_mode, 0, 0, 1, 1);
-    gtk_grid_attach(GTK_GRID(bt_grid), bt_music_mode, 1, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(bt_grid), bt_auto_start, 0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(bt_grid), bt_auto_stop, 1, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(bt_grid), bt_recover, 2, 0, 1, 1);
-    gtk_grid_attach(GTK_GRID(bt_grid), bt_status, 0, 1, 1, 1);
-    gtk_grid_attach(GTK_GRID(bt_grid), bt_help, 1, 1, 2, 1);
+    gtk_grid_attach(GTK_GRID(bt_grid), bt_mic_mode, 0, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(bt_grid), bt_music_mode, 1, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(bt_grid), bt_status, 2, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(bt_grid), bt_help, 2, 2, 1, 1);
 
-    gtk_box_append(GTK_BOX(panel), status);
-    gtk_box_append(GTK_BOX(panel), scale);
-    gtk_box_append(GTK_BOX(panel), buttons);
-    gtk_box_append(GTK_BOX(panel), mic_grid);
-    gtk_box_append(GTK_BOX(panel), mic_note);
+    gtk_box_append(GTK_BOX(hero), status);
+    gtk_box_append(GTK_BOX(hero), scale);
+    gtk_box_append(GTK_BOX(hero), buttons);
+    gtk_box_append(GTK_BOX(panel), hero);
+    gtk_box_append(GTK_BOX(panel), auto_label);
     gtk_box_append(GTK_BOX(panel), bt_grid);
     gtk_box_append(GTK_BOX(panel), bt_note);
+    gtk_box_append(GTK_BOX(panel), input_label);
+    gtk_box_append(GTK_BOX(panel), mic_grid);
+    gtk_box_append(GTK_BOX(panel), mic_note);
+    gtk_box_append(GTK_BOX(panel), manual_label);
     gtk_box_append(GTK_BOX(panel), details_scroll);
     gtk_box_append(GTK_BOX(root), title);
     gtk_box_append(GTK_BOX(root), panel);
@@ -4688,14 +4808,20 @@ static GtkWidget *gtk4_build_audio_tab(Gtk4State *state) {
     g_object_set_data(G_OBJECT(bt_mic_mode), "bt-audio-status", "Requested Bluetooth mic mode (HFP/HSP).");
     g_object_set_data(G_OBJECT(bt_music_mode), "bt-audio-mode", "music-mode");
     g_object_set_data(G_OBJECT(bt_music_mode), "bt-audio-status", "Requested Bluetooth music mode (A2DP).");
-    g_object_set_data(G_OBJECT(bt_recover), "bt-audio-mode", "recover");
-    g_object_set_data(G_OBJECT(bt_recover), "bt-audio-status", "Bluetooth audio recovery started.");
+    g_object_set_data(G_OBJECT(bt_auto_start), "bt-audio-mode", "auto-start");
+    g_object_set_data(G_OBJECT(bt_auto_start), "bt-audio-status", "Automatic call/music switching enabled.");
+    g_object_set_data(G_OBJECT(bt_auto_stop), "bt-audio-mode", "auto-stop");
+    g_object_set_data(G_OBJECT(bt_auto_stop), "bt-audio-status", "Automatic call/music switching disabled.");
+    g_object_set_data(G_OBJECT(bt_recover), "bt-audio-mode", "repair");
+    g_object_set_data(G_OBJECT(bt_recover), "bt-audio-status", "Headset repair and automatic routing started.");
     g_object_set_data(G_OBJECT(bt_status), "bt-audio-mode", "status");
     g_object_set_data(G_OBJECT(bt_status), "bt-audio-status", "Opening Bluetooth audio status...");
     g_object_set_data(G_OBJECT(bt_help), "bt-audio-mode", "help");
     g_object_set_data(G_OBJECT(bt_help), "bt-audio-status", "Opening microphone help...");
     g_signal_connect(bt_mic_mode, "clicked", G_CALLBACK(gtk4_on_audio_bt_profile_action), state);
     g_signal_connect(bt_music_mode, "clicked", G_CALLBACK(gtk4_on_audio_bt_profile_action), state);
+    g_signal_connect(bt_auto_start, "clicked", G_CALLBACK(gtk4_on_audio_bt_profile_action), state);
+    g_signal_connect(bt_auto_stop, "clicked", G_CALLBACK(gtk4_on_audio_bt_profile_action), state);
     g_signal_connect(bt_recover, "clicked", G_CALLBACK(gtk4_on_audio_bt_profile_action), state);
     g_signal_connect(bt_status, "clicked", G_CALLBACK(gtk4_on_audio_bt_profile_action), state);
     g_signal_connect(bt_help, "clicked", G_CALLBACK(gtk4_on_audio_bt_profile_action), state);
@@ -4888,6 +5014,64 @@ static GtkWidget *gtk4_build_deps_tab(Gtk4State *state) {
     return root;
 }
 
+static GtkWidget *gtk4_build_connectivity_tab(Gtk4State *state) {
+    GtkWidget *root = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
+    GtkWidget *title = gtk_label_new("Connectivity");
+    GtkWidget *intro = gtk_label_new("NetworkManager, BlueZ, PipeWire and Tailscale remain the system authorities. This panel provides one clear operational surface above them.");
+    GtkWidget *grid = gtk_grid_new();
+    gchar *cmd_bt_refresh = gtk4_repo_shell(state, "./scripts/bluetooth_refresh.sh refresh");
+    gchar *cmd_audio_recover = gtk4_repo_shell(state, "./scripts/audio_bt_profile.sh recover");
+    const gchar *terminal = "x-terminal-emulator -e";
+
+    gtk_widget_set_margin_top(root, 16);
+    gtk_widget_set_margin_bottom(root, 16);
+    gtk_widget_set_margin_start(root, 16);
+    gtk_widget_set_margin_end(root, 16);
+    gtk_widget_add_css_class(title, "title-2");
+    gtk_label_set_xalign(GTK_LABEL(title), 0.0f);
+    gtk_label_set_xalign(GTK_LABEL(intro), 0.0f);
+    gtk_label_set_wrap(GTK_LABEL(intro), TRUE);
+    gtk_widget_add_css_class(intro, "dim-label");
+    gtk_grid_set_row_spacing(GTK_GRID(grid), 10);
+    gtk_grid_set_column_spacing(GTK_GRID(grid), 10);
+    gtk_widget_set_hexpand(grid, TRUE);
+
+    gtk_grid_attach(GTK_GRID(grid), gtk4_make_utility_button(
+        state, "Wi-Fi and Ethernet", "Edit saved connections, enterprise Wi-Fi, DNS and interface settings.",
+        "nm-connection-editor", "Opening NetworkManager connections..."), 0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), gtk4_make_utility_button(
+        state, "Nearby Wi-Fi", "Browse and connect without remembering nmcli syntax.",
+        "x-terminal-emulator -e nmtui-connect", "Opening the Wi-Fi picker..."), 1, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), gtk4_make_utility_button(
+        state, "Bluetooth Devices", "Pair, connect, recover and inspect headset behavior.",
+        "internal:bluetooth-center", "Opening Bluetooth controls..."), 0, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), gtk4_make_utility_button(
+        state, "Refresh Bluetooth", "Reconnect trusted audio devices without restarting the desktop.",
+        cmd_bt_refresh, "Bluetooth refresh started."), 1, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), gtk4_make_utility_button(
+        state, "Repair Headset", "Recover PipeWire, restore the active profile and move existing streams.",
+        cmd_audio_recover, "Headset recovery started."), 0, 2, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), gtk4_make_utility_button(
+        state, "Tailscale", "Inspect this node, peers, routes and current connectivity.",
+        "x-terminal-emulator -e sh -lc 'tailscale status; echo; tailscale netcheck; echo; read -n1 -rsp \"Press any key to close...\"'",
+        "Opening Tailscale status..."), 1, 2, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), gtk4_make_utility_button(
+        state, "Network Diagnostics", "Inspect addresses, routes, DNS and NetworkManager connectivity.",
+        "x-terminal-emulator -e sh -lc 'nmcli general status; echo; ip -brief address; echo; ip route; echo; resolvectl status 2>/dev/null | sed -n \"1,100p\"; echo; read -n1 -rsp \"Press any key to close...\"'",
+        "Opening network diagnostics..."), 0, 3, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), gtk4_make_utility_button(
+        state, "Audio Mixer", "Select output, microphone, profiles and per-application routing.",
+        "pavucontrol", "Opening audio controls..."), 1, 3, 1, 1);
+
+    gtk_box_append(GTK_BOX(root), title);
+    gtk_box_append(GTK_BOX(root), intro);
+    gtk_box_append(GTK_BOX(root), grid);
+    g_free(cmd_bt_refresh);
+    g_free(cmd_audio_recover);
+    (void)terminal;
+    return root;
+}
+
 static GtkWidget *gtk4_build_utilities_tab(Gtk4State *state) {
     GtkWidget *root = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
     GtkWidget *title = gtk_label_new("Utilities");
@@ -4916,15 +5100,19 @@ static GtkWidget *gtk4_build_utilities_tab(Gtk4State *state) {
     gchar *cmd_manim_smoke = gtk4_repo_shell(state, "./manim_tools.sh term-smoke");
     gchar *cmd_bt_refresh = gtk4_repo_shell(state, "./scripts/bluetooth_refresh.sh refresh");
     gchar *cmd_bt_ui_reset = gtk4_repo_shell(state, "./scripts/bluetooth_refresh.sh ui");
-    GtkWidget *buttons[28];
-    const gchar *titles[28] = {
+    gchar *cmd_mindmap = gtk4_repo_shell(state, "./scripts/open_mindmap.sh");
+    gchar *cmd_xclip_cleanup = gtk4_repo_shell(state, "./scripts/xclip_cleanup.sh");
+    gchar *cmd_x11_clipboard_recover = gtk4_repo_shell(state, "./scripts/x11_clipboard_recover.sh");
+    GtkWidget *buttons[31];
+    const gchar *titles[31] = {
         "Pavucontrol", "CC Switch", "Flameshot", "Network", "Bluetooth", "Bluetooth Refresh",
         "Bluetooth UI Reset", "Workspace", "Screenshots", "Terminator", "Cursor Spotlight", "Build Spotlight",
         "Gromit Draw", "Gromit Clear", "Dash Anchor", "Dash Segment", "Dot Segment", "Arrow Segment",
         "Install Gromit Profile", "Shortcut Cheat Sheet", "Teleprompter", "Presenter Canvas", "Storyboard DSL",
-        "Presentation Prep", "Presentation Live", "Manim Workspace", "Manim Version", "Manim Smoke"
+        "Presentation Prep", "Presentation Live", "Manim Workspace", "Manim Version", "Manim Smoke",
+        "Mind Map", "XClip Cleanup", "X11 Clipboard Fix"
     };
-    const gchar *subs[28] = {
+    const gchar *subs[31] = {
         "Audio mixer and routing", "Project/context switch helper", "Capture area screenshot", "Connection editor and details",
         "Devices and pairing", "Soft reset adapter + reconnect paired audio", "Restart Blueman tray + manager",
         "Open LinuxUtilities folder", "Open Screenshots folder", "Open terminal workspace",
@@ -4935,12 +5123,16 @@ static GtkWidget *gtk4_build_utilities_tab(Gtk4State *state) {
         "Open timeline parser/player for scripted animation scenes",
         "One-click prep profile: audio + bluetooth + wacom + support apps",
         "Prep profile + launch reveal/canvas workflow",
-        "Open ~/Workspace/manim with venv activated", "Run manim --version in terminal", "Render smoke.py Smoke in terminal"
+        "Open ~/Workspace/manim with venv activated", "Run manim --version in terminal", "Render smoke.py Smoke in terminal",
+        "Open .mm mind maps with Freeplane",
+        "Kill stale xclip/xsel clipboard owners that consume X11 clients",
+        "Recover xclip/xsel and stale UI helpers after X11 client-limit errors"
     };
-    const gchar *cmds[28] = {
+    const gchar *cmds[31] = {
         "pavucontrol", "bash -lc \"command -v cc-switch >/dev/null 2>&1 && cc-switch || true\"",
         "flameshot gui", "nm-connection-editor", "internal:bluetooth-center", NULL, NULL, NULL, NULL, "terminator",
-        NULL, NULL, "gromit-mpx --toggle", "gromit-mpx --clear", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+        NULL, NULL, "gromit-mpx --toggle", "gromit-mpx --clear", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+        NULL, NULL, NULL
     };
 
     gtk_widget_set_margin_top(root, 12);
@@ -4956,7 +5148,7 @@ static GtkWidget *gtk4_build_utilities_tab(Gtk4State *state) {
     gtk_widget_set_vexpand(scroll, TRUE);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), grid);
 
-    for (gint i = 0; i < 28; i += 1) {
+    for (gint i = 0; i < 31; i += 1) {
         const gchar *command = cmds[i];
         if (i == 5) {
             command = cmd_bt_refresh;
@@ -4998,6 +5190,12 @@ static GtkWidget *gtk4_build_utilities_tab(Gtk4State *state) {
             command = cmd_manim_version;
         } else if (i == 27) {
             command = cmd_manim_smoke;
+        } else if (i == 28) {
+            command = cmd_mindmap;
+        } else if (i == 29) {
+            command = cmd_xclip_cleanup;
+        } else if (i == 30) {
+            command = cmd_x11_clipboard_recover;
         }
         buttons[i] = gtk4_make_utility_button(state, titles[i], subs[i], command, titles[i]);
         gtk_grid_attach(GTK_GRID(grid), buttons[i], i % 2, i / 2, 1, 1);
@@ -5029,6 +5227,9 @@ static GtkWidget *gtk4_build_utilities_tab(Gtk4State *state) {
     g_free(cmd_manim_smoke);
     g_free(cmd_bt_refresh);
     g_free(cmd_bt_ui_reset);
+    g_free(cmd_mindmap);
+    g_free(cmd_xclip_cleanup);
+    g_free(cmd_x11_clipboard_recover);
     return root;
 }
 
@@ -5145,6 +5346,16 @@ static void gtk4_on_open_folder_clicked(GtkButton *button, gpointer user_data) {
     gtk4_spawn_with_feedback(state, cmd, "Opening screenshots folder...");
     g_free(cmd);
     g_free(quoted);
+}
+
+static void gtk4_on_copy_paths_clicked(GtkButton *button, gpointer user_data) {
+    (void)button;
+    gtk4_copy_selected_payload(user_data, FALSE);
+}
+
+static void gtk4_on_copy_prompt_clicked(GtkButton *button, gpointer user_data) {
+    (void)button;
+    gtk4_copy_selected_payload(user_data, TRUE);
 }
 
 static void gtk4_on_delete_clicked(GtkButton *button, gpointer user_data) {
@@ -5273,6 +5484,8 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     GtkWidget *btn_edit = gtk_button_new_with_label("Edit Selected");
     GtkWidget *btn_refresh = gtk_button_new_with_label("Refresh");
     GtkWidget *btn_open_folder = gtk_button_new_with_label("Open Folder");
+    GtkWidget *btn_copy_paths = gtk_button_new_with_label("Copy Path(s)");
+    GtkWidget *btn_copy_prompt = gtk_button_new_with_label("Copy Prompt");
     GtkWidget *btn_delete = gtk_button_new_with_label("Delete Selected");
     GtkWidget *search = gtk_search_entry_new();
     GtkWidget *split = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
@@ -5459,6 +5672,8 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     gtk_box_append(GTK_BOX(toolbar), btn_capture);
     gtk_box_append(GTK_BOX(toolbar), btn_edit);
     gtk_box_append(GTK_BOX(toolbar), btn_open_folder);
+    gtk_box_append(GTK_BOX(toolbar), btn_copy_paths);
+    gtk_box_append(GTK_BOX(toolbar), btn_copy_prompt);
     gtk_box_append(GTK_BOX(toolbar), btn_delete);
     gtk_box_append(GTK_BOX(toolbar), btn_refresh);
     gtk_box_append(GTK_BOX(toolbar), search);
@@ -5700,7 +5915,7 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
         gtk_drop_down_set_selected(GTK_DROP_DOWN(arrow_style_combo), 0);
         gtk_range_set_value(GTK_RANGE(arrow_head_scale), 16.0);
         gtk_range_set_value(GTK_RANGE(arrow_angle_scale), 26.0);
-        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(arrow_shadow_check), FALSE);
+        gtk_check_button_set_active(GTK_CHECK_BUTTON(arrow_shadow_check), FALSE);
         gtk_range_set_value(GTK_RANGE(arrow_shadow_offset_scale), 3.0);
         gtk_label_set_xalign(GTK_LABEL(l1), 0.0f);
         gtk_label_set_xalign(GTK_LABEL(l2), 0.0f);
@@ -5733,10 +5948,10 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
         GtkWidget *l1 = gtk_label_new("Rectangle options");
         GtkWidget *l2 = gtk_label_new("Rectangle fill opacity");
         GtkWidget *l3 = gtk_label_new("Use Stroke slider for border width.");
-        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(rect_round_check), FALSE);
-        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(rect_fill_check), FALSE);
+        gtk_check_button_set_active(GTK_CHECK_BUTTON(rect_round_check), FALSE);
+        gtk_check_button_set_active(GTK_CHECK_BUTTON(rect_fill_check), FALSE);
         gtk_range_set_value(GTK_RANGE(rect_fill_scale), 0.24);
-        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(rect_shadow_check), FALSE);
+        gtk_check_button_set_active(GTK_CHECK_BUTTON(rect_shadow_check), FALSE);
         gtk_label_set_xalign(GTK_LABEL(l1), 0.0f);
         gtk_label_set_xalign(GTK_LABEL(l2), 0.0f);
         gtk_label_set_xalign(GTK_LABEL(l3), 0.0f);
@@ -5754,9 +5969,9 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
         GtkWidget *l2 = gtk_label_new("Callout fill opacity");
         GtkWidget *l3 = gtk_label_new("Use Stroke slider for outline width.");
         gtk_drop_down_set_selected(GTK_DROP_DOWN(callout_style_combo), 0);
-        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(callout_fill_check), FALSE);
+        gtk_check_button_set_active(GTK_CHECK_BUTTON(callout_fill_check), FALSE);
         gtk_range_set_value(GTK_RANGE(callout_fill_scale), 0.24);
-        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(callout_shadow_check), FALSE);
+        gtk_check_button_set_active(GTK_CHECK_BUTTON(callout_shadow_check), FALSE);
         gtk_label_set_xalign(GTK_LABEL(l1), 0.0f);
         gtk_label_set_xalign(GTK_LABEL(l2), 0.0f);
         gtk_label_set_xalign(GTK_LABEL(l3), 0.0f);
@@ -5783,9 +5998,9 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
         gtk_scale_set_draw_value(GTK_SCALE(font_size_scale), TRUE);
         gtk_range_set_value(GTK_RANGE(text_stroke_scale), 2.0);
         gtk_scale_set_draw_value(GTK_SCALE(text_stroke_scale), TRUE);
-        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(text_fill_check), TRUE);
-        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(text_stroke_check), FALSE);
-        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(text_shadow_check), TRUE);
+        gtk_check_button_set_active(GTK_CHECK_BUTTON(text_fill_check), TRUE);
+        gtk_check_button_set_active(GTK_CHECK_BUTTON(text_stroke_check), FALSE);
+        gtk_check_button_set_active(GTK_CHECK_BUTTON(text_shadow_check), TRUE);
         gtk_label_set_xalign(GTK_LABEL(l1), 0.0f);
         gtk_label_set_xalign(GTK_LABEL(l2), 0.0f);
         gtk_label_set_xalign(GTK_LABEL(l3), 0.0f);
@@ -5807,8 +6022,8 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
         GtkWidget *l1 = gtk_label_new("Stamp value");
         GtkWidget *l2 = gtk_label_new("Use Auto for incremental step numbers.");
         gtk_drop_down_set_selected(GTK_DROP_DOWN(stamp_combo), 0);
-        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(auto_step_check), TRUE);
-        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(link_step_check), FALSE);
+        gtk_check_button_set_active(GTK_CHECK_BUTTON(auto_step_check), TRUE);
+        gtk_check_button_set_active(GTK_CHECK_BUTTON(link_step_check), FALSE);
         gtk_label_set_xalign(GTK_LABEL(l1), 0.0f);
         gtk_label_set_xalign(GTK_LABEL(l2), 0.0f);
         gtk_label_set_xalign(GTK_LABEL(step_label), 0.0f);
@@ -5973,6 +6188,8 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     g_signal_connect(btn_edit, "clicked", G_CALLBACK(gtk4_on_edit_selected_clicked), state);
     g_signal_connect(btn_refresh, "clicked", G_CALLBACK(gtk4_on_refresh_clicked), state);
     g_signal_connect(btn_open_folder, "clicked", G_CALLBACK(gtk4_on_open_folder_clicked), state);
+    g_signal_connect(btn_copy_paths, "clicked", G_CALLBACK(gtk4_on_copy_paths_clicked), state);
+    g_signal_connect(btn_copy_prompt, "clicked", G_CALLBACK(gtk4_on_copy_prompt_clicked), state);
     g_signal_connect(btn_delete, "clicked", G_CALLBACK(gtk4_on_delete_clicked), state);
     g_signal_connect(btn_dock_toggle, "clicked", G_CALLBACK(gtk4_on_dock_toggle_clicked), state);
     g_signal_connect(dock_width_scale, "value-changed", G_CALLBACK(gtk4_on_dock_width_changed), state);
@@ -6105,6 +6322,7 @@ static GtkWidget *gtk4_build_ui(Gtk4State *state) {
     GtkWidget *global_status = gtk_label_new("Ready.");
     GtkWidget *tab_night = gtk4_build_night_tab(state);
     GtkWidget *tab_audio = gtk4_build_audio_tab(state);
+    GtkWidget *tab_connectivity = gtk4_build_connectivity_tab(state);
     GtkWidget *tab_storage = gtk4_build_storage_tab(state);
     GtkWidget *tab_deps = gtk4_build_deps_tab(state);
     GtkWidget *tab_utils = gtk4_build_utilities_tab(state);
@@ -6132,14 +6350,23 @@ static GtkWidget *gtk4_build_ui(Gtk4State *state) {
     gtk_box_append(GTK_BOX(header), theme_dd);
 
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_night, gtk_label_new("Night Light"));
-    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_audio, gtk_label_new("Audio"));
+    state->audio_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_audio, gtk_label_new("Audio"));
+    state->connectivity_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_connectivity, gtk_label_new("Connectivity"));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_storage, gtk_label_new("Drives"));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_deps, gtk_label_new("Dependencies"));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_utils, gtk_label_new("Utilities"));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_commands, gtk_label_new("Commands"));
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_shortcuts, gtk_label_new("Shortcuts"));
     state->screenshots_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_screens, gtk_label_new("Screenshots"));
-    gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), state->screenshots_page);
+    if (g_strcmp0(state->initial_panel, "audio") == 0 ||
+        g_strcmp0(state->initial_panel, "bluetooth") == 0) {
+        gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), state->audio_page);
+    } else if (g_strcmp0(state->initial_panel, "network") == 0 ||
+               g_strcmp0(state->initial_panel, "connectivity") == 0) {
+        gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), state->connectivity_page);
+    } else {
+        gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), state->screenshots_page);
+    }
     gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook), TRUE);
     gtk_widget_set_hexpand(notebook, TRUE);
     gtk_widget_set_vexpand(notebook, TRUE);
@@ -6169,6 +6396,9 @@ static gboolean gtk4_post_activate_idle(gpointer data) {
     gtk4_audio_refresh(state);
     gtk4_storage_refresh(state);
     gtk4_deps_refresh(state);
+    if (g_strcmp0(state->initial_panel, "bluetooth") == 0) {
+        gtk4_open_bluetooth_center(state);
+    }
     return G_SOURCE_REMOVE;
 }
 
@@ -6217,6 +6447,7 @@ static void gtk4_state_free(Gtk4State *state) {
     g_free(state->launch_dir);
     g_free(state->shots_dir);
     g_free(state->editor_image_path);
+    g_free(state->initial_panel);
     g_free(state->ui_state_file);
     g_free(state);
 }
@@ -6226,7 +6457,7 @@ static void gtk4_on_activate(GtkApplication *app, gpointer user_data) {
     GtkWidget *root = NULL;
 
     state->window = gtk_application_window_new(app);
-    gtk_window_set_title(GTK_WINDOW(state->window), "Linux Utilities Control Center (GTK4 Tabs Fix)");
+    gtk_window_set_title(GTK_WINDOW(state->window), "LinuxUtilities Control Center");
     gtk_window_set_default_size(GTK_WINDOW(state->window), 1260, 820);
     state->marks = g_ptr_array_new_with_free_func(gtk4_free_mark);
     gtk4_apply_theme(TRUE);
@@ -6247,10 +6478,15 @@ int main(int argc, char **argv) {
     gchar *candidate_shots = NULL;
     gchar *argv0_only[] = { NULL, NULL };
 
-    if (argc > 1 && argv[1] && g_file_test(argv[1], G_FILE_TEST_IS_DIR)) {
-        target_dir = g_canonicalize_filename(argv[1], NULL);
-    } else {
-        target_dir = g_get_current_dir();
+    target_dir = g_get_current_dir();
+    for (gint i = 1; i < argc; i += 1) {
+        if (g_strcmp0(argv[i], "--panel") == 0 && i + 1 < argc) {
+            g_free(state->initial_panel);
+            state->initial_panel = g_ascii_strdown(argv[++i], -1);
+        } else if (g_file_test(argv[i], G_FILE_TEST_IS_DIR)) {
+            g_free(target_dir);
+            target_dir = g_canonicalize_filename(argv[i], NULL);
+        }
     }
     state->launch_dir = gtk4_resolve_launch_dir(argv[0], target_dir);
     target_basename = g_path_get_basename(target_dir);

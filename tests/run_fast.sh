@@ -18,6 +18,9 @@ for script in \
     install_gromit_profile.sh \
     scripts/audio_bt_profile.sh \
     scripts/audio_source_route.sh \
+    scripts/install_audio_service.sh \
+    scripts/install_device_event_service.sh \
+    scripts/device_event_bridge.sh \
     scripts/storage_drives.sh \
     scripts/bluetooth_refresh.sh \
     redshift.sh \

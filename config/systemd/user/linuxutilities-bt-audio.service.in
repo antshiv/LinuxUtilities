@@ -1,0 +1,14 @@
+[Unit]
+Description=LinuxUtilities automatic Bluetooth call/music routing
+After=pipewire.service pipewire-pulse.service wireplumber.service bluetooth.target
+Wants=pipewire.service pipewire-pulse.service wireplumber.service
+
+[Service]
+Type=simple
+ExecStart=@ROOT@/scripts/audio_bt_profile.sh auto-watch
+Restart=on-failure
+RestartSec=2
+Environment=AUDIO_BT_NOTIFY=1
+
+[Install]
+WantedBy=default.target

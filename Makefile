@@ -61,7 +61,7 @@ ifneq ($(HOST_SHORT),)
 -include config/host/$(HOST_SHORT).mk
 endif
 
-.PHONY: help rc-backup awesome-backup awesome-update awesome-user-backup awesome-user-update awesome-system-backup awesome-system-update awesome-test test-fast apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve present-live present-profile present-profile-live present-profile-list audio-help audio-status audio-bt-mic audio-bt-music audio-bt-recover audio-route-status audio-mic-external audio-mic-internal audio-route-recorders audio-route-auto-start audio-route-auto-stop drives-status drives-mount-external drives-open-external drives-unmount-external drives-eject-external drives-auto-start drives-auto-stop drives-samba-status drives-samba-guide shorts-help shorts-record shorts-transcribe shorts-render manim-help manim-version manim-smoke manim-scene manim-shell wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external samba-530-probe mount-530 umount-530 desktop-install
+.PHONY: help rc-backup awesome-backup awesome-update awesome-user-backup awesome-user-update awesome-system-backup awesome-system-update awesome-test test-fast apt-check apt-update deps-check-build deps-check-runtime deps-check build-all build-all-install linuxutils linuxutils-install docs docs-serve present-live present-profile present-profile-live present-profile-list audio-help audio-status audio-bt-mic audio-bt-music audio-bt-install audio-bt-auto-start audio-bt-auto-stop audio-bt-repair audio-bt-recover audio-route-status audio-mic-external audio-mic-internal audio-route-recorders audio-route-auto-start audio-route-auto-stop device-events-install device-events-status drives-status drives-mount-external drives-open-external drives-unmount-external drives-eject-external drives-auto-start drives-auto-stop drives-samba-status drives-samba-guide shorts-help shorts-record shorts-transcribe shorts-render manim-help manim-version manim-smoke manim-scene manim-shell wacom-help wacom wacom-list-outputs wacom-list-devices wacom-status wacom-set-screen wacom-switch wacom-hdmi wacom-external samba-530-probe mount-530 umount-530 desktop-install
 
 help:
 >@echo "Targets:"
@@ -94,6 +94,10 @@ help:
 >@echo "  make audio-status        Show Bluetooth card/profile + sink/source defaults"
 >@echo "  make audio-bt-mic        Switch BT headset to mic mode (HFP/HSP)"
 >@echo "  make audio-bt-music      Switch BT headset back to music mode (A2DP)"
+>@echo "  make audio-bt-install    Install persistent automatic Bluetooth routing service"
+>@echo "  make audio-bt-auto-start Automatically switch between Sony call/music profiles"
+>@echo "  make audio-bt-auto-stop  Disable automatic Bluetooth profile switching"
+>@echo "  make audio-bt-repair     One-command headset recovery for meetings"
 >@echo "  make audio-bt-recover    Recover silent BT headset playback after PipeWire/Bluetooth glitches"
 >@echo "  make audio-route-status  Show current mic routing + active recording apps"
 >@echo "  make audio-mic-external  Switch default input to detected external microphone"
@@ -101,6 +105,8 @@ help:
 >@echo "  make audio-route-recorders Move active recording apps to the current default input"
 >@echo "  make audio-route-auto-start Start background auto-routing for external mic plug/unplug"
 >@echo "  make audio-route-auto-stop Stop background auto-routing for external mic plug/unplug"
+>@echo "  make device-events-install Install the NetworkManager/BlueZ/PipeWire event bridge"
+>@echo "  make device-events-status  Show the last desktop device event"
 >@echo "  make drives-status       Show external-drive + Samba status summary"
 >@echo "  make drives-mount-external Mount all detected external USB partitions"
 >@echo "  make drives-open-external Mount + open the first detected external USB drive"
@@ -387,6 +393,18 @@ audio-bt-mic:
 audio-bt-music:
 >@BT_CARD="$(BT_CARD)" ./scripts/audio_bt_profile.sh music-mode
 
+audio-bt-install:
+>@./scripts/install_audio_service.sh
+
+audio-bt-auto-start:
+>@BT_CARD="$(BT_CARD)" BT_DEVICE="$(BT_DEVICE)" ./scripts/audio_bt_profile.sh auto-start
+
+audio-bt-auto-stop:
+>@./scripts/audio_bt_profile.sh auto-stop
+
+audio-bt-repair:
+>@BT_CARD="$(BT_CARD)" BT_DEVICE="$(BT_DEVICE)" ./scripts/audio_bt_profile.sh repair
+
 audio-bt-recover:
 >@BT_CARD="$(BT_CARD)" BT_DEVICE="$(BT_DEVICE)" ./scripts/audio_bt_profile.sh recover
 
@@ -407,6 +425,12 @@ audio-route-auto-start:
 
 audio-route-auto-stop:
 >@./scripts/audio_source_route.sh auto-stop
+
+device-events-install:
+>@./scripts/install_device_event_service.sh
+
+device-events-status:
+>@./scripts/device_event_bridge.sh status
 
 drives-status:
 >@./scripts/storage_drives.sh status

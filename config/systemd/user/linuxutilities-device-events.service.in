@@ -1,0 +1,13 @@
+[Unit]
+Description=LinuxUtilities event bridge for audio, Bluetooth, and network state
+After=pipewire-pulse.service wireplumber.service bluetooth.target NetworkManager.service
+Wants=pipewire-pulse.service wireplumber.service
+
+[Service]
+Type=simple
+ExecStart=@ROOT_DIR@/scripts/device_event_bridge.sh monitor
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

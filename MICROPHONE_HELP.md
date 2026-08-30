@@ -23,6 +23,15 @@ make audio-bt-mic
 # Return to high-quality playback profile (A2DP)
 make audio-bt-music
 
+# Recommended: switch automatically when recording starts/stops
+make audio-bt-auto-start
+
+# Install automatic switching persistently for every desktop login
+make audio-bt-install
+
+# Meeting-safe recovery: restart, reconnect, route, and resume automation
+make audio-bt-repair
+
 # Recover a silent BT headset after PipeWire/WirePlumber restart or OOM
 make audio-bt-recover
 
@@ -54,6 +63,7 @@ AUDIO_OUTPUT_SINK=alsa_output.pci-0000_00_1f.3.hdmi-stereo make audio-bt-mic
 ## Notes
 
 - Use `headset-head-unit-msbc` when available for better call quality.
+- Automatic mode keeps Sony playback in A2DP until an application records. It then selects the Sony microphone and duplex call output, moves existing streams, and restores A2DP after recording ends.
 - On some headsets, mic mode still sounds narrowband.
 - If the headset is still Bluetooth-connected but you get no sound, `make audio-bt-recover` is the fast recovery path. It restarts the user audio services, reconnects the headset, restores A2DP, and moves active playback streams back to the Bluetooth sink.
 - If no Bluetooth card appears, reconnect headset and run:

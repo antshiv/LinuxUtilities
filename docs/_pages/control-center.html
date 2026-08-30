@@ -57,6 +57,11 @@ gcc -o build/bin/linux_control_center linux_control_center.c \
     </div>
 
     <div class="card">
+        <h3><span class="wrn">◉</span> Connectivity</h3>
+        <p>One surface opens NetworkManager, nearby Wi-Fi, Bluetooth pairing and recovery, Tailscale status, audio routing, and network diagnostics. Launch it directly with <code>--panel network</code>.</p>
+    </div>
+
+    <div class="card">
         <h3><span class="wrn">💾</span> Drives + Samba Helpers</h3>
         <p>Drives tab shows external USB partitions and Samba 530 status, with direct actions to mount/open/unmount/eject USB media and to launch the Samba probe/mount helpers.</p>
     </div>
@@ -119,3 +124,5 @@ awful.key({ modkey }, "c", function()
 end, {description = "open control center", group = "utilities"})</code></pre>
 
 <p>The AwesomeWM menu also mirrors the new storage actions under <code>LinuxUtilities -&gt; storage</code>, so you can reach the Drives tab, USB mount helpers, and Samba 530 helper actions from the desktop menu.</p>
+
+<p>Device widgets react to session D-Bus signals from the LinuxUtilities event bridge. Install it with <code>make device-events-install</code>. Use <code>Mod4+Ctrl+A</code>, <code>Mod4+Ctrl+B</code>, and <code>Mod4+Ctrl+W</code> for focused Audio, Bluetooth, and Network controls.</p>

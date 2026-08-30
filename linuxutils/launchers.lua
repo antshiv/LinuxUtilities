@@ -44,6 +44,10 @@ function M.new(opts)
         return notes_root() .. "/tasks.md"
     end
 
+    local function reminders_script_path()
+        return workspace_root() .. "/scripts/linuxutilities_reminders.sh"
+    end
+
     local function path_basename(path)
         if not path or path == "" then
             return ""
@@ -264,7 +268,7 @@ function M.new(opts)
         flameshot_lock = true
         local shots_dir, target_file = build_flameshot_target_file()
         awful.spawn.easy_async({ "mkdir", "-p", shots_dir }, function()
-            awful.spawn({ "flameshot", "gui", "--path", target_file }, false)
+            awful.spawn({ "flameshot", "gui", "--clipboard", "--path", target_file }, false)
         end)
         gears.timer.start_new(0.4, function()
             flameshot_lock = false
@@ -452,16 +456,27 @@ function M.new(opts)
         return nil
     end
 
-    function controller.open_linux_control_center(target_dir)
+    function controller.open_linux_control_center(target_dir, panel)
+        local launch_target = workspace_root()
         local arg = ""
-        if target_dir and target_dir ~= "" then
-            arg = " " .. shell_quote(target_dir)
+        local panel_arg = ""
+        local repo_app = workspace_root() .. "/build/bin/linux_control_center"
+        if target_dir and target_dir ~= "" and directory_exists(target_dir) then
+            launch_target = target_dir
+        end
+        arg = " " .. shell_quote(launch_target)
+        if panel and panel ~= "" then
+            panel_arg = " --panel " .. shell_quote(panel)
         end
 
         awful.spawn.easy_async_with_shell(string.format([[
             app=""
+            repo_app=%s
+            repo_root=%s
+            log_dir="$HOME/.cache/linuxutilities"
+            log_file="$log_dir/control-center.log"
             for candidate in \
-                "$HOME/Workspace/LinuxUtilities/build/bin/linux_control_center" \
+                "$repo_app" \
                 "$HOME/Programs/bin/linux_control_center"; do
                 if [ -x "$candidate" ]; then
                     app="$candidate"
@@ -469,19 +484,39 @@ function M.new(opts)
                 fi
             done
             if [ -n "$app" ]; then
-                "$app"%s >/dev/null 2>&1 &
+                mkdir -p "$log_dir"
+                printf '\n[%%s] launching %%s with context %%s\n' "$(date --iso-8601=seconds)" "$app" %s >>"$log_file"
+                LINUXUTILITIES_ROOT="$repo_root" "$app"%s%s >>"$log_file" 2>&1 &
+                app_pid=$!
+                sleep 1
+                if ! kill -0 "$app_pid" 2>/dev/null; then
+                    wait "$app_pid" || true
+                    exit 2
+                fi
             else
                 exit 1
             fi
-        ]], arg), function(_, _, _, exit_code)
+        ]], shell_quote(repo_app), shell_quote(workspace_root()), shell_quote(launch_target), arg, panel_arg), function(_, _, _, exit_code)
             if exit_code ~= 0 then
                 naughty.notify({
                     preset = naughty.config.presets.warn,
-                    title = "Control Center Missing",
-                    text = "Build LinuxUtilities/build/bin/linux_control_center or install it to ~/Programs/bin.",
+                    title = "Control Center Failed",
+                    text = "The app was missing or exited during startup. See ~/.cache/linuxutilities/control-center.log.",
                 })
             end
         end)
+    end
+
+    function controller.open_audio_controls()
+        controller.open_linux_control_center(nil, "audio")
+    end
+
+    function controller.open_network_controls()
+        controller.open_linux_control_center(nil, "network")
+    end
+
+    function controller.open_bluetooth_controls()
+        controller.open_linux_control_center(nil, "bluetooth")
     end
 
     function controller.open_drives_center()
@@ -665,7 +700,7 @@ function M.new(opts)
                 nm-connection-editor >/dev/null 2>&1 &
             elif command -v nmtui-connect >/dev/null 2>&1 && command -v x-terminal-emulator >/dev/null 2>&1; then
                 x-terminal-emulator -e nmtui-connect >/dev/null 2>&1 &
-            elif command -v nmtui >/dev/null 2>&1; then
+            elif command -v nmtui >/dev/null 2>&1 && command -v x-terminal-emulator >/dev/null 2>&1; then
                 x-terminal-emulator -e nmtui >/dev/null 2>&1 &
             else
                 exit 1
@@ -729,7 +764,7 @@ function M.new(opts)
                 blueman-manager >/dev/null 2>&1 &
             elif command -v blueberry >/dev/null 2>&1; then
                 blueberry >/dev/null 2>&1 &
-            elif command -v bluetoothctl >/dev/null 2>&1; then
+            elif command -v bluetoothctl >/dev/null 2>&1 && command -v x-terminal-emulator >/dev/null 2>&1; then
                 x-terminal-emulator -e bluetoothctl >/dev/null 2>&1 &
             else
                 exit 1
@@ -751,7 +786,7 @@ function M.new(opts)
                 xfce4-power-manager-settings >/dev/null 2>&1 &
             elif command -v gnome-power-statistics >/dev/null 2>&1; then
                 gnome-power-statistics >/dev/null 2>&1 &
-            elif command -v upower >/dev/null 2>&1; then
+            elif command -v upower >/dev/null 2>&1 && command -v x-terminal-emulator >/dev/null 2>&1; then
                 x-terminal-emulator -e sh -lc 'upower -d | less' >/dev/null 2>&1 &
             else
                 exit 1
@@ -775,10 +810,20 @@ function M.new(opts)
                 thunderbird -calendar >/dev/null 2>&1 &
             elif command -v orage >/dev/null 2>&1; then
                 orage >/dev/null 2>&1 &
-            else
+            elif command -v x-terminal-emulator >/dev/null 2>&1; then
                 x-terminal-emulator -e sh -lc 'cal -3; echo; date; echo; read -n1 -rsp "Press any key to close..."' >/dev/null 2>&1 &
+            else
+                exit 1
             fi
-        ]])
+        ]], function(_, _, _, exit_code)
+            if exit_code ~= 0 then
+                naughty.notify({
+                    preset = naughty.config.presets.warn,
+                    title = "Calendar Utility Missing",
+                    text = "Install gnome-calendar, Thunderbird, Orage, or x-terminal-emulator.",
+                })
+            end
+        end)
     end
 
     function controller.notes_root()
@@ -795,6 +840,10 @@ function M.new(opts)
 
     function controller.tasks_note_path()
         return tasks_note_path()
+    end
+
+    function controller.reminders_script_path()
+        return reminders_script_path()
     end
 
     function controller.open_notes_app()
@@ -1010,6 +1059,26 @@ EOF
         end)
     end
 
+    function controller.open_reminders()
+        awful.spawn.easy_async_with_shell(string.format([=[
+            script=%s
+            if [ ! -x "$script" ]; then
+                exit 2
+            fi
+            "$script" open
+        ]=], shell_quote(reminders_script_path())), function(stdout, _, _, exit_code)
+            if exit_code ~= 0 then
+                naughty.notify({
+                    preset = naughty.config.presets.warn,
+                    title = "Reminders Script Missing",
+                    text = "Expected script: " .. reminders_script_path(),
+                })
+                return
+            end
+            naughty.notify({ title = "LinuxUtilities Reminders", text = stdout, timeout = 8 })
+        end)
+    end
+
     function controller.open_time_preferences()
         awful.spawn.easy_async_with_shell([[
             if command -v gnome-control-center >/dev/null 2>&1; then
@@ -1051,7 +1120,21 @@ EOF
     end
 
     function controller.open_thunderbird_calendar()
-        awful.spawn({ "thunderbird", "-calendar" }, false)
+        awful.spawn.easy_async_with_shell([[
+            if command -v thunderbird >/dev/null 2>&1; then
+                thunderbird -calendar >/dev/null 2>&1 &
+            else
+                exit 1
+            fi
+        ]], function(_, _, _, exit_code)
+            if exit_code ~= 0 then
+                naughty.notify({
+                    preset = naughty.config.presets.warn,
+                    title = "Thunderbird Calendar Missing",
+                    text = "Install Thunderbird to open its calendar.",
+                })
+            end
+        end)
     end
 
     return controller

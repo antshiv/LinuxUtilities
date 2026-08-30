@@ -62,6 +62,8 @@ AwesomeWM config tree notes:
 - Local backup targets copy `rc.lua` into `rc.dupe.lua` and mirror any installed `linuxutils/` modules into `linuxutils.dupe/` when present.
 - The custom AwesomeWM Bluetooth/network widgets are the default status indicators. `nm-applet` and `blueman-applet` are now opt-in; set `LINUXUTILS_AUTOSTART_STATUS_APPLETS=1` before starting AwesomeWM if you explicitly want those tray duplicates as well.
 - Notes integration defaults to `~/Workspace/ShivasNotes`. Override with `LINUXUTILS_NOTES_DIR=/path/to/notes`. The launcher now targets the vault explicitly for Obsidian, and it maintains a managed markdown mirror under `ShivasNotes/linked/LinuxUtilities` so repo `.md` files are visible in the notes vault without copying them. If Obsidian is unavailable it falls back to Joplin, then `vi` via `x-terminal-emulator`. If you want to force a specific app, set `LINUXUTILS_NOTES_APP=obsidian` or `LINUXUTILS_NOTES_APP=joplin`.
+- Reminders are generic and agent-safe. `LinuxUtilities -> notes -> reminders` opens `${LINUXUTILS_REMINDERS_FILE:-~/Workspace/ShivasNotes/reminders.md}`. Agents can append reminders with `scripts/linuxutilities_reminders.sh add "Writing: draft the next ShivasNotes post" "2026-05-20 09:00"`, and cron can call `scripts/linuxutilities_reminders.sh notify`.
+- Media helpers are local-first. `scripts/video_clean_audio.sh input.mp4` applies a conservative ffmpeg voice cleanup chain, and `scripts/video_detect_claps.py input.mp4` emits JSON timestamps for clap/spike markers. Whisper can be added later for word-level filler detection, but the first workflow is deterministic: record cleanly, clap before bad takes, then use the marker JSON as edit hints.
 - The calendar popup now includes visible `Daily Note`, `Tasks`, `Notes App`, and `Close` actions. Days are clickable: left click selects a date and updates the note preview, right click opens that date's note.
 - A compact system widget now shows CPU/RAM usage and opens `btop`, then `htop`, then `top` on click. The keyboard shortcut is `Mod4+Shift+h`.
 - A folder utility widget now lives in the top bar. Left click opens home, middle click opens the LinuxUtilities repo folder, right click opens `~/Screenshots`, wheel-up opens the notes folder, and wheel-down opens the AppImage library. It prefers `yazi`, then `ranger`, then `lf`, and falls back to `xdg-open`/`gio`.
@@ -228,6 +230,23 @@ Optional overrides for Bluetooth profile helpers:
 - `BT_DEVICE=<MAC>` to target a specific headset by Bluetooth address
 
 `make audio-bt-recover` is the recovery path for the failure we just hit: headset still shows as Bluetooth-connected, but PipeWire lost the `bluez_output.*` sink after an OOM, restart, or stale transport. It restarts the user audio services, reconnects the headset, restores A2DP playback, and moves active streams back to the Bluetooth sink.
+
+Device status is event-driven rather than dependent on rapid desktop polling. Install the user service once:
+
+```bash
+make device-events-install
+make device-events-status
+```
+
+The bridge listens to `pactl subscribe`, `nmcli monitor`, and `bluetoothctl --monitor`, then emits a small session D-Bus signal consumed by AwesomeWM. The bar refreshes immediately when audio, network, or Bluetooth state changes and retains a 60-second fallback refresh.
+
+Focused controls are available from the bar or keyboard:
+
+- `Mod4+Ctrl+A`: Audio
+- `Mod4+Ctrl+B`: Bluetooth
+- `Mod4+Ctrl+W`: Network and connectivity
+
+The control center accepts `--panel audio`, `--panel bluetooth`, and `--panel network` for direct launches.
 
 `PRESENT_WACOM_MODE` options:
 - `none` (default): do not change mapping

@@ -38,7 +38,7 @@ reconnect_paired_audio_devices() {
       continue
     fi
     bluetoothctl connect "${mac}" >/dev/null 2>&1 || true
-  done < <(bluetoothctl paired-devices | awk '{print $2}')
+  done < <(bluetoothctl devices Paired | awk '$1 == "Device" {print $2}')
 }
 
 trust_paired_audio_devices() {
@@ -59,7 +59,7 @@ trust_paired_audio_devices() {
       continue
     fi
     bluetoothctl trust "${mac}" >/dev/null 2>&1 || true
-  done < <(bluetoothctl paired-devices | awk '{print $2}')
+  done < <(bluetoothctl devices Paired | awk '$1 == "Device" {print $2}')
 }
 
 soft_refresh() {

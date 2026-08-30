@@ -145,6 +145,11 @@ function M.new(opts)
                 || pactl load-module module-switch-on-port-available >/dev/null 2>&1 || true
             pactl list short modules 2>/dev/null | grep -q "module-switch-on-connect" \
                 || pactl load-module module-switch-on-connect ignore_virtual=no >/dev/null 2>&1 || true
+
+            bt_helper="${LINUXUTILITIES_ROOT:-$HOME/Workspace/LinuxUtilities}/scripts/audio_bt_profile.sh"
+            if [ -x "$bt_helper" ]; then
+                "$bt_helper" auto-start >/dev/null 2>&1 || true
+            fi
         ]])
     end
 

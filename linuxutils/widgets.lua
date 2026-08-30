@@ -187,6 +187,11 @@ function M.new(opts)
         refresh_system_state()
     end
 
+    controller.refresh_network = refresh_network_state
+    controller.refresh_bluetooth = refresh_bluetooth_state
+    controller.refresh_battery = refresh_battery_state
+    controller.refresh_system = refresh_system_state
+
     function controller.create_thunderbird_widget()
         local icon_candidates = {
             "/usr/share/icons/Mint-X/apps/24/thunderbird.png",
@@ -239,7 +244,7 @@ function M.new(opts)
         local widget = wibox.widget.textbox()
         widget:set_text(" 🔊 -- ")
         widget:buttons(gears.table.join(
-            awful.button({ }, 1, audio.open_pavucontrol),
+            awful.button({ }, 1, launchers.open_audio_controls),
             awful.button({ }, 3, audio.volume_toggle_mute),
             awful.button({ }, 4, audio.volume_up),
             awful.button({ }, 5, audio.volume_down)
@@ -282,7 +287,7 @@ function M.new(opts)
         local widget = wibox.widget.textbox()
         widget:set_markup(icons.network("unknown", "--"))
         widget:buttons(gears.table.join(
-            awful.button({ }, 1, launchers.open_network_manager),
+            awful.button({ }, 1, launchers.open_network_controls),
             awful.button({ }, 2, launchers.open_network_tui),
             awful.button({ }, 3, refresh_network_state),
             awful.button({ }, 4, launchers.open_network_scan)
@@ -312,7 +317,7 @@ function M.new(opts)
         local widget = wibox.widget.textbox()
         widget:set_markup(icons.bluetooth("unknown", "0"))
         widget:buttons(gears.table.join(
-            awful.button({ }, 1, launchers.open_bluetooth_manager),
+            awful.button({ }, 1, launchers.open_bluetooth_controls),
             awful.button({ }, 3, refresh_bluetooth_state)
         ))
         awful.tooltip({
