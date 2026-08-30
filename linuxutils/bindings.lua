@@ -335,6 +335,8 @@ local function build_global_keys(opts)
 
         awful.key({ modkey }, "r", actions.launch_program_palette,
             { description = "program launcher (rofi + custom commands)", group = "launcher" }),
+        awful.key({ modkey }, "slash", actions.open_folder_navigator,
+            { description = "fuzzy folder navigator", group = "launcher" }),
         awful.key({ modkey, "Shift" }, "r", function()
             awful.screen.focused().mypromptbox:run()
         end, { description = "run prompt (classic)", group = "launcher" }),

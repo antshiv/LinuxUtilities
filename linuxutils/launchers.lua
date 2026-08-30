@@ -300,6 +300,20 @@ function M.new(opts)
         open_directory(appimage_root(), "AppImage library")
     end
 
+    function controller.open_folder_navigator()
+        local script = workspace_root() .. "/scripts/folder_navigator.sh"
+        if command_exists("rofi") and gears.filesystem.file_readable(script) then
+            awful.spawn({ script }, false)
+            return
+        end
+
+        naughty.notify({
+            preset = naughty.config.presets.warn,
+            title = "Folder Navigator Unavailable",
+            text = "Install rofi and verify " .. script .. ".",
+        })
+    end
+
     function controller.open_system_monitor()
         awful.spawn.easy_async_with_shell([=[
             if command -v x-terminal-emulator >/dev/null 2>&1; then

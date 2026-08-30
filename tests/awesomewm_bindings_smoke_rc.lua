@@ -22,6 +22,7 @@ local launcher_calls = {
     volume_up = 0,
     brightness_up = 0,
     launcher = 0,
+    folder_navigator = 0,
     spotlight = 0,
     system_monitor = 0,
     world_clock = 0,
@@ -258,6 +259,9 @@ local binding_tables = bindings.build({
         launch_program_palette = function()
             launcher_calls.launcher = launcher_calls.launcher + 1
         end,
+        open_folder_navigator = function()
+            launcher_calls.folder_navigator = launcher_calls.folder_navigator + 1
+        end,
         open_system_monitor = function()
             launcher_calls.system_monitor = launcher_calls.system_monitor + 1
         end,
@@ -335,6 +339,7 @@ assert(find_button(binding_tables.clientbuttons, 9) ~= nil)
 assert(find_key(binding_tables.globalkeys, "XF86MonBrightnessUp", "increase brightness") ~= nil)
 assert(find_key(binding_tables.globalkeys, "XF86AudioRaiseVolume", "increase volume") ~= nil)
 assert(find_key(binding_tables.globalkeys, "h", "open system monitor (btop/htop/top)") ~= nil)
+assert(find_key(binding_tables.globalkeys, "slash", "fuzzy folder navigator") ~= nil)
 assert(find_key(binding_tables.globalkeys, "t", "show world clock (local, Mumbai, Vancouver)") ~= nil)
 assert(find_key(binding_tables.globalkeys, "i", "set timezone to Mumbai (Asia/Kolkata)") ~= nil)
 assert(find_key(binding_tables.globalkeys, "v", "set timezone to Vancouver (America/Vancouver)") ~= nil)
@@ -348,6 +353,7 @@ find_button(binding_tables.clientbuttons, 9).callback(focused_client)
 find_key(binding_tables.globalkeys, "XF86MonBrightnessUp", "increase brightness").callback()
 find_key(binding_tables.globalkeys, "XF86AudioRaiseVolume", "increase volume").callback()
 find_key(binding_tables.globalkeys, "h", "open system monitor (btop/htop/top)").callback()
+find_key(binding_tables.globalkeys, "slash", "fuzzy folder navigator").callback()
 find_key(binding_tables.globalkeys, "t", "show world clock (local, Mumbai, Vancouver)").callback()
 find_key(binding_tables.globalkeys, "i", "set timezone to Mumbai (Asia/Kolkata)").callback()
 find_key(binding_tables.globalkeys, "v", "set timezone to Vancouver (America/Vancouver)").callback()
@@ -361,6 +367,7 @@ assert(launcher_calls.utility_client == 2)
 assert(launcher_calls.brightness_up == 1)
 assert(launcher_calls.volume_up == 1)
 assert(launcher_calls.system_monitor == 1)
+assert(launcher_calls.folder_navigator == 1)
 assert(launcher_calls.world_clock == 1)
 assert(launcher_calls.timezone_mumbai == 1)
 assert(launcher_calls.timezone_vancouver == 1)

@@ -21,6 +21,7 @@ for script in \
     scripts/install_audio_service.sh \
     scripts/install_device_event_service.sh \
     scripts/device_event_bridge.sh \
+    scripts/folder_navigator.sh \
     scripts/storage_drives.sh \
     scripts/bluetooth_refresh.sh \
     redshift.sh \

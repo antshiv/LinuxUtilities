@@ -1,0 +1,93 @@
+* {
+  background: rgba(6, 15, 29, 88%);
+  surface: rgba(14, 34, 57, 82%);
+  surface-hover: rgba(31, 74, 111, 88%);
+  foreground: #e8f4ff;
+  muted: #91abc5;
+  accent: #69d2ff;
+  border: rgba(112, 205, 244, 48%);
+  font: "JetBrains Mono 11";
+}
+
+window {
+  width: 720px;
+  transparency: "real";
+  background-color: @background;
+  border: 1px;
+  border-color: @border;
+  border-radius: 18px;
+  padding: 18px;
+}
+
+mainbox {
+  spacing: 12px;
+  background-color: transparent;
+}
+
+inputbar {
+  children: [ prompt, entry ];
+  spacing: 12px;
+  padding: 13px 15px;
+  background-color: @surface;
+  border: 1px;
+  border-color: @border;
+  border-radius: 12px;
+}
+
+prompt {
+  text-color: @accent;
+  font: "JetBrains Mono Bold 11";
+  background-color: transparent;
+}
+
+entry {
+  text-color: @foreground;
+  placeholder: "/home/antshiv/Workspace/...";
+  placeholder-color: @muted;
+  background-color: transparent;
+}
+
+message {
+  padding: 0 4px;
+  text-color: @muted;
+  background-color: transparent;
+}
+
+textbox {
+  text-color: @muted;
+  background-color: transparent;
+}
+
+listview {
+  lines: 11;
+  columns: 1;
+  fixed-height: false;
+  cycle: true;
+  scrollbar: false;
+  spacing: 5px;
+  background-color: transparent;
+}
+
+element {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background-color: transparent;
+  text-color: @foreground;
+}
+
+element selected.normal {
+  background-color: @surface-hover;
+  text-color: @foreground;
+  border: 1px;
+  border-color: @accent;
+}
+
+element normal.normal {
+  background-color: transparent;
+  text-color: @foreground;
+}
+
+element-text {
+  text-color: inherit;
+  background-color: transparent;
+}

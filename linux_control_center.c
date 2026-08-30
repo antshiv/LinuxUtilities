@@ -294,6 +294,9 @@ typedef struct {
     gboolean thumb_anim_hide_on_end;
     guint thumb_load_source_id;
     guint thumb_load_index;
+    guint page_fade_source_id;
+    GtkWidget *page_fade_widget;
+    gint64 page_fade_started_us;
     gboolean editor_styles_visible;
     gboolean editor_thumbs_visible;
     gboolean editor_dock_right;
@@ -1017,14 +1020,21 @@ static void gtk4_apply_theme(gboolean dark) {
 
 static void gtk4_apply_css(Gtk4State *state) {
     static const gchar *css =
-        "window { background: rgba(5,12,23,0.96); }\n"
-        ".lcu-root { background: linear-gradient(145deg, rgba(8,19,36,0.96), rgba(13,29,50,0.92)); color: #d8e8ff; }\n"
-        ".lcu-header { background: rgba(12,27,47,0.82); border-bottom: 1px solid rgba(130,190,235,0.24); padding: 12px; }\n"
+        "window { background: rgba(4,10,20,0.88); }\n"
+        ".lcu-root { background: linear-gradient(145deg, rgba(7,17,33,0.91), rgba(12,28,48,0.86)); color: #d8e8ff; }\n"
+        ".lcu-header { background: rgba(10,25,44,0.70); border-bottom: 1px solid rgba(130,190,235,0.25); padding: 11px 13px; }\n"
         ".lcu-title { font-weight: 700; font-size: 18px; }\n"
-        ".lcu-panel { background: rgba(17,35,58,0.68); border: 1px solid rgba(120,190,235,0.24); border-radius: 14px; padding: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.20); }\n"
-        ".lcu-surface { background: rgba(8,23,40,0.72); border: 1px solid rgba(120,190,235,0.24); border-radius: 12px; }\n"
+        "notebook, notebook > stack { background: transparent; }\n"
+        "notebook > header { background: rgba(7,16,29,0.58); border-bottom: 1px solid rgba(125,185,230,0.18); }\n"
+        "notebook > header tab { padding: 5px 10px; border-bottom: 2px solid transparent; transition: 140ms ease-out; }\n"
+        "notebook > header tab:hover { background: rgba(76,139,194,0.13); }\n"
+        "notebook > header tab:checked { background: rgba(54,119,178,0.15); border-bottom-color: #63c9f5; }\n"
+        ".lcu-panel { background: rgba(17,35,58,0.57); border: 1px solid rgba(120,190,235,0.25); border-radius: 14px; padding: 12px; box-shadow: 0 12px 30px rgba(0,0,0,0.18); }\n"
+        ".lcu-surface { background: rgba(8,23,40,0.60); border: 1px solid rgba(120,190,235,0.24); border-radius: 12px; }\n"
         ".lcu-section-label { color: #75d7ff; font-family: monospace; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; margin-top: 8px; }\n"
-        ".lcu-audio-hero { background: linear-gradient(110deg, rgba(25,72,105,0.78), rgba(20,43,69,0.72)); border: 1px solid rgba(111,212,255,0.42); border-radius: 14px; padding: 14px; }\n"
+        ".lcu-audio-hero { background: linear-gradient(110deg, rgba(25,72,105,0.67), rgba(20,43,69,0.58)); border: 1px solid rgba(111,212,255,0.42); border-radius: 14px; padding: 14px; }\n"
+        "button { border-radius: 8px; transition: 120ms ease-out; }\n"
+        "button:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.18); }\n"
         "button.lcu-primary-action { background: #70d5ff; color: #071521; border: 1px solid #a7e7ff; border-radius: 9px; font-weight: 800; padding: 9px 14px; }\n"
         "button.lcu-primary-action:hover { background: #a7e7ff; }\n"
         ".dim-label { color: #9bb6d5; }\n"
@@ -5479,7 +5489,8 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     static const char *dock_presets[] = { "Compact", "Default", "Wide", NULL };
     GtkWidget *root = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
     GtkWidget *title = gtk_label_new("Screenshot Studio");
-    GtkWidget *toolbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    GtkWidget *toolbar = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    GtkWidget *toolbar_actions = gtk_flow_box_new();
     GtkWidget *btn_capture = gtk_button_new_with_label("Capture New");
     GtkWidget *btn_edit = gtk_button_new_with_label("Edit Selected");
     GtkWidget *btn_refresh = gtk_button_new_with_label("Refresh");
@@ -5491,8 +5502,8 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     GtkWidget *split = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
     GtkWidget *studio_shell = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
     GtkWidget *editor_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
-    GtkWidget *editor_top_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
-    GtkWidget *editor_top_actions = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
+    GtkWidget *editor_top_row = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+    GtkWidget *editor_top_actions = gtk_flow_box_new();
     GtkWidget *btn_dock_toggle = gtk_button_new_with_label("Dock Left");
     GtkWidget *dock_width_label = gtk_label_new("Dock");
     GtkWidget *dock_width_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 220.0, 520.0, 5.0);
@@ -5649,7 +5660,7 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     gtk_label_set_xalign(GTK_LABEL(props_title), 0.0f);
     gtk_label_set_xalign(GTK_LABEL(dock_help), 0.0f);
     gtk_widget_set_hexpand(editor_top_row, TRUE);
-    gtk_widget_set_halign(editor_top_actions, GTK_ALIGN_END);
+    gtk_widget_set_hexpand(editor_top_actions, TRUE);
     gtk_label_set_wrap(GTK_LABEL(dock_help), TRUE);
     gtk_widget_set_hexpand(browser_box, TRUE);
     gtk_widget_set_vexpand(browser_box, TRUE);
@@ -5669,28 +5680,41 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     gtk_editable_set_text(GTK_EDITABLE(search), "");
     gtk_search_entry_set_placeholder_text(GTK_SEARCH_ENTRY(search), "Filter thumbnails by filename...");
     gtk_widget_set_hexpand(search, TRUE);
-    gtk_box_append(GTK_BOX(toolbar), btn_capture);
-    gtk_box_append(GTK_BOX(toolbar), btn_edit);
-    gtk_box_append(GTK_BOX(toolbar), btn_open_folder);
-    gtk_box_append(GTK_BOX(toolbar), btn_copy_paths);
-    gtk_box_append(GTK_BOX(toolbar), btn_copy_prompt);
-    gtk_box_append(GTK_BOX(toolbar), btn_delete);
-    gtk_box_append(GTK_BOX(toolbar), btn_refresh);
+    gtk_flow_box_set_selection_mode(GTK_FLOW_BOX(toolbar_actions), GTK_SELECTION_NONE);
+    gtk_flow_box_set_homogeneous(GTK_FLOW_BOX(toolbar_actions), FALSE);
+    gtk_flow_box_set_min_children_per_line(GTK_FLOW_BOX(toolbar_actions), 2);
+    gtk_flow_box_set_max_children_per_line(GTK_FLOW_BOX(toolbar_actions), 8);
+    gtk_flow_box_set_row_spacing(GTK_FLOW_BOX(toolbar_actions), 6);
+    gtk_flow_box_set_column_spacing(GTK_FLOW_BOX(toolbar_actions), 6);
+    gtk_flow_box_insert(GTK_FLOW_BOX(toolbar_actions), btn_capture, -1);
+    gtk_flow_box_insert(GTK_FLOW_BOX(toolbar_actions), btn_edit, -1);
+    gtk_flow_box_insert(GTK_FLOW_BOX(toolbar_actions), btn_open_folder, -1);
+    gtk_flow_box_insert(GTK_FLOW_BOX(toolbar_actions), btn_copy_paths, -1);
+    gtk_flow_box_insert(GTK_FLOW_BOX(toolbar_actions), btn_copy_prompt, -1);
+    gtk_flow_box_insert(GTK_FLOW_BOX(toolbar_actions), btn_delete, -1);
+    gtk_flow_box_insert(GTK_FLOW_BOX(toolbar_actions), btn_refresh, -1);
+    gtk_box_append(GTK_BOX(toolbar), toolbar_actions);
     gtk_box_append(GTK_BOX(toolbar), search);
 
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(tool_row_scroller), GTK_POLICY_AUTOMATIC, GTK_POLICY_NEVER);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(tool_row_scroller), tool_row);
     gtk_widget_set_hexpand(tool_row_scroller, TRUE);
     gtk_widget_set_size_request(tool_row_scroller, -1, 46);
-    gtk_box_append(GTK_BOX(editor_top_actions), btn_dock_toggle);
-    gtk_box_append(GTK_BOX(editor_top_actions), dock_width_label);
-    gtk_box_append(GTK_BOX(editor_top_actions), dock_width_scale);
-    gtk_box_append(GTK_BOX(editor_top_actions), dock_preset_dropdown);
-    gtk_box_append(GTK_BOX(editor_top_actions), btn_toggle_styles);
-    gtk_box_append(GTK_BOX(editor_top_actions), btn_toggle_thumbs);
-    gtk_box_append(GTK_BOX(editor_top_actions), btn_thumbs_bigger);
-    gtk_box_append(GTK_BOX(editor_top_actions), btn_thumbs_smaller);
-    gtk_box_append(GTK_BOX(editor_top_actions), btn_zoom_reset);
+    gtk_flow_box_set_selection_mode(GTK_FLOW_BOX(editor_top_actions), GTK_SELECTION_NONE);
+    gtk_flow_box_set_homogeneous(GTK_FLOW_BOX(editor_top_actions), FALSE);
+    gtk_flow_box_set_min_children_per_line(GTK_FLOW_BOX(editor_top_actions), 2);
+    gtk_flow_box_set_max_children_per_line(GTK_FLOW_BOX(editor_top_actions), 9);
+    gtk_flow_box_set_row_spacing(GTK_FLOW_BOX(editor_top_actions), 5);
+    gtk_flow_box_set_column_spacing(GTK_FLOW_BOX(editor_top_actions), 5);
+    gtk_flow_box_insert(GTK_FLOW_BOX(editor_top_actions), btn_dock_toggle, -1);
+    gtk_flow_box_insert(GTK_FLOW_BOX(editor_top_actions), dock_width_label, -1);
+    gtk_flow_box_insert(GTK_FLOW_BOX(editor_top_actions), dock_width_scale, -1);
+    gtk_flow_box_insert(GTK_FLOW_BOX(editor_top_actions), dock_preset_dropdown, -1);
+    gtk_flow_box_insert(GTK_FLOW_BOX(editor_top_actions), btn_toggle_styles, -1);
+    gtk_flow_box_insert(GTK_FLOW_BOX(editor_top_actions), btn_toggle_thumbs, -1);
+    gtk_flow_box_insert(GTK_FLOW_BOX(editor_top_actions), btn_thumbs_bigger, -1);
+    gtk_flow_box_insert(GTK_FLOW_BOX(editor_top_actions), btn_thumbs_smaller, -1);
+    gtk_flow_box_insert(GTK_FLOW_BOX(editor_top_actions), btn_zoom_reset, -1);
     gtk_box_append(GTK_BOX(editor_top_row), tool_row_scroller);
     gtk_box_append(GTK_BOX(editor_top_row), editor_top_actions);
 
@@ -6044,7 +6068,7 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
 
     gtk_widget_set_hexpand(editor_area, TRUE);
     gtk_widget_set_vexpand(editor_area, TRUE);
-    gtk_widget_set_size_request(editor_area, -1, 400);
+    gtk_widget_set_size_request(editor_area, -1, 320);
     gtk_widget_add_css_class(editor_area, "lcu-surface");
     gtk_box_append(GTK_BOX(editor_box), editor_top_row);
     gtk_box_append(GTK_BOX(editor_box), quick_styles_scroller);
@@ -6293,6 +6317,55 @@ static GtkWidget *gtk4_build_screenshots_tab(Gtk4State *state) {
     return root;
 }
 
+static gboolean gtk4_page_fade_tick(gpointer user_data) {
+    Gtk4State *state = user_data;
+    if (!state || !state->page_fade_widget) {
+        return G_SOURCE_REMOVE;
+    }
+
+    const gdouble elapsed = (gdouble)(g_get_monotonic_time() - state->page_fade_started_us);
+    const gdouble progress = CLAMP(elapsed / 180000.0, 0.0, 1.0);
+    const gdouble inverse = 1.0 - progress;
+    const gdouble eased = 1.0 - (inverse * inverse * inverse);
+    gtk_widget_set_opacity(state->page_fade_widget, 0.18 + (0.82 * eased));
+
+    if (progress >= 1.0) {
+        gtk_widget_set_opacity(state->page_fade_widget, 1.0);
+        state->page_fade_source_id = 0;
+        state->page_fade_widget = NULL;
+        return G_SOURCE_REMOVE;
+    }
+    return G_SOURCE_CONTINUE;
+}
+
+static void gtk4_start_page_fade(Gtk4State *state, GtkWidget *page) {
+    gboolean animations_enabled = TRUE;
+    GtkSettings *settings = gtk_settings_get_default();
+    if (!state || !page) {
+        return;
+    }
+    if (settings) {
+        g_object_get(settings, "gtk-enable-animations", &animations_enabled, NULL);
+    }
+    if (state->page_fade_source_id != 0) {
+        g_source_remove(state->page_fade_source_id);
+        state->page_fade_source_id = 0;
+    }
+    if (state->page_fade_widget) {
+        gtk_widget_set_opacity(state->page_fade_widget, 1.0);
+    }
+    state->page_fade_widget = NULL;
+    if (!animations_enabled) {
+        gtk_widget_set_opacity(page, 1.0);
+        return;
+    }
+
+    state->page_fade_widget = page;
+    state->page_fade_started_us = g_get_monotonic_time();
+    gtk_widget_set_opacity(page, 0.18);
+    state->page_fade_source_id = g_timeout_add(16, gtk4_page_fade_tick, state);
+}
+
 static void gtk4_on_notebook_switch_page(GtkNotebook *notebook,
                                          GtkWidget *page,
                                          guint page_num,
@@ -6301,6 +6374,7 @@ static void gtk4_on_notebook_switch_page(GtkNotebook *notebook,
     const gchar *tab_text = gtk_notebook_get_tab_label_text(notebook, page);
     gchar *msg = g_strdup_printf("Active tab: %s (%u)", tab_text ? tab_text : "unknown", page_num);
     gtk4_set_global_status(state, msg);
+    gtk4_start_page_fade(state, page);
     if (state &&
         (gint)page_num == state->screenshots_page &&
         !state->screenshots_loaded &&
@@ -6416,6 +6490,10 @@ static gboolean gtk4_on_window_close_request(GtkWindow *window, gpointer user_da
     if (state->ui_state_save_source_id != 0) {
         g_source_remove(state->ui_state_save_source_id);
         state->ui_state_save_source_id = 0;
+    }
+    if (state->page_fade_source_id != 0) {
+        g_source_remove(state->page_fade_source_id);
+        state->page_fade_source_id = 0;
     }
     gtk4_ui_state_save(state);
     return FALSE;

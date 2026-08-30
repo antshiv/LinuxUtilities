@@ -230,6 +230,7 @@ local show_world_clock_popup = launchers_controller.show_world_clock_popup
 local set_timezone_mumbai = launchers_controller.set_timezone_mumbai
 local set_timezone_vancouver = launchers_controller.set_timezone_vancouver
 local launch_program_palette = launchers_controller.launch_program_palette
+local open_folder_navigator = launchers_controller.open_folder_navigator
 local open_linux_control_center = launchers_controller.open_linux_control_center
 local open_linux_control_center_for_client = launchers_controller.open_linux_control_center_for_client
 
@@ -624,6 +625,7 @@ local binding_tables = bindings.build({
         media_next_track = media_next_track,
         media_prev_track = media_prev_track,
         launch_program_palette = launch_program_palette,
+        open_folder_navigator = open_folder_navigator,
         toggle_gromit_draw = toggle_gromit_draw,
         clear_gromit_draw = clear_gromit_draw,
         undo_gromit_draw = undo_gromit_draw,
