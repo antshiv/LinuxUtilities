@@ -1,6 +1,6 @@
 * {
-  bg: #0b1220;
-  bg-alt: #111a2c;
+  bg: rgba(6, 15, 29, 90%);
+  bg-alt: rgba(14, 34, 57, 86%);
   fg: #e5f0ff;
   fg-muted: #9fb5d4;
   border: #2b4f88;
@@ -14,8 +14,9 @@
 }
 
 window {
-  width: 62%;
-  border: 2px;
+  width: 760px;
+  transparency: "real";
+  border: 1px;
   border-color: @border;
   border-radius: @radius;
   background-color: @bg;
@@ -24,6 +25,7 @@ window {
 
 mainbox {
   spacing: 10px;
+  background-color: transparent;
 }
 
 inputbar {
@@ -39,12 +41,24 @@ inputbar {
 prompt {
   text-color: @accent-2;
   font: "JetBrains Mono Bold 11";
+  background-color: transparent;
 }
 
 entry {
   text-color: @fg;
-  placeholder: "Search command/app...";
+  placeholder: "Search apps, folders, windows, commands and system actions...";
   placeholder-color: @fg-muted;
+  background-color: transparent;
+}
+
+message {
+  padding: 0 4px;
+  background-color: transparent;
+}
+
+textbox {
+  text-color: @fg-muted;
+  background-color: transparent;
 }
 
 listview {
@@ -55,6 +69,7 @@ listview {
   dynamic: true;
   scrollbar: true;
   spacing: 5px;
+  background-color: transparent;
 }
 
 element {
@@ -87,8 +102,27 @@ element normal.urgent {
 element-icon {
   size: 1.0em;
   margin: 0 10px 0 0;
+  background-color: transparent;
 }
 
 element-text {
   text-color: inherit;
+  background-color: transparent;
+}
+
+mode-switcher {
+  spacing: 6px;
+  background-color: transparent;
+}
+
+button {
+  padding: 7px 10px;
+  border-radius: 9px;
+  background-color: transparent;
+  text-color: @fg-muted;
+}
+
+button selected {
+  background-color: @selected;
+  text-color: @accent-2;
 }

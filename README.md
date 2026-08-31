@@ -68,6 +68,7 @@ AwesomeWM config tree notes:
 - A compact system widget now shows CPU/RAM usage and opens `btop`, then `htop`, then `top` on click. The keyboard shortcut is `Mod4+Shift+h`.
 - A folder utility widget now lives in the top bar. Left click opens home, middle click opens the LinuxUtilities repo folder, right click opens `~/Screenshots`, wheel-up opens the notes folder, and wheel-down opens the AppImage library. It prefers `yazi`, then `ranger`, then `lf`, and falls back to `xdg-open`/`gio`.
 - `Mod4+/` opens the translucent fuzzy folder navigator. Enter opens the selected directory graphically, `Ctrl+O` opens a terminal there, and `Alt+C` copies its path. Candidates combine pinned folders, recent selections, optional `zoxide` history, and shallow workspace/document scans; an absolute path can also be typed directly.
+- `Mod4+Space` opens the universal LinuxUtilities surface. One search covers LinuxUtilities actions, folders, desktop applications, open windows, and shell commands. `Mod4+r` remains an alias, while layout cycling moves to `Mod4+Alt+Space` and `Mod4+Alt+Shift+Space`.
 - An applications widget now lives in the top bar. Left click opens an AppImage launcher sourced from `~/Programs/AppImage` (or `LINUXUTILS_APPIMAGE_DIR`), middle click opens the full LinuxUtilities program palette, and right click opens the AppImage library folder.
 - The network widget now has a direct TUI path: middle click opens `nmtui-connect` inside your terminal emulator so you can browse nearby Wi-Fi networks, and wheel-up opens a quick `nmcli` Wi-Fi scan when available.
 - The clock widget now shows local time plus compact Vancouver (`YVR`) and Mumbai (`BOM`) world clocks. Middle click opens a world-clock popup, and `Mod4+Ctrl+i` / `Mod4+Ctrl+v` attempt to switch the system timezone to Mumbai or Vancouver.
@@ -263,9 +264,10 @@ AwesomeWM launcher upgrades:
 make desktop-install
 ```
 
-- `Mod4+r` now opens a richer launcher path:
+- `Mod4+Space` (or its `Mod4+r` alias) now opens a richer launcher path:
   - grouped LinuxUtilities actions with icons
   - pinned favorites + recent command history
+  - folders from pinned locations, recents, optional `zoxide`, workspaces, data, and mounted storage
   - one-click Presentation Prep / Presentation Live profile actions
   - regular desktop apps (`drun`)
   - raw command mode (`run`)

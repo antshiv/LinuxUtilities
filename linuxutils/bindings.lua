@@ -319,12 +319,12 @@ local function build_global_keys(opts)
         awful.key({ modkey, "Control" }, "l", function()
             awful.tag.incncol(-1, nil, true)
         end, { description = "decrease the number of columns", group = "layout" }),
-        awful.key({ modkey }, "space", function()
+        awful.key({ modkey, "Mod1" }, "space", function()
             awful.layout.inc(1)
-        end, { description = "select next", group = "layout" }),
-        awful.key({ modkey, "Shift" }, "space", function()
+        end, { description = "select next layout", group = "layout" }),
+        awful.key({ modkey, "Mod1", "Shift" }, "space", function()
             awful.layout.inc(-1)
-        end, { description = "select previous", group = "layout" }),
+        end, { description = "select previous layout", group = "layout" }),
 
         awful.key({ modkey, "Control" }, "n", function()
             local c = awful.client.restore()
@@ -334,7 +334,9 @@ local function build_global_keys(opts)
         end, { description = "restore minimized", group = "client" }),
 
         awful.key({ modkey }, "r", actions.launch_program_palette,
-            { description = "program launcher (rofi + custom commands)", group = "launcher" }),
+            { description = "universal LinuxUtilities launcher", group = "launcher" }),
+        awful.key({ modkey }, "space", actions.launch_program_palette,
+            { description = "universal LinuxUtilities launcher", group = "launcher" }),
         awful.key({ modkey }, "slash", actions.open_folder_navigator,
             { description = "fuzzy folder navigator", group = "launcher" }),
         awful.key({ modkey, "Shift" }, "r", function()

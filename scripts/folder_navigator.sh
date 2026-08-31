@@ -63,6 +63,34 @@ normalize_path() {
   realpath -m -- "${selected}"
 }
 
+display_path() {
+  local target="$1"
+  if [[ "${target}" == "${HOME}" ]]; then
+    printf '~'
+  elif [[ "${target}" == "${HOME}/"* ]]; then
+    printf '~/%s' "${target#${HOME}/}"
+  else
+    printf '%s' "${target}"
+  fi
+}
+
+candidate_label() {
+  local target="$1"
+  local name
+  case "${target}" in
+    "${HOME}") name="Home" ;;
+    "${HOME}/Workspace") name="Workspace" ;;
+    "${HOME}/Downloads") name="Downloads" ;;
+    "${HOME}/Documents") name="Documents" ;;
+    "${HOME}/Pictures") name="Pictures" ;;
+    "${HOME}/Screenshots") name="Screenshots" ;;
+    "${HOME}/Programs") name="Programs" ;;
+    "${ROOT_DIR}") name="LinuxUtilities" ;;
+    *) name="$(basename "${target}")" ;;
+  esac
+  printf '%s  -  %s' "${name}" "$(display_path "${target}")"
+}
+
 open_graphical() {
   local target="$1"
   if command -v xdg-open >/dev/null 2>&1; then
@@ -100,9 +128,43 @@ copy_path() {
   command -v notify-send >/dev/null 2>&1 && notify-send "Path copied" "${target}"
 }
 
+run_rofi_provider() {
+  local selected="${1:-}"
+  local target
+
+  if [[ "${ROFI_RETV:-0}" == "0" && -z "${selected}" ]]; then
+    printf '\0prompt\x1fOpen\n'
+    printf '\0message\x1fApplications, folders, windows, commands and LinuxUtilities actions\n'
+    while IFS= read -r target; do
+      printf '%s\0icon\x1ffolder\x1fmeta\x1f%s\x1finfo\x1f%s\n' \
+        "$(candidate_label "${target}")" "${target}" "folder::${target}"
+    done < <(list_candidates)
+    return 0
+  fi
+
+  target="${ROFI_INFO:-}"
+  target="${target#folder::}"
+  if [[ -z "${target}" ]]; then
+    target="$(normalize_path "${selected}")"
+  fi
+  if [[ ! -d "${target}" ]]; then
+    notify_error "Directory does not exist: ${target}"
+    return 1
+  fi
+
+  record_recent "${target}"
+  open_graphical "${target}"
+}
+
 if [[ "${1:-}" == "--list" ]]; then
   list_candidates
   exit 0
+fi
+
+if [[ "${1:-}" == "--rofi" ]]; then
+  shift
+  run_rofi_provider "${1:-}"
+  exit $?
 fi
 
 if ! command -v rofi >/dev/null 2>&1; then

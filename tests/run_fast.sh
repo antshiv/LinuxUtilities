@@ -45,6 +45,9 @@ echo "[fast] Skipping make -n wacom-switch (target performs live X11/tablet prob
 echo "[fast] AwesomeWM config tests"
 "$ROOT_DIR/tests/awesomewm_config_test.sh"
 
+echo "[fast] Folder navigator provider tests"
+"$ROOT_DIR/tests/folder_navigator_test.sh"
+
 if command -v node >/dev/null 2>&1; then
     echo "[fast] Presenter canvas JS tests"
     node --test "$ROOT_DIR/tests/presenter_canvas_logic.test.mjs"

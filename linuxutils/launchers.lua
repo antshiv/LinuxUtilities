@@ -371,17 +371,24 @@ function M.new(opts)
     end
 
     function controller.launch_program_palette()
-        local _, launcher_script, rofi_theme = launcher_assets()
+        local workspace_dir, launcher_script, rofi_theme = launcher_assets()
+        local folder_script = workspace_dir .. "/scripts/folder_navigator.sh"
 
-        if command_exists("rofi") and gears.filesystem.file_readable(launcher_script) then
+        if command_exists("rofi")
+            and gears.filesystem.file_readable(launcher_script)
+            and gears.filesystem.file_readable(folder_script) then
             local theme_arg = ""
             if gears.filesystem.file_readable(rofi_theme) then
                 theme_arg = " -theme " .. shell_quote(rofi_theme)
             end
             local cmd = string.format(
-                "rofi -show-icons -i -matching fuzzy%s -show combi -combi-modi \"lcu,drun,run,window\" -modi \"lcu:%s,drun,run,window\"",
+                "rofi -show-icons -i -matching fuzzy -combi-hide-mode-prefix%s " ..
+                    "-display-combi \"Open\" -show combi " ..
+                    "-combi-modi \"lcu,folders,drun,window,run\" " ..
+                    "-modi \"lcu:%s,folders:%s --rofi,drun,window,run\"",
                 theme_arg,
-                shell_quote(launcher_script)
+                launcher_script,
+                folder_script
             )
             awful.spawn.with_shell(cmd)
             return
