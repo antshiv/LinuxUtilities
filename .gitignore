@@ -15,3 +15,6 @@ config/local.mk
 # Legacy screenshot copies (superseded by assets/images + docs/assets/images)
 assets/screenshots/
 docs/assets/screenshots/
+
+# Python test and CLI bytecode
+__pycache__/

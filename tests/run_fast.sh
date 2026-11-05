@@ -48,6 +48,9 @@ echo "[fast] AwesomeWM config tests"
 echo "[fast] Folder navigator provider tests"
 "$ROOT_DIR/tests/folder_navigator_test.sh"
 
+echo "[fast] CKE Kokoro summary controller tests"
+python3 -m unittest -q tests.test_cke_kokoro_reader
+
 if command -v node >/dev/null 2>&1; then
     echo "[fast] Presenter canvas JS tests"
     node --test "$ROOT_DIR/tests/presenter_canvas_logic.test.mjs"
