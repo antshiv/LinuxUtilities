@@ -69,6 +69,38 @@ the old process group to exit before launching the replacement, preventing old
 audio from returning. The exact mode spells technical paths according to CKE's
 planner; LinuxUtilities never rewrites them itself.
 
+## Resume a long document
+
+With CKE PR #1037 or newer, pass `--document` for the checked document planner
+and `--progress-dir` for durable playback checkpoints. Keep the checkpoint
+directory private; its filename contains the source-file hash, while the
+checkpoint records model/frontend/voice identity and the last completed chunk.
+The planner checks the entire source before audio starts and rejects unsupported
+text at a named source span. The document remains unchanged.
+
+```sh
+python3 scripts/cke_kokoro_reader.py \
+  --cke-root "$CKE_READER_ROOT" --python "$CKE_READER_PYTHON" \
+  --config "$CKE_READER_CONFIG" --bundle-dir "$CKE_READER_BUNDLE" \
+  --player "$(command -v pw-play)" --document \
+  --progress-dir "$HOME/.local/state/cke-kokoro-documents" \
+  --text-file /absolute/path/document.txt
+```
+
+After a stop or process failure, rerun the same command with `--resume-file`.
+In an interactive controller session, send
+`{"action":"resume_file","path":"/absolute/path/document.txt"}`. This
+resumes after the last player-completed chunk. An interrupted sentence may
+replay. The in-process `resume` command only unpauses current playback; it does
+not load a saved checkpoint. For a new reading of the same document, move or
+delete its checkpoint explicitly, or use a separate progress directory.
+
+The real P3-to-Sony route still requires an explicit transport if synthesis
+runs on P3 and the headset is on a laptop. This adapter currently invokes a
+local CKE player and does not certify remote audio transport or uninterrupted
+10,000-word playback. Its bounded spool avoids holding the whole document WAV
+in RAM; if synthesis remains slower than playback, gaps will occur.
+
 ## Evidence boundaries
 
 The asset-free controller tests cover source-span integrity, full-file handoff,
