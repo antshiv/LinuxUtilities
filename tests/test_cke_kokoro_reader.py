@@ -174,6 +174,67 @@ class KokoroReaderTest(unittest.TestCase):
                                    expected_sha256="0" * 64)
         self.assertFalse(self.started.exists())
 
+    def test_document_preflight_and_durable_resume_use_cke_interfaces(self):
+        tts = self.cke / "version/v8/tts"
+        (tts / "prepare_kokoro_document.py").write_text(
+            "import argparse,json\nfrom pathlib import Path\n"
+            "p=argparse.ArgumentParser()\n"
+            "for n in ('text-file','config','bundle-dir','technical-mode','output'):p.add_argument('--'+n)\n"
+            "a=p.parse_args();text=Path(a.text_file).read_text()\n"
+            "cut=text.index('.')+1\n"
+            "chunks=[{'index':i,'source_start':start,'source_end':end,"
+            "'source_text':text[start:end].strip(),'phoneme_ids':[0,1,0],"
+            "'valid_token_count':3} for i,(start,end) in "
+            "enumerate(((0,cut),(cut,len(text))))]\n"
+            "plan={'schema':'cke.kokoro.document-text-plan.v1',"
+            "'source_text':text,'chunks':chunks,'bundle_identity_sha256':'bundle'}\n"
+            "Path(a.output).write_text(json.dumps(plan))\n")
+        (tts / "ck_kokoro_play.py").write_text(
+            "import argparse,hashlib,json\nfrom pathlib import Path\n"
+            "p=argparse.ArgumentParser()\n"
+            "p.add_argument('--incremental',action='store_true')\n"
+            "p.add_argument('--document',action='store_true')\n"
+            "p.add_argument('--resume',action='store_true')\n"
+            "for n in ('text-file','config','bundle-dir','player','technical-mode',"
+            "'report','progress-file','session-id'):p.add_argument('--'+n)\n"
+            "a=p.parse_args();assert a.incremental and a.document\n"
+            "text=Path(a.text_file).read_text();progress=Path(a.progress_file)\n"
+            "if a.resume: assert progress.read_text()=='0';first=1\n"
+            "else: assert not progress.exists();progress.write_text('0');first=0\n"
+            "if first==0: raise SystemExit(2)\n"
+            "progress.write_text('1')\n"
+            "result={'status':'execution_pass','source_sha256':hashlib.sha256(text.encode()).hexdigest(),"
+            "'resume_from_chunk':first,'chunks':[{'index':1}],"
+            "'sample_count':1200,'first_playback_start_seconds':0.05,"
+            "'known_connected_waveform_parity':'fail_unresolved'}\n"
+            "Path(a.report).write_text(json.dumps(result))\n")
+        progress_dir = self.root / "progress"
+        reader = KokoroReader(cke_root=self.cke, config=self.config,
+                              bundle=self.bundle, player=self.player,
+                              progress_dir=progress_dir, emit=self.events.append)
+        self.addCleanup(reader.stop)
+        source = self.source("document.txt", "First sentence. Second sentence.\n")
+        reader.speak_file(source, document=True, preflight_only=True)
+        reader.wait()
+        planned = next(row for row in self.events if row["event"] == "planned")
+        self.assertEqual(planned["chunks"], 2)
+        self.assertEqual(planned["source_spans"],
+                         [[0, 15], [15, len(source.read_text())]])
+        self.assertFalse(progress_dir.exists())
+        reader.speak_file(source, document=True)
+        reader.wait()
+        self.assertTrue(any(row["event"] == "failed" for row in self.events))
+        checkpoint = next(progress_dir.glob("*.json"))
+        self.assertEqual(checkpoint.read_text(), "0")
+        reader.speak_file(source, document=True, resume_existing=True)
+        reader.wait()
+        completed = next(row for row in self.events if row["event"] == "completed")
+        self.assertEqual(completed["resume_from_chunk"], 1)
+        self.assertEqual(completed["chunks"], 2)
+        self.assertEqual(checkpoint.read_text(), "1")
+        with self.assertRaisesRegex(ReaderError, "checkpoint exists"):
+            reader.speak_file(source, document=True)
+
 
 if __name__ == "__main__":
     unittest.main()
