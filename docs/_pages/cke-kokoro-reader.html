@@ -1,0 +1,102 @@
+<!-- TITLE: Optional CKE speech adapter -->
+<!-- NAV: setup -->
+<main class="container"><h1>Optional CKE speech adapter</h1>
+<p>CKE is optional. LinuxUtilities startup and generic controls do not require a CKE checkout, model, or Python environment. These settings apply only when explicitly launching scripts/cke_kokoro_reader.py.</p>
+<h2>CKE Kokoro summary reader</h2>
+<p>`scripts/cke_kokoro_reader.py` is the LinuxUtilities control boundary for CKE</p>
+<p>Kokoro. It calls CKE&#x27;s checked full-context text planner and incremental player.</p>
+<p>LinuxUtilities does not phonemize, replace words, split sentences, or synthesize</p>
+<p>audio. All chunks must cover the original source in order before playback starts.</p>
+<h3>Read the current summary</h3>
+<p>The `server_summary.txt` observed on 2026-11-05 had raw-file SHA-256</p>
+<p>`3fa845c01db57312158592a46dd0e7a19f4e8462096eea10b5f52103e1f66bdb`.</p>
+<p>It was 1,776 bytes. The hash check rejects a changed file rather than reading</p>
+<p>an unintended revision. Set these paths for the actual machine:</p>
+<pre><code>
+CKE_READER_ROOT=/home/antshiv/Workspace/C-Kernel-Engine
+CKE_READER_CONFIG=/tmp/cke-kokoro-model-pinned/config.json
+CKE_READER_BUNDLE=/tmp/cke-kokoro-p3-tile32-w8-bundle-20261104
+CKE_READER_PYTHON=/path/to/pinned-kokoro-frontend/bin/python
+CKE_READER_SUMMARY=&quot;$CKE_READER_ROOT/server_summary.txt&quot;
+CKE_READER_HASH=3fa845c01db57312158592a46dd0e7a19f4e8462096eea10b5f52103e1f66bdb
+</code></pre>
+<p>First check every source span without launching audio:</p>
+<pre><code>
+python3 scripts/cke_kokoro_reader.py \
+  --cke-root &quot;$CKE_READER_ROOT&quot; --python &quot;$CKE_READER_PYTHON&quot; \
+  --config &quot;$CKE_READER_CONFIG&quot; --bundle-dir &quot;$CKE_READER_BUNDLE&quot; \
+  --text-file &quot;$CKE_READER_SUMMARY&quot; --expected-sha256 &quot;$CKE_READER_HASH&quot; \
+  --preflight-only
+</code></pre>
+<p>The terminal must report `planned` with complete source spans followed by</p>
+<p>`preflight_complete`. An unknown word or unsupported phoneme produces `failed`</p>
+<p>with CKE&#x27;s error, and playback never starts.</p>
+<p>For audible reading, select the Sony output device in PipeWire and supply an</p>
+<p>explicit executable player. For example, when `pw-play` is installed:</p>
+<pre><code>
+python3 scripts/cke_kokoro_reader.py \
+  --cke-root &quot;$CKE_READER_ROOT&quot; --python &quot;$CKE_READER_PYTHON&quot; \
+  --config &quot;$CKE_READER_CONFIG&quot; --bundle-dir &quot;$CKE_READER_BUNDLE&quot; \
+  --player &quot;$(command -v pw-play)&quot; \
+  --text-file &quot;$CKE_READER_SUMMARY&quot; --expected-sha256 &quot;$CKE_READER_HASH&quot;
+</code></pre>
+<p>Each line of standard input is a JSON control command. These also work when</p>
+<p>another local application owns the controller process and sends commands over</p>
+<p>its stdin:</p>
+<pre><code>
+{&quot;action&quot;:&quot;stop&quot;}
+{&quot;action&quot;:&quot;replace_file&quot;,&quot;path&quot;:&quot;/absolute/path/new-summary.txt&quot;}
+{&quot;action&quot;:&quot;pause&quot;}
+{&quot;action&quot;:&quot;resume&quot;}
+{&quot;action&quot;:&quot;status&quot;}
+{&quot;action&quot;:&quot;quit&quot;}
+</code></pre>
+<p>`preflight_file` and `speak_file` accept `path`, optional `technical_mode`</p>
+<p>(`natural` or `exact`), and optional `expected_sha256`. The controller emits</p>
+<p>newline-delimited JSON with request IDs, source hashes, checked spans, failures,</p>
+<p>completion metrics, and native-release time after stop. The reported first</p>
+<p>player-launch time includes planning; it is not a measurement of the first</p>
+<p>audible sample at the headset. `replace_file` waits for</p>
+<p>the old process group to exit before launching the replacement, preventing old</p>
+<p>audio from returning. The exact mode spells technical paths according to CKE&#x27;s</p>
+<p>planner; LinuxUtilities never rewrites them itself.</p>
+<h3>Resume a long document</h3>
+<p>With CKE PR #1037 or newer, pass `--document` for the checked document planner</p>
+<p>and `--progress-dir` for durable playback checkpoints. Keep the checkpoint</p>
+<p>directory private; its filename contains the source-file hash, while the</p>
+<p>checkpoint records model/frontend/voice identity and the last completed chunk.</p>
+<p>The planner checks the entire source before audio starts and rejects unsupported</p>
+<p>text at a named source span. The document remains unchanged.</p>
+<pre><code>
+python3 scripts/cke_kokoro_reader.py \
+  --cke-root &quot;$CKE_READER_ROOT&quot; --python &quot;$CKE_READER_PYTHON&quot; \
+  --config &quot;$CKE_READER_CONFIG&quot; --bundle-dir &quot;$CKE_READER_BUNDLE&quot; \
+  --player &quot;$(command -v pw-play)&quot; --document \
+  --progress-dir &quot;$HOME/.local/state/cke-kokoro-documents&quot; \
+  --text-file /absolute/path/document.txt
+</code></pre>
+<p>After a stop or process failure, rerun the same command with `--resume-file`.</p>
+<p>In an interactive controller session, send</p>
+<p>`{&quot;action&quot;:&quot;resume_file&quot;,&quot;path&quot;:&quot;/absolute/path/document.txt&quot;}`. This</p>
+<p>resumes after the last player-completed chunk. An interrupted sentence may</p>
+<p>replay. The in-process `resume` command only unpauses current playback; it does</p>
+<p>not load a saved checkpoint. For a new reading of the same document, move or</p>
+<p>delete its checkpoint explicitly, or use a separate progress directory.</p>
+<p>The real P3-to-Sony route still requires an explicit transport if synthesis</p>
+<p>runs on P3 and the headset is on a laptop. This adapter currently invokes a</p>
+<p>local CKE player and does not certify remote audio transport or uninterrupted</p>
+<p>10,000-word playback. Its bounded spool avoids holding the whole document WAV</p>
+<p>in RAM; if synthesis remains slower than playback, gaps will occur.</p>
+<h3>Evidence boundaries</h3>
+<p>The asset-free controller tests cover source-span integrity, full-file handoff,</p>
+<p>unsupported text, stop during native work, replacement, and a later successful</p>
+<p>request. The real pinned frontend, generated bundle, Sony routing, audible gaps,</p>
+<p>and human listening require the asset-backed headset trial. The current machine</p>
+<p>used for this change lacks the pinned Kokoro frontend packages and an installed</p>
+<p>audio player, so the complete summary has **not** been heard or certified here.</p>
+<p>CKE&#x27;s incremental player keeps its native model loaded across the chunks of one</p>
+<p>request. It starts a new native worker for a subsequent request. Its report</p>
+<p>distinguishes execution from the still unresolved connected waveform numerical</p>
+<p>parity. Check first-audio time, total time, gaps, and headset intelligibility</p>
+<p>separately; buffering alone cannot make synthesis faster than playback.</p>
+</main>
